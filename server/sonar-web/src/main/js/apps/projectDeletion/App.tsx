@@ -18,9 +18,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { CenteredLayout, PageContentFontWrapper } from 'design-system';
 import * as React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { CenteredLayout, PageContentFontWrapper } from '~design-system';
 import { ComponentContext } from '../../app/components/componentContext/ComponentContext';
 import { translate } from '../../helpers/l10n';
 import Form from './Form';
@@ -36,7 +36,7 @@ export default function App() {
   return (
     <CenteredLayout>
       <Helmet defer={false} title={translate('deletion.page')} />
-      <PageContentFontWrapper className="sw-my-8 sw-body-sm">
+      <PageContentFontWrapper className="sw-my-8 sw-typo-default">
         <Header component={component} />
         <Form component={component} />
       </PageContentFontWrapper>

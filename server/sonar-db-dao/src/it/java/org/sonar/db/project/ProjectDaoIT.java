@@ -19,18 +19,14 @@
  */
 package org.sonar.db.project;
 
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Random;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import javax.annotation.Nullable;
@@ -38,36 +34,33 @@ import org.assertj.core.api.Assertions;
 import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.sonar.api.impl.utils.AlwaysIncreasingSystem2;
-import org.sonar.api.resources.Qualifiers;
 import org.sonar.api.utils.System2;
+import org.sonar.db.DbSession;
 import org.sonar.db.DbTester;
 import org.sonar.db.Pagination;
 import org.sonar.db.audit.AuditPersister;
 import org.sonar.db.audit.NoOpAuditPersister;
+import org.sonar.db.audit.model.ProjectNewValue;
 import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.BranchType;
 import org.sonar.db.component.ComponentDto;
-import org.sonar.db.component.ProjectData;
+import org.sonar.db.component.ComponentQualifiers;
 import org.sonar.db.entity.EntityDto;
-import org.sonar.db.measure.LiveMeasureDto;
-import org.sonar.db.metric.MetricDto;
-import org.sonar.db.qualityprofile.QProfileDto;
 
 import static java.util.Collections.emptySet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.sonar.api.measures.CoreMetrics.NCLOC_LANGUAGE_DISTRIBUTION_KEY;
-import static org.sonar.api.measures.Metric.ValueType.STRING;
 
 class ProjectDaoIT {
-
-  private final Random random = new SecureRandom();
 
   private final System2 system2 = new AlwaysIncreasingSystem2(1000L);
 
@@ -142,6 +135,40 @@ class ProjectDaoIT {
       .hasSize(2)
       .containsEntry("projectName_p1", CreationMethod.SCANNER_API)
       .containsEntry("projectName_p2", CreationMethod.UNKNOWN);
+  }
+
+  @Test
+  void selectProjects_returns_containsAiCode() {
+    ProjectDto dto1 = createProject("o1", "p1").setContainsAiCode(true);
+    ProjectDto dto2 = createProject("o1", "p2");
+
+    projectDao.insert(db.getSession(), dto1);
+    projectDao.insert(db.getSession(), dto2);
+
+    List<ProjectDto> projects = projectDao.selectProjects(db.getSession());
+    Map<String, Boolean> projectToContainsAiCode = projects.stream().collect(Collectors.toMap(EntityDto::getName,
+      ProjectDto::getContainsAiCode));
+    assertThat(projectToContainsAiCode)
+      .hasSize(2)
+      .containsEntry("projectName_p1", true)
+      .containsEntry("projectName_p2", false);
+  }
+
+  @Test
+  void selectProjects_returnsAiCodeFixEnabled() {
+    var dbSession = db.getSession();
+
+    var dto1 = createProject("o1", "p1").setAiCodeFixEnabled(true);
+    var dto2 = createProject("o1", "p2");
+
+    projectDao.insert(dbSession, dto1);
+    projectDao.insert(dbSession, dto2);
+
+    assertThat(projectDao.selectProjects(dbSession))
+      .extracting(EntityDto::getName, ProjectDto::getAiCodeFixEnabled)
+      .containsExactlyInAnyOrder(
+        tuple("projectName_p1", true),
+        tuple("projectName_p2", false));
   }
 
   @Test
@@ -246,6 +273,72 @@ class ProjectDaoIT {
   }
 
   @Test
+  void update_containsAiCode() {
+    ProjectDto dto1 = createProject("o1", "p1").setContainsAiCode(true);
+    ProjectDto dto2 = createProject("o1", "p2");
+
+    projectDao.insert(db.getSession(), dto1);
+    projectDao.insert(db.getSession(), dto2);
+
+    List<ProjectDto> projectsByUuids = projectDao.selectByUuids(db.getSession(), new HashSet<>(Arrays.asList("uuid_o1_p1", "uuid_o1_p2")));
+    assertThat(projectsByUuids).hasSize(2);
+    assertProject(projectsByUuids.get(0), "projectName_p1", "projectKee_o1_p1", "uuid_o1_p1", "desc_p1", "tag1,tag2", false, true);
+    assertProject(projectsByUuids.get(1), "projectName_p2", "projectKee_o1_p2", "uuid_o1_p2", "desc_p2", "tag1,tag2", false, false);
+
+    projectDao.updateContainsAiCode(db.getSession(), dto1.getUuid(), false);
+    projectDao.updateContainsAiCode(db.getSession(), dto2.getUuid(), true);
+
+    projectsByUuids = projectDao.selectByUuids(db.getSession(), new HashSet<>(Arrays.asList("uuid_o1_p1", "uuid_o1_p2")));
+    assertThat(projectsByUuids).hasSize(2);
+    assertProject(projectsByUuids.get(0), "projectName_p1", "projectKee_o1_p1", "uuid_o1_p1", "desc_p1", "tag1,tag2", false, false);
+    assertProject(projectsByUuids.get(1), "projectName_p2", "projectKee_o1_p2", "uuid_o1_p2", "desc_p2", "tag1,tag2", false, true);
+  }
+
+  @Test
+  void update_aiCodeFixEnabledPerProject() {
+    ProjectDto dto1 = createProject("o1", "p1").setAiCodeFixEnabled(true);
+    ProjectDto dto2 = createProject("o1", "p2");
+
+    projectDao.insert(db.getSession(), dto1);
+    projectDao.insert(db.getSession(), dto2);
+
+    List<ProjectDto> projectsByUuids = projectDao.selectByUuids(db.getSession(), new HashSet<>(Arrays.asList("uuid_o1_p1", "uuid_o1_p2")));
+    assertThat(projectsByUuids).hasSize(2);
+    assertProjectAiCodeFixEnablement(projectsByUuids.get(0), "uuid_o1_p1", true);
+    assertProjectAiCodeFixEnablement(projectsByUuids.get(1), "uuid_o1_p2", false);
+
+    projectDao.update(db.getSession(), projectsByUuids.get(0).setAiCodeFixEnabled(false));
+    projectDao.update(db.getSession(), projectsByUuids.get(1).setAiCodeFixEnabled(true));
+
+    projectsByUuids = projectDao.selectByUuids(db.getSession(), new HashSet<>(Arrays.asList("uuid_o1_p1", "uuid_o1_p2")));
+    assertThat(projectsByUuids).hasSize(2);
+    assertProjectAiCodeFixEnablement(projectsByUuids.get(0), "uuid_o1_p1", false);
+    assertProjectAiCodeFixEnablement(projectsByUuids.get(1), "uuid_o1_p2", true);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void update_aiCodeFixEnabledForAllProjects(boolean aiCodeFixEnablement) {
+    ProjectDto dto1 = createProject("o1", "p1").setAiCodeFixEnabled(true);
+    ProjectDto dto2 = createProject("o1", "p2");
+
+    projectDao.insert(db.getSession(), dto1);
+    projectDao.insert(db.getSession(), dto2);
+
+    List<ProjectDto> projectsByUuids = projectDao.selectByUuids(db.getSession(), new HashSet<>(Arrays.asList("uuid_o1_p1", "uuid_o1_p2")));
+    assertThat(projectsByUuids).hasSize(2);
+    assertProjectAiCodeFixEnablement(projectsByUuids.get(0), "uuid_o1_p1", true);
+    assertProjectAiCodeFixEnablement(projectsByUuids.get(1), "uuid_o1_p2", false);
+
+    projectDao.updateAiCodeFixEnablementForAllProjects(db.getSession(), aiCodeFixEnablement);
+
+    projectsByUuids = projectDao.selectByUuids(db.getSession(), new HashSet<>(Arrays.asList("uuid_o1_p1", "uuid_o1_p2")));
+    assertThat(projectsByUuids).hasSize(2);
+    assertProjectAiCodeFixEnablement(projectsByUuids.get(0), "uuid_o1_p1", aiCodeFixEnablement);
+    assertProjectAiCodeFixEnablement(projectsByUuids.get(1), "uuid_o1_p2", aiCodeFixEnablement);
+  }
+
+  @Test
   void select_by_uuids() {
     ProjectDto dto1 = createProject("o1", "p1");
     ProjectDto dto2 = createProject("o1", "p2");
@@ -296,32 +389,22 @@ class ProjectDaoIT {
 
   @Test
   void insert_withTrack_shouldCallAuditPersister() {
-    ProjectDto dto1 = createProject("o1", "p1");
+    var dto1 = createProject("o1", "p1").setAiCodeFixEnabled(true);
 
     projectDaoWithAuditPersister.insert(db.getSession(), dto1, true);
 
-    verify(auditPersister, times(1)).addComponent(any(), any());
+    verify(auditPersister, times(1)).addComponent(any(),
+      argThat(componentNewValue -> ((ProjectNewValue) componentNewValue).isAiCodeFixEnabled()));
   }
 
   @Test
   void update_shouldCallAuditPersister() {
-    ProjectDto dto1 = createProject("o1", "p1");
+    var dto1 = createProject("o1", "p1").setAiCodeFixEnabled(true);
 
     projectDaoWithAuditPersister.update(db.getSession(), dto1);
 
-    verify(auditPersister, times(1)).updateComponent(any(), any());
-  }
-
-  @Test
-  void select_project_uuids_associated_to_default_quality_profile_for_specific_language() {
-    String language = "xoo";
-    Set<ProjectData> projects = insertProjects(random.nextInt(10));
-    insertDefaultQualityProfile(language);
-    insertProjectsLiveMeasures(language, projects);
-
-    Set<String> projectUuids = projectDao.selectProjectUuidsAssociatedToDefaultQualityProfileByLanguage(db.getSession(), language);
-
-    assertThat(projectUuids).containsExactlyInAnyOrderElementsOf(extractComponentUuids(projects));
+    verify(auditPersister, times(1)).updateComponent(any(),
+      argThat(componentNewValue -> ((ProjectNewValue) componentNewValue).isAiCodeFixEnabled()));
   }
 
   @Test
@@ -406,58 +489,41 @@ class ProjectDaoIT {
     assertThat(projectDao.countProjects(db.getSession())).isEqualTo(10);
   }
 
-  private void insertDefaultQualityProfile(String language) {
-    QProfileDto profile = db.qualityProfiles().insert(qp -> qp.setIsBuiltIn(true).setLanguage(language));
-    db.qualityProfiles().setAsDefault(profile);
-  }
+  @Test
+  void countProjects_by_ai_codefix_enablement() {
+    var dto1 = createProject("o1", "p1").setAiCodeFixEnabled(true);
+    var dto2 = createProject("o1", "p2");
+    var dto3 = createProject("o1", "p3");
 
-  private static Set<String> extractComponentUuids(Collection<ProjectData> components) {
-    return components
-      .stream()
-      .map(ProjectData::projectUuid)
-      .collect(Collectors.toSet());
-  }
+    DbSession dbSession = db.getSession();
 
-  private Set<ProjectData> insertProjects(int number) {
-    return IntStream
-      .rangeClosed(0, number)
-      .mapToObj(x -> db.components().insertPrivateProject())
-      .collect(Collectors.toSet());
-  }
+    projectDao.insert(dbSession, dto1);
+    projectDao.insert(dbSession, dto2);
+    projectDao.insert(dbSession, dto3);
 
-  private Consumer<LiveMeasureDto> configureLiveMeasure(String language, MetricDto metric, ProjectDto project, ComponentDto componentDto) {
-    return liveMeasure -> liveMeasure
-      .setMetricUuid(metric.getUuid())
-      .setComponentUuid(componentDto.uuid())
-      .setProjectUuid(project.getUuid())
-      .setData(language + "=" + random.nextInt(10));
-  }
-
-  private Consumer<ProjectData> insertLiveMeasure(String language, MetricDto metric) {
-    return (projectData) -> db.measures().insertLiveMeasure(projectData.getMainBranchComponent(), metric,
-      configureLiveMeasure(language, metric, projectData.getProjectDto(), projectData.getMainBranchComponent()));
-  }
-
-  private void insertProjectsLiveMeasures(String language, Set<ProjectData> projects) {
-    Consumer<MetricDto> configureMetric = metric -> metric
-      .setValueType(STRING.name())
-      .setKey(NCLOC_LANGUAGE_DISTRIBUTION_KEY);
-
-    MetricDto metric = db.measures().insertMetric(configureMetric);
-
-    projects.forEach(insertLiveMeasure(language, metric));
+    assertThat(projectDao.countProjects(db.getSession())).isEqualTo(3);
+    assertThat(projectDao.countAiCodeFixEnabledProjects(db.getSession())).isEqualTo(1);
+    assertThat(projectDao.countAiCodeFixDisabledProjects(db.getSession())).isEqualTo(2);
   }
 
   private void assertProject(ProjectDto dto, String name, String kee, String uuid, String desc, @Nullable String tags, boolean isPrivate) {
-    assertThat(dto).extracting("name", "kee", "key", "uuid", "description", "tagsString", "private")
-      .containsExactly(name, kee, kee, uuid, desc, tags, isPrivate);
+    assertProject(dto, name, kee, uuid, desc, tags, isPrivate, false);
+  }
+
+  private void assertProject(ProjectDto dto, String name, String kee, String uuid, String desc, @Nullable String tags, boolean isPrivate, boolean containsAiCode) {
+    assertThat(dto).extracting("name", "kee", "key", "uuid", "description", "tagsString", "private", "containsAiCode")
+      .containsExactly(name, kee, kee, uuid, desc, tags, isPrivate, containsAiCode);
+  }
+
+  private void assertProjectAiCodeFixEnablement(ProjectDto dto, String uuid, boolean isAiCodeFixEnabled) {
+    assertThat(dto).extracting("uuid", "aiCodeFixEnabled").containsExactly(uuid, isAiCodeFixEnabled);
   }
 
   private ProjectDto createProject(String org, String name) {
     return new ProjectDto()
       .setName("projectName_" + name)
       .setKey("projectKee_" + org + "_" + name)
-      .setQualifier(Qualifiers.PROJECT)
+      .setQualifier(ComponentQualifiers.PROJECT)
       .setUuid("uuid_" + org + "_" + name)
       .setTags(Arrays.asList("tag1", "tag2"))
       .setDescription("desc_" + name)

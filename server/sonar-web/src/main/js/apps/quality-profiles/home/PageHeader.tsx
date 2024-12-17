@@ -17,13 +17,21 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonPrimary, ButtonSecondary, FlagMessage, Link } from 'design-system';
+
+import {
+  Button,
+  ButtonGroup,
+  ButtonVariety,
+  Heading,
+  LinkHighlight,
+} from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { useIntl } from 'react-intl';
+import { FlagMessage } from '~design-system';
 import { useLocation, useRouter } from '~sonar-aligned/components/hoc/withRouter';
 import { Actions } from '../../../api/quality-profiles';
+import DocumentationLink from '../../../components/common/DocumentationLink';
 import { DocLink } from '../../../helpers/doc-links';
-import { useDocUrl } from '../../../helpers/docs';
 import { translate } from '../../../helpers/l10n';
 import { Profile } from '../types';
 import { getProfilePath } from '../utils';
@@ -42,7 +50,6 @@ export default function PageHeader(props: Readonly<Props>) {
   const intl = useIntl();
   const location = useLocation();
   const router = useRouter();
-  const docUrl = useDocUrl(DocLink.InstanceAdminQualityProfiles);
 
   const [modal, setModal] = React.useState<'' | 'createProfile' | 'restoreProfile'>('');
 
@@ -60,33 +67,45 @@ export default function PageHeader(props: Readonly<Props>) {
   return (
     <header className="sw-grid sw-grid-cols-3 sw-gap-12">
       <div className="sw-col-span-2">
-        <h1 className="sw-heading-lg sw-mb-4">{translate('quality_profiles.page')}</h1>
-        <div className="sw-body-sm">
-          {intl.formatMessage({ id: 'quality_profiles.intro' })}
+        <Heading as="h1" hasMarginBottom>
+          {translate('quality_profiles.page')}
+        </Heading>
 
-          <Link className="sw-ml-2" to={docUrl}>
-            {intl.formatMessage({ id: 'learn_more' })}
-          </Link>
+        <div className="sw-typo-default">
+          {intl.formatMessage(
+            { id: 'quality_profiles.intro' },
+            {
+              link: (text) => (
+                <DocumentationLink
+                  shouldOpenInNewTab
+                  to={DocLink.InstanceAdminQualityProfiles}
+                  highlight={LinkHighlight.CurrentColor}
+                >
+                  {text}
+                </DocumentationLink>
+              ),
+            },
+          )}
         </div>
       </div>
+
       {actions.create && (
         <div className="sw-flex sw-flex-col sw-items-end">
-          <div>
-            <ButtonPrimary
-              disabled={languages.length === 0}
+          <ButtonGroup>
+            <Button
+              isDisabled={languages.length === 0}
               id="quality-profiles-create"
               onClick={() => setModal('createProfile')}
+              variety={ButtonVariety.Primary}
             >
               {intl.formatMessage({ id: 'create' })}
-            </ButtonPrimary>
-            <ButtonSecondary
-              className="sw-ml-2"
-              id="quality-profiles-restore"
-              onClick={() => setModal('restoreProfile')}
-            >
+            </Button>
+
+            <Button id="quality-profiles-restore" onClick={() => setModal('restoreProfile')}>
               {intl.formatMessage({ id: 'restore' })}
-            </ButtonSecondary>
-          </div>
+            </Button>
+          </ButtonGroup>
+
           {languages.length === 0 && (
             <FlagMessage className="sw-mt-2" variant="warning">
               {intl.formatMessage({ id: 'quality_profiles.no_languages_available' })}

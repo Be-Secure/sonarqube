@@ -17,13 +17,14 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ContentCell, Table, TableRow, TableSeparator } from 'design-system';
+
 import { partition } from 'lodash';
 import * as React from 'react';
+import { ContentCell, Table, TableRow, TableSeparator } from '~design-system';
 import UseQuery from '../../helpers/UseQuery';
 import { translate } from '../../helpers/l10n';
 import { isPermissionDefinitionGroup } from '../../helpers/permissions';
-import { useIsGitHubProjectQuery } from '../../queries/devops-integration';
+import { useIsGitHubProjectQuery, useIsGitLabProjectQuery } from '../../queries/devops-integration';
 import { useGithubProvisioningEnabledQuery } from '../../queries/identity-provider/github';
 import { Dict, PermissionDefinitions, PermissionGroup, PermissionUser } from '../../types/types';
 import GroupHolder from './GroupHolder';
@@ -34,6 +35,7 @@ interface Props {
   filter?: string;
   groups: PermissionGroup[];
   isComponentPrivate?: boolean;
+  isProjectManaged: boolean;
   loading?: boolean;
   onSelectPermission?: (permission: string) => void;
   onToggleGroup: (group: PermissionGroup, permission: string) => Promise<void>;
@@ -59,7 +61,7 @@ export default class HoldersList extends React.PureComponent<
   }
 
   getKey = (item: PermissionGroup | PermissionUser) =>
-    this.isPermissionUser(item) ? item.login : item.id ?? item.name;
+    this.isPermissionUser(item) ? item.login : (item.id ?? item.name);
 
   isPermissionUser(item: PermissionGroup | PermissionUser): item is PermissionUser {
     return (item as PermissionUser).login !== undefined;
@@ -107,36 +109,49 @@ export default class HoldersList extends React.PureComponent<
   }
 
   renderItem(item: PermissionUser | PermissionGroup, permissions: PermissionDefinitions) {
-    const { selectedPermission, isComponentPrivate } = this.props;
+    const { selectedPermission, isComponentPrivate, isProjectManaged } = this.props;
+
     return (
       <UseQuery key={this.getKey(item)} query={useIsGitHubProjectQuery}>
         {({ data: isGitHubProject }) => (
-          <UseQuery query={useGithubProvisioningEnabledQuery}>
-            {({ data: githubProvisioningStatus }) => (
-              <>
-                {this.isPermissionUser(item) ? (
-                  <UserHolder
-                    key={`user-${item.login}`}
-                    onToggle={this.handleUserToggle}
-                    permissions={permissions}
-                    selectedPermission={selectedPermission}
-                    user={item}
-                    disabled={isGitHubProject && !!githubProvisioningStatus && item.managed}
-                    removeOnly={isGitHubProject && !!githubProvisioningStatus && !item.managed}
-                  />
-                ) : (
-                  <GroupHolder
-                    group={item}
-                    isComponentPrivate={isComponentPrivate}
-                    key={`group-${item.id || item.name}`}
-                    onToggle={this.handleGroupToggle}
-                    permissions={permissions}
-                    selectedPermission={selectedPermission}
-                    disabled={isGitHubProject && !!githubProvisioningStatus && item.managed}
-                    removeOnly={isGitHubProject && !!githubProvisioningStatus && !item.managed}
-                  />
+          <UseQuery key={this.getKey(item)} query={useIsGitLabProjectQuery}>
+            {({ data: isGitLabProject }) => (
+              <UseQuery query={useGithubProvisioningEnabledQuery}>
+                {({ data: githubProvisioningStatus }) => (
+                  <>
+                    {this.isPermissionUser(item) ? (
+                      <UserHolder
+                        key={`user-${item.login}`}
+                        onToggle={this.handleUserToggle}
+                        permissions={permissions}
+                        selectedPermission={selectedPermission}
+                        user={item}
+                        isGitHubUser={isGitHubProject && !!githubProvisioningStatus && item.managed}
+                        isGitLabUser={isGitLabProject && item.managed}
+                        removeOnly={
+                          (isGitHubProject && !!githubProvisioningStatus && !item.managed) ||
+                          (isGitLabProject && isProjectManaged && !item.managed)
+                        }
+                      />
+                    ) : (
+                      <GroupHolder
+                        group={item}
+                        isComponentPrivate={isComponentPrivate}
+                        key={`group-${item.id || item.name}`}
+                        onToggle={this.handleGroupToggle}
+                        permissions={permissions}
+                        selectedPermission={selectedPermission}
+                        isGitHubUser={isGitHubProject && !!githubProvisioningStatus && item.managed}
+                        isGitLabUser={isGitLabProject && item.managed}
+                        removeOnly={
+                          (isGitHubProject && !!githubProvisioningStatus && !item.managed) ||
+                          (isGitLabProject && isProjectManaged && !item.managed)
+                        }
+                      />
+                    )}
+                  </>
                 )}
-              </>
+              </UseQuery>
             )}
           </UseQuery>
         )}

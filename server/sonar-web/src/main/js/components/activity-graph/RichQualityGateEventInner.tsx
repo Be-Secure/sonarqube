@@ -17,15 +17,16 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+import * as React from 'react';
+import { FormattedMessage } from 'react-intl';
 import {
   BareButton,
   ChevronDownIcon,
   Note,
   QualityGateIndicator,
   StandoutLink,
-} from 'design-system';
-import * as React from 'react';
-import { FormattedMessage } from 'react-intl';
+} from '~design-system';
 import { translate, translateWithParameters } from '../../helpers/l10n';
 import { getProjectUrl } from '../../helpers/urls';
 import { AnalysisEvent } from '../../types/project-activity';
@@ -57,10 +58,10 @@ export class RichQualityGateEventInner extends React.PureComponent<Props, State>
     const { event, readonly } = this.props;
     const { expanded } = this.state;
     return (
-      <div className="sw-w-full sw-body-sm sw-py-1/2">
+      <div className="sw-w-full sw-typo-default sw-py-1/2">
         <div className="sw-flex sw-justify-between">
           <div className="sw-flex sw-items-center">
-            <Note className="sw-mr-1 sw-body-sm-highlight">
+            <Note className="sw-mr-1 sw-typo-semibold">
               {translate('event.category', event.category)}
             </Note>
 

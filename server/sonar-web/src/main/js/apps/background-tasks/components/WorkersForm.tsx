@@ -17,8 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonPrimary, FlagMessage, InputSelect, Modal } from 'design-system';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { FlagMessage, InputSelect, Modal } from '~design-system';
 import { setWorkerCount } from '../../../api/ce';
 import { translate } from '../../../helpers/l10n';
 
@@ -109,9 +111,14 @@ export default class WorkersForm extends React.PureComponent<Props, State> {
           </form>
         }
         primaryButton={
-          <ButtonPrimary disabled={submitting} type="submit" form={WORKERS_FORM_ID}>
+          <Button
+            isDisabled={submitting}
+            type="submit"
+            form={WORKERS_FORM_ID}
+            variety={ButtonVariety.Primary}
+          >
             {translate('save')}
-          </ButtonPrimary>
+          </Button>
         }
         secondaryButtonLabel={translate('cancel')}
         loading={submitting}

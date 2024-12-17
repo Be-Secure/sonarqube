@@ -17,13 +17,14 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { getByText, screen } from '@testing-library/react';
+
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import selectEvent from 'react-select-event';
-import { byRole, byText } from '~sonar-aligned/helpers/testSelector';
+import { byLabelText, byRole, byText } from '~sonar-aligned/helpers/testSelector';
+import { ModeServiceMock } from '../../../api/mocks/ModeServiceMock';
 import QualityProfilesServiceMock from '../../../api/mocks/QualityProfilesServiceMock';
 import SettingsServiceMock from '../../../api/mocks/SettingsServiceMock';
-import { mockPaging, mockRule } from '../../../helpers/testMocks';
+import { mockCompareResult, mockPaging, mockRule } from '../../../helpers/testMocks';
 import { renderAppRoutes } from '../../../helpers/testReactTestingUtils';
 import routes from '../routes';
 
@@ -31,11 +32,13 @@ jest.mock('../../../api/quality-profiles');
 jest.mock('../../../api/rules');
 
 const serviceMock = new QualityProfilesServiceMock();
-const settingsMock = new SettingsServiceMock();
+const modeHandler = new ModeServiceMock();
+const settingsHandler = new SettingsServiceMock();
 
 beforeEach(() => {
   serviceMock.reset();
-  settingsMock.reset();
+  modeHandler.reset();
+  settingsHandler.reset();
 });
 
 const ui = {
@@ -72,6 +75,7 @@ const ui = {
   compareDropdown: byRole('combobox', { name: 'quality_profiles.compare_with' }),
   changelogLink: byRole('link', { name: 'changelog' }),
   popup: byRole('dialog'),
+  confirmationModal: byRole('alertdialog'),
   restoreProfileDialog: byRole('dialog', { name: 'quality_profiles.restore_profile' }),
   copyRadio: byRole('radio', {
     name: 'quality_profiles.creation_from_copy quality_profiles.creation_from_copy_description_1 quality_profiles.creation_from_copy_description_2',
@@ -102,12 +106,8 @@ const ui = {
   listLinkJavaQualityProfile: byRole('link', { name: 'java quality profile' }),
   returnToList: byRole('link', { name: 'quality_profiles.page' }),
   languageSelect: byRole('combobox', { name: 'language' }),
-  profileExtendSelect: byRole('combobox', {
-    name: 'quality_profiles.creation.choose_parent_quality_profile',
-  }),
-  profileCopySelect: byRole('combobox', {
-    name: 'quality_profiles.creation.choose_copy_quality_profile',
-  }),
+  profileExtendSelect: byLabelText('quality_profiles.creation.choose_parent_quality_profile'),
+  profileCopySelect: byLabelText('quality_profiles.creation.choose_copy_quality_profile'),
   nameCreatePopupInput: byRole('textbox', { name: 'name required' }),
   importerA: byText('Importer A'),
   importerB: byText('Importer B'),
@@ -135,15 +135,15 @@ it('should list Quality Profiles and filter by language', async () => {
   expect(await ui.listLinkCQualityProfile.find()).toBeInTheDocument();
   expect(ui.listLinkJavaQualityProfile.get()).toBeInTheDocument();
 
-  await selectEvent.select(ui.filterByLang.get(), 'C');
+  await user.click(ui.filterByLang.get());
+  await user.click(byRole('option', { name: 'C' }).get());
 
   expect(ui.listLinkJavaQualityProfile.query()).not.toBeInTheDocument();
 
   // Creation form should have language pre-selected
   await user.click(await ui.createButton.find());
 
-  // eslint-disable-next-line testing-library/prefer-screen-queries
-  expect(getByText(ui.popup.get(), 'C')).toBeInTheDocument();
+  expect(ui.languageSelect.get()).toHaveValue('C');
 });
 
 describe('Evolution', () => {
@@ -203,8 +203,13 @@ describe('Create', () => {
     await user.click(ui.returnToList.get());
     await user.click(ui.createButton.get());
     await user.click(ui.extendRadio.get());
-    await selectEvent.select(ui.languageSelect.get(), 'C');
-    await selectEvent.select(ui.profileExtendSelect.get(), ui.newCQualityProfileName);
+
+    await user.click(ui.languageSelect.get());
+    await user.click(byRole('option', { name: 'C' }).get());
+
+    await user.click(ui.profileExtendSelect.get());
+    await user.click(byRole('option', { name: ui.newCQualityProfileName }).get());
+
     await user.type(ui.nameCreatePopupInput.get(), ui.newCQualityProfileNameFromCreateButton);
     await user.click(ui.createButton.get(ui.popup.get()));
 
@@ -227,8 +232,13 @@ describe('Create', () => {
     await user.click(ui.returnToList.get());
     await user.click(ui.createButton.get());
     await user.click(ui.copyRadio.get());
-    await selectEvent.select(ui.languageSelect.get(), 'C');
-    await selectEvent.select(ui.profileCopySelect.get(), ui.newCQualityProfileName);
+
+    await user.click(ui.languageSelect.get());
+    await user.click(byRole('option', { name: 'C' }).get());
+
+    await user.click(ui.profileCopySelect.get());
+    await user.click(byRole('option', { name: ui.newCQualityProfileName }).get());
+
     await user.type(ui.nameCreatePopupInput.get(), ui.newCQualityProfileNameFromCreateButton);
     await user.click(ui.createButton.get(ui.popup.get()));
 
@@ -242,7 +252,10 @@ describe('Create', () => {
 
     await user.click(await ui.createButton.find());
     await user.click(ui.blankRadio.get());
-    await selectEvent.select(ui.languageSelect.get(), 'C');
+
+    await user.click(ui.languageSelect.get());
+    await user.click(byRole('option', { name: 'C' }).get());
+
     await user.type(ui.nameCreatePopupInput.get(), ui.newCQualityProfileName);
     await user.click(ui.createButton.get(ui.popup.get()));
 
@@ -256,7 +269,9 @@ describe('Create', () => {
 
     await user.click(await ui.createButton.find());
     await user.click(ui.blankRadio.get());
-    await selectEvent.select(ui.languageSelect.get(), 'C');
+
+    await user.click(ui.languageSelect.get());
+    await user.click(byRole('option', { name: 'C' }).get());
 
     expect(ui.importerA.get()).toBeInTheDocument();
     expect(ui.importerB.get()).toBeInTheDocument();
@@ -311,14 +326,62 @@ it('should be able to compare profiles', async () => {
   expect(ui.profileActions('java quality profile', 'Java').query()).not.toBeInTheDocument();
   expect(ui.changelogLink.query()).not.toBeInTheDocument();
 
-  await selectEvent.select(ui.compareDropdown.get(), 'java quality profile #2');
+  await user.click(ui.compareDropdown.get());
+  await user.click(byRole('option', { name: 'java quality profile #2' }).get());
+
   expect(await ui.comparisonDiffTableHeading(1, 'java quality profile').find()).toBeInTheDocument();
   expect(ui.comparisonDiffTableHeading(1, 'java quality profile #2').get()).toBeInTheDocument();
   expect(ui.comparisonModifiedTableHeading(1).get()).toBeInTheDocument();
 
+  expect(
+    ui.comparisonModifiedTableHeading(1).byLabelText('severity_impact.BLOCKER').get(),
+  ).toBeInTheDocument();
+  expect(
+    ui.comparisonModifiedTableHeading(1).byLabelText('severity_impact.LOW').get(),
+  ).toBeInTheDocument();
+
   // java quality profile is not editable
   expect(ui.activeRuleButton('java quality profile').query()).not.toBeInTheDocument();
   expect(ui.deactivateRuleButton('java quality profile').query()).not.toBeInTheDocument();
+});
+
+it('should be able to compare profiles without impacts', async () => {
+  // From the list page
+  const user = userEvent.setup();
+  serviceMock.comparisonResult = mockCompareResult({
+    modified: [
+      {
+        impacts: [],
+        key: 'java:S1698',
+        name: '== and != should not be used when equals is overridden',
+        left: {
+          params: {},
+          severity: 'MINOR',
+        },
+        right: {
+          params: {},
+          severity: 'CRITICAL',
+        },
+      },
+    ],
+  });
+  serviceMock.setAdmin();
+  renderQualityProfiles();
+
+  await user.click(await ui.listProfileActions('java quality profile', 'Java').find());
+  expect(ui.compareButton.get()).toBeInTheDocument();
+  await user.click(ui.compareButton.get());
+  await user.click(ui.compareDropdown.get());
+  await user.click(byRole('option', { name: 'java quality profile #2' }).get());
+
+  expect(await ui.comparisonModifiedTableHeading(1).find()).toBeInTheDocument();
+
+  expect(
+    ui
+      .comparisonModifiedTableHeading(1)
+      .byLabelText(/severity_impact/)
+      .query(),
+  ).not.toBeInTheDocument();
 });
 
 it('should be able to activate or deactivate rules in comparison page', async () => {
@@ -329,7 +392,9 @@ it('should be able to activate or deactivate rules in comparison page', async ()
 
   await user.click(await ui.listProfileActions('java quality profile #2', 'Java').find());
   await user.click(ui.compareButton.get());
-  await selectEvent.select(ui.compareDropdown.get(), 'java quality profile');
+
+  await user.click(ui.compareDropdown.get());
+  await user.click(byRole('option', { name: 'java quality profile' }).get());
 
   expect(await ui.summaryFewerRules(1).find()).toBeInTheDocument();
   expect(ui.summaryAdditionalRules(1).get()).toBeInTheDocument();
@@ -343,7 +408,7 @@ it('should be able to activate or deactivate rules in comparison page', async ()
 
   // Deactivate
   await user.click(await ui.deactivateRuleButton('java quality profile #2').find());
-  expect(ui.popup.get()).toBeInTheDocument();
+  expect(ui.confirmationModal.get()).toBeInTheDocument();
   await user.click(ui.deactivateConfirmButton.get());
   expect(ui.summaryAdditionalRules(1).query()).not.toBeInTheDocument();
 });

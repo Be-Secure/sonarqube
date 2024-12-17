@@ -17,8 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ListItem, UnorderedList } from 'design-system';
-import * as React from 'react';
+
+import { ListItem, UnorderedList } from '~design-system';
 import { translate } from '../../../helpers/l10n';
 import { Update } from '../../../types/plugins';
 import PluginUpdateItem from './PluginUpdateItem';
@@ -34,7 +34,7 @@ export default function PluginUpdates({ pluginName, updates }: Readonly<PluginUp
   }
   return (
     <ListItem>
-      <strong className="sw-body-sm-highlight">{translate('marketplace.updates')}:</strong>
+      <strong className="sw-typo-semibold">{translate('marketplace.updates')}:</strong>
       <UnorderedList className="sw-mt-2">
         {updates.map((update) =>
           update.release ? (

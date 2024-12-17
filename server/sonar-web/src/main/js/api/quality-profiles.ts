@@ -17,13 +17,20 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { map } from 'lodash';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { getJSON } from '~sonar-aligned/helpers/request';
 import { Exporter, ProfileChangelogEvent } from '../apps/quality-profiles/types';
 import { csvEscape } from '../helpers/csv';
 import { RequestData, post, postJSON } from '../helpers/request';
-import { CleanCodeAttributeCategory, SoftwareImpact } from '../types/clean-code-taxonomy';
+import {
+  CleanCodeAttributeCategory,
+  SoftwareImpact,
+  SoftwareImpactSeverity,
+  SoftwareQuality,
+} from '../types/clean-code-taxonomy';
+import { QualityProfileChangelogFilterMode } from '../types/quality-profiles';
 import { Dict, Paging, ProfileInheritanceDetails, UserSelected } from '../types/types';
 
 export interface ProfileActions {
@@ -81,7 +88,10 @@ export function getQualityProfile({
 }: {
   compareToSonarWay?: boolean;
   profile: Profile;
-}): Promise<any> {
+}): Promise<{
+  compareToSonarWay?: { missingRuleCount: number; profile: string; profileName: string };
+  profile: Profile;
+}> {
   return getJSON('/api/qualityprofiles/show', { compareToSonarWay, key });
 }
 
@@ -111,7 +121,7 @@ export function getProfileInheritance({
 }: Pick<Profile, 'language' | 'name'>): Promise<{
   ancestors: ProfileInheritanceDetails[];
   children: ProfileInheritanceDetails[];
-  profile: ProfileInheritanceDetails;
+  profile: ProfileInheritanceDetails | null;
 }> {
   return getJSON('/api/qualityprofiles/inheritance', {
     language,
@@ -174,40 +184,46 @@ export interface ChangelogResponse {
   paging: Paging;
 }
 
-export function getProfileChangelog(
-  since: any,
-  to: any,
-  { language, name: qualityProfile }: Profile,
-  page?: number,
-): Promise<ChangelogResponse> {
+interface ChangelogData {
+  filterMode: QualityProfileChangelogFilterMode;
+  page?: number;
+  profile: Profile;
+  since: string;
+  to: string;
+}
+
+export function getProfileChangelog(data: ChangelogData): Promise<ChangelogResponse> {
+  const {
+    filterMode,
+    page,
+    profile: { language, name: qualityProfile },
+    since,
+    to,
+  } = data;
   return getJSON('/api/qualityprofiles/changelog', {
     since,
     to,
     language,
     qualityProfile,
+    filterMode,
     p: page,
   });
 }
 
 export interface RuleCompare {
   cleanCodeAttributeCategory?: CleanCodeAttributeCategory;
-  impacts: SoftwareImpact[];
+  impacts?: SoftwareImpact[];
   key: string;
-  left?: { params: Dict<string>; severity: string };
+  left?: { impacts?: SoftwareImpact[]; params?: Dict<string>; severity?: string };
   name: string;
-  right?: { params: Dict<string>; severity: string };
+  right?: { impacts?: SoftwareImpact[]; params?: Dict<string>; severity?: string };
 }
 
 export interface CompareResponse {
   inLeft: Array<RuleCompare>;
   inRight: Array<RuleCompare>;
   left: { name: string };
-  modified: Array<
-    RuleCompare & {
-      left: { params: Dict<string>; severity: string };
-      right: { params: Dict<string>; severity: string };
-    }
-  >;
+  modified: Array<RuleCompare & Required<Pick<RuleCompare, 'left' | 'right'>>>;
   right: { name: string };
 }
 
@@ -318,8 +334,9 @@ export function bulkDeactivateRules(data: BulkActivateParameters) {
 }
 
 export interface ActivateRuleParameters {
+  impacts?: Record<SoftwareQuality, SoftwareImpactSeverity>;
   key: string;
-  params?: Dict<string>;
+  params?: Record<string, string>;
   prioritizedRule?: boolean;
   reset?: boolean;
   rule: string;
@@ -329,7 +346,12 @@ export interface ActivateRuleParameters {
 export function activateRule(data: ActivateRuleParameters) {
   const params =
     data.params && map(data.params, (value, key) => `${key}=${csvEscape(value)}`).join(';');
-  return post('/api/qualityprofiles/activate_rule', { ...data, params }).catch(throwGlobalError);
+  const impacts = data.impacts && map(data.impacts, (value, key) => `${key}=${value}`).join(';');
+  return post('/api/qualityprofiles/activate_rule', {
+    ...data,
+    params,
+    impacts,
+  }).catch(throwGlobalError);
 }
 
 export interface DeactivateRuleParameters {

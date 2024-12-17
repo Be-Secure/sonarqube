@@ -54,7 +54,7 @@ const PAGE_SIZE = 500;
 
 interface Props {
   branchLike?: BranchLike;
-  component: Component;
+  component?: Component;
   currentUser: CurrentUser;
   location: Location;
   router: Router;
@@ -107,6 +107,8 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
         [SecurityStandard.PCI_DSS_3_2]: {},
         [SecurityStandard.PCI_DSS_4_0]: {},
         [SecurityStandard.SONARSOURCE]: {},
+        [SecurityStandard.CASA]: {},
+        [SecurityStandard.STIG_ASD_V5R3]: {},
       },
     };
   }
@@ -122,7 +124,8 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
   componentDidUpdate(previous: Props) {
     if (
       !isSameBranchLike(previous.branchLike, this.props.branchLike) ||
-      this.props.component.key !== previous.component.key ||
+      (this.props.component !== undefined &&
+        this.props.component.key !== previous.component?.key) ||
       this.props.location.query.hotspots !== previous.location.query.hotspots ||
       SECURITY_STANDARDS.some((s) => this.props.location.query[s] !== previous.location.query[s]) ||
       this.props.location.query.files !== previous.location.query.files
@@ -274,10 +277,12 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
       this.fetchSecurityHotspots(),
       this.fetchSecurityHotspotsReviewed(),
     ])
-      .then(([standards, { hotspots, paging }]) => {
-        if (!this.mounted) {
+      .then(([standards, components]) => {
+        if (!this.mounted || components === undefined) {
           return;
         }
+
+        const { hotspots, paging } = components;
 
         const { branchLike } = this.props;
 
@@ -305,6 +310,10 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
       : MetricKey.security_hotspots_reviewed;
 
     this.setState({ loadingMeasure: true });
+
+    if (component === undefined) {
+      return Promise.resolve();
+    }
 
     return getMeasures({
       component: component.key,
@@ -353,6 +362,9 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
   }) {
     const { branchLike, component, location } = this.props;
     const { filters } = this.state;
+    if (component === undefined) {
+      return Promise.resolve(undefined);
+    }
 
     const hotspotFilters: Dict<string> = {};
 
@@ -387,6 +399,10 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
   fetchSecurityHotspots(page = 1) {
     const { branchLike, component, location } = this.props;
     const { filters } = this.state;
+
+    if (component === undefined) {
+      return Promise.resolve(undefined);
+    }
 
     const hotspotKeys = location.query.hotspots
       ? (location.query.hotspots as string).split(',')
@@ -455,10 +471,12 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
     this.setState({ loading: true });
 
     return this.fetchSecurityHotspots()
-      .then(({ hotspots, paging }) => {
-        if (!this.mounted) {
+      .then((components) => {
+        if (!this.mounted || components === undefined) {
           return;
         }
+
+        const { hotspots, paging } = components;
 
         this.setState({
           hotspots,
@@ -485,6 +503,9 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
   };
 
   handleShowAllHotspots = () => {
+    if (this.props.component === undefined) {
+      return;
+    }
     this.props.router.push({
       pathname: this.props.location.pathname,
       query: {
@@ -516,8 +537,7 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
     )
       .then((hotspotPages) => {
         const allHotspots = flatMap(hotspotPages, 'hotspots');
-
-        const { paging } = hotspotPages[hotspotPages.length - 1];
+        const { paging } = hotspotPages[hotspotPages.length - 1]!;
 
         const nextHotspot = allHotspots[Math.min(index, allHotspots.length - 1)];
 
@@ -537,10 +557,12 @@ export class SecurityHotspotsApp extends React.PureComponent<Props, State> {
     this.setState({ loadingMore: true });
 
     return this.fetchSecurityHotspots(hotspotPages + 1)
-      .then(({ hotspots: additionalHotspots }) => {
-        if (!this.mounted) {
+      .then((components) => {
+        if (!this.mounted || components === undefined) {
           return;
         }
+
+        const { hotspots: additionalHotspots } = components;
 
         this.setState({
           hotspots: [...hotspots, ...additionalHotspots],
@@ -628,6 +650,7 @@ export default withRouter(
         withIndexationGuard({
           Component: SecurityHotspotsApp,
           showIndexationMessage: ({ component }) =>
+            component !== undefined &&
             !!(component.qualifier === ComponentQualifier.Application && component.needIssueSync),
         }),
       ),

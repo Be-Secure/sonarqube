@@ -17,21 +17,28 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { IconQuestionMark } from '@sonarsource/echoes-react';
-import { ItemButton, PageContentFontWrapper, TextBold, TextMuted } from 'design-system';
+
+import { IconArrowRight, IconQuestionMark } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { useIntl } from 'react-intl';
+import { ItemButton, PageContentFontWrapper, TextBold, TextMuted } from '~design-system';
 import { translate } from '../../../helpers/l10n';
 import HelpTooltip from '../../../sonar-aligned/components/controls/HelpTooltip';
 import { IssueTransition } from '../../../types/issues';
 
 type Props = {
+  hasCommentAction?: boolean;
   onSelectTransition: (transition: IssueTransition) => void;
   selected: boolean;
   transition: IssueTransition;
 };
 
-export function IssueTransitionItem({ transition, selected, onSelectTransition }: Readonly<Props>) {
+export function IssueTransitionItem({
+  transition,
+  selected,
+  onSelectTransition,
+  hasCommentAction = false,
+}: Readonly<Props>) {
   const intl = useIntl();
 
   const tooltips: Record<string, React.JSX.Element> = {
@@ -56,7 +63,7 @@ export function IssueTransitionItem({ transition, selected, onSelectTransition }
       key={transition}
       onClick={() => onSelectTransition(transition)}
       selected={selected}
-      className="sw-px-4"
+      className="sw-flex sw-items-center sw-justify-between sw-px-4"
     >
       <div className="it__issue-transition-option sw-flex sw-flex-col">
         <PageContentFontWrapper className="sw-font-semibold sw-flex sw-gap-1 sw-items-center">
@@ -69,6 +76,7 @@ export function IssueTransitionItem({ transition, selected, onSelectTransition }
         </PageContentFontWrapper>
         <TextMuted text={translate('issue.transition', transition, 'description')} />
       </div>
+      {hasCommentAction && <IconArrowRight />}
     </ItemButton>
   );
 }

@@ -18,9 +18,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { Spinner } from '@sonarsource/echoes-react';
+import { Button, ButtonGroup, ButtonVariety, Spinner } from '@sonarsource/echoes-react';
 import classNames from 'classnames';
-import { ButtonPrimary, ButtonSecondary } from 'design-system';
 import React, { useCallback, useEffect } from 'react';
 import { FormattedMessage } from 'react-intl';
 import DocumentationLink from '../../../components/common/DocumentationLink';
@@ -113,7 +112,9 @@ export default function NewCodeDefinition() {
                     </p>
 
                     <p className="sw-mt-4">
-                      <strong>{translate('settings.new_code_period.question')}</strong>
+                      <strong id="new_code_period_label" aria-hidden>
+                        {translate('settings.new_code_period.question')}
+                      </strong>
                     </p>
                   </div>
                 </div>
@@ -121,55 +122,66 @@ export default function NewCodeDefinition() {
                 <div className="settings-definition-right">
                   <Spinner isLoading={isLoading}>
                     <form className="sw-flex sw-flex-col sw-items-stretch" onSubmit={onSubmit}>
-                      <NewCodeDefinitionPreviousVersionOption
-                        isDefault
-                        onSelect={setSelectedNewCodeDefinitionType}
-                        selected={
-                          selectedNewCodeDefinitionType === NewCodeDefinitionType.PreviousVersion
-                        }
-                      />
-                      <NewCodeDefinitionDaysOption
-                        className="sw-mt-2 sw-mb-4"
-                        days={numberOfDays}
-                        currentDaysValue={
-                          newCodeDefinition?.type === NewCodeDefinitionType.NumberOfDays
-                            ? newCodeDefinition?.value
-                            : undefined
-                        }
-                        previousNonCompliantValue={newCodeDefinition?.previousNonCompliantValue}
-                        projectKey={newCodeDefinition?.projectKey}
-                        updatedAt={newCodeDefinition?.updatedAt}
-                        isChanged={isFormTouched}
-                        isValid={isValid}
-                        onChangeDays={setNumberOfDays}
-                        onSelect={setSelectedNewCodeDefinitionType}
-                        selected={
-                          selectedNewCodeDefinitionType === NewCodeDefinitionType.NumberOfDays
-                        }
-                        settingLevel={NewCodeDefinitionLevels.Global}
-                      />
-                      <div className="sw-mt-4">
-                        <p
-                          className={classNames('sw-mb-2', {
-                            'sw-invisible': !isFormTouched,
-                          })}
-                        >
-                          {translate('baseline.next_analysis_notice')}
-                        </p>
+                      <fieldset>
+                        <legend className="sw-sr-only">
+                          {translate('settings.new_code_period.question')}
+                        </legend>
+                        <div role="radiogroup">
+                          <NewCodeDefinitionPreviousVersionOption
+                            isDefault
+                            onSelect={setSelectedNewCodeDefinitionType}
+                            selected={
+                              selectedNewCodeDefinitionType ===
+                              NewCodeDefinitionType.PreviousVersion
+                            }
+                          />
+                          <NewCodeDefinitionDaysOption
+                            className="sw-mt-2 sw-mb-4"
+                            days={numberOfDays}
+                            currentDaysValue={
+                              newCodeDefinition?.type === NewCodeDefinitionType.NumberOfDays
+                                ? newCodeDefinition?.value
+                                : undefined
+                            }
+                            previousNonCompliantValue={newCodeDefinition?.previousNonCompliantValue}
+                            projectKey={newCodeDefinition?.projectKey}
+                            updatedAt={newCodeDefinition?.updatedAt}
+                            isValid={isValid}
+                            onChangeDays={setNumberOfDays}
+                            onSelect={setSelectedNewCodeDefinitionType}
+                            selected={
+                              selectedNewCodeDefinitionType === NewCodeDefinitionType.NumberOfDays
+                            }
+                            settingLevel={NewCodeDefinitionLevels.Global}
+                          />
+                        </div>
+                      </fieldset>
+
+                      <div
+                        className="sw-mt-4"
+                        aria-live="polite"
+                        aria-atomic="true"
+                        aria-relevant="additions"
+                      >
+                        {isFormTouched && (
+                          <p className={classNames('sw-mb-2')}>
+                            {translate('baseline.next_analysis_notice')}
+                          </p>
+                        )}
                         <Spinner className="sw-mr-2" isLoading={isSaving} />
                         {!isSaving && (
-                          <>
-                            <ButtonPrimary type="submit" disabled={!isFormTouched || !isValid}>
-                              {translate('save')}
-                            </ButtonPrimary>
-                            <ButtonSecondary
-                              className="sw-ml-2"
-                              disabled={!isFormTouched}
-                              onClick={resetNewCodeDefinition}
+                          <ButtonGroup>
+                            <Button
+                              type="submit"
+                              isDisabled={!isFormTouched || !isValid}
+                              variety={ButtonVariety.Primary}
                             >
+                              {translate('save')}
+                            </Button>
+                            <Button isDisabled={!isFormTouched} onClick={resetNewCodeDefinition}>
                               {translate('cancel')}
-                            </ButtonSecondary>
-                          </>
+                            </Button>
+                          </ButtonGroup>
                         )}
                       </div>
                     </form>

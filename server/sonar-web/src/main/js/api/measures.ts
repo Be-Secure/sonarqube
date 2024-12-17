@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { getJSON } from '~sonar-aligned/helpers/request';
 import { BranchParameters } from '~sonar-aligned/types/branch-like';
@@ -33,32 +34,6 @@ export function getMeasures(
   data: { component: string; metricKeys: string } & BranchParameters,
 ): Promise<Measure[]> {
   return getJSON(COMPONENT_URL, data).then((r) => r.component.measures, throwGlobalError);
-}
-
-export function getMeasuresWithMetrics(
-  component: string,
-  metrics: string[],
-  branchParameters?: BranchParameters,
-): Promise<MeasuresAndMetaWithMetrics> {
-  return getJSON(COMPONENT_URL, {
-    additionalFields: 'metrics',
-    component,
-    metricKeys: metrics.join(','),
-    ...branchParameters,
-  }).catch(throwGlobalError);
-}
-
-export function getMeasuresWithPeriod(
-  component: string,
-  metrics: string[],
-  branchParameters?: BranchParameters,
-): Promise<MeasuresAndMetaWithPeriod> {
-  return getJSON(COMPONENT_URL, {
-    additionalFields: 'period',
-    component,
-    metricKeys: metrics.join(','),
-    ...branchParameters,
-  }).catch(throwGlobalError);
 }
 
 export function getMeasuresWithPeriodAndMetrics(

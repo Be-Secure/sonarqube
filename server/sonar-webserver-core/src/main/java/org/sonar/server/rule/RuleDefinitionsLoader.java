@@ -19,8 +19,8 @@
  */
 package org.sonar.server.rule;
 
-import org.sonar.api.server.rule.RulesDefinition;
 import org.sonar.api.impl.server.RulesDefinitionContext;
+import org.sonar.api.server.rule.RulesDefinition;
 import org.sonar.server.plugins.ServerPluginRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -30,13 +30,13 @@ import org.springframework.beans.factory.annotation.Autowired;
  */
 public class RuleDefinitionsLoader {
 
-  private final RulesDefinition[] pluginDefs;
+  private final RulesDefinition[] rulesDefinitions;
   private final ServerPluginRepository serverPluginRepository;
 
   @Autowired(required = false)
-  public RuleDefinitionsLoader(ServerPluginRepository serverPluginRepository, RulesDefinition[] pluginDefs) {
+  public RuleDefinitionsLoader(ServerPluginRepository serverPluginRepository, RulesDefinition[] rulesDefinitions) {
     this.serverPluginRepository = serverPluginRepository;
-    this.pluginDefs = pluginDefs;
+    this.rulesDefinitions = rulesDefinitions;
   }
 
   /**
@@ -49,9 +49,10 @@ public class RuleDefinitionsLoader {
 
   public RulesDefinition.Context load() {
     RulesDefinition.Context context = new RulesDefinitionContext();
-    for (RulesDefinition pluginDefinition : pluginDefs) {
-      context.setCurrentPluginKey(serverPluginRepository.getPluginKey(pluginDefinition));
-      pluginDefinition.define(context);
+    for (RulesDefinition rulesDefinition : rulesDefinitions) {
+      var pluginKey = serverPluginRepository.getPluginKey(rulesDefinition);
+      context.setCurrentPluginKey(pluginKey);
+      rulesDefinition.define(context);
     }
     context.setCurrentPluginKey(null);
     return context;

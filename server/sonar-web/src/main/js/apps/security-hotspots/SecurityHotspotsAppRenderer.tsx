@@ -20,6 +20,8 @@
 
 import { withTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { isEmpty } from 'lodash';
+import { Helmet } from 'react-helmet-async';
 import {
   LAYOUT_FOOTER_HEIGHT,
   LAYOUT_GLOBAL_NAV_HEIGHT,
@@ -29,9 +31,7 @@ import {
   Spinner,
   themeBorder,
   themeColor,
-} from 'design-system';
-import * as React from 'react';
-import { Helmet } from 'react-helmet-async';
+} from '~design-system';
 import A11ySkipTarget from '~sonar-aligned/components/a11y/A11ySkipTarget';
 import { isBranch } from '~sonar-aligned/helpers/branch-like';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
@@ -44,6 +44,7 @@ import { HotspotFilters, HotspotStatusFilter, RawHotspot } from '../../types/sec
 import { Component, StandardSecurityCategories } from '../../types/types';
 import EmptyHotspotsPage from './components/EmptyHotspotsPage';
 import HotspotList from './components/HotspotList';
+import HotspotListMeta from './components/HotspotListMeta';
 import HotspotSidebarHeader from './components/HotspotSidebarHeader';
 import HotspotSimpleList from './components/HotspotSimpleList';
 import HotspotFilterByStatus from './components/HotspotStatusFilter';
@@ -51,7 +52,7 @@ import HotspotViewer from './components/HotspotViewer';
 
 export interface SecurityHotspotsAppRendererProps {
   branchLike?: BranchLike;
-  component: Component;
+  component?: Component;
   filterByCWE?: string;
   filterByCategory?: {
     category: string;
@@ -104,14 +105,37 @@ export default function SecurityHotspotsAppRenderer(props: SecurityHotspotsAppRe
     standards,
   } = props;
 
-  const isProject = component.qualifier === ComponentQualifier.Project;
-
   const { top: topScroll } = useFollowScroll();
 
+  if (component === undefined) {
+    return null;
+  }
+
+  const isProject = component.qualifier === ComponentQualifier.Project;
   const distanceFromBottom = topScroll + window.innerHeight - document.body.clientHeight;
 
   const footerVisibleHeight =
     distanceFromBottom > -LAYOUT_FOOTER_HEIGHT ? LAYOUT_FOOTER_HEIGHT + distanceFromBottom : 0;
+
+  function getTranslationEmptyRootKey() {
+    let translationRoot;
+
+    if (!isEmpty(filterByFile)) {
+      translationRoot = 'no_hotspots_for_file';
+    } else if (isStaticListOfHotspots) {
+      translationRoot = 'no_hotspots_for_keys';
+    } else if (
+      filters.assignedToMe ||
+      (isBranch(branchLike) && filters.inNewCodePeriod) ||
+      filters.status !== HotspotStatusFilter.TO_REVIEW
+    ) {
+      translationRoot = 'no_hotspots_for_filters';
+    } else {
+      translationRoot = 'no_hotspots';
+    }
+
+    return translationRoot;
+  }
 
   return (
     <>
@@ -161,6 +185,14 @@ export default function SecurityHotspotsAppRenderer(props: SecurityHotspotsAppRe
                   onChangeFilters={onChangeFilters}
                   onShowAllHotspots={onShowAllHotspots}
                 />
+                <HotspotListMeta
+                  loading={loading}
+                  hotspotsTotal={hotspotsTotal}
+                  statusFilter={filters.status}
+                  isStaticListOfHotspots={isStaticListOfHotspots}
+                  hasSelectedHotspot={Boolean(selectedHotspot)}
+                  emptyTranslationKey={getTranslationEmptyRootKey()}
+                />
                 <Spinner className="sw-mt-3" loading={loading}>
                   {hotspots.length > 0 && selectedHotspot && (
                     <>
@@ -183,7 +215,6 @@ export default function SecurityHotspotsAppRenderer(props: SecurityHotspotsAppRe
                         <HotspotList
                           hotspots={hotspots}
                           hotspotsTotal={hotspotsTotal}
-                          isStaticListOfHotspots={isStaticListOfHotspots}
                           loadingMore={loadingMore}
                           onHotspotClick={props.onHotspotClick}
                           onLoadMore={props.onLoadMore}
@@ -191,7 +222,6 @@ export default function SecurityHotspotsAppRenderer(props: SecurityHotspotsAppRe
                           securityCategories={securityCategories}
                           selectedHotspot={selectedHotspot}
                           selectedHotspotLocation={selectedHotspotLocation}
-                          statusFilter={filters.status}
                         />
                       )}
                     </>
@@ -210,11 +240,13 @@ export default function SecurityHotspotsAppRenderer(props: SecurityHotspotsAppRe
                     filters.status !== HotspotStatusFilter.TO_REVIEW
                   }
                   isStaticListOfHotspots={isStaticListOfHotspots}
+                  emptyTranslationKey={getTranslationEmptyRootKey()}
                 />
               ) : (
                 <HotspotViewer
                   component={component}
                   hotspotKey={selectedHotspot.key}
+                  cveId={selectedHotspot.cveId}
                   hotspotsReviewedMeasure={hotspotsReviewedMeasure}
                   onLocationClick={props.onLocationClick}
                   onSwitchStatusFilter={props.onSwitchStatusFilter}

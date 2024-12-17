@@ -19,10 +19,10 @@
  */
 
 import styled from '@emotion/styled';
-import { Checkbox } from '@sonarsource/echoes-react';
-import { ButtonPrimary, InputSearch, LightPrimary, themeBorder, themeColor } from 'design-system';
-import React, { useCallback, useMemo } from 'react';
+import { Button, ButtonVariety, Checkbox } from '@sonarsource/echoes-react';
+import { useCallback, useMemo } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
+import { InputSearch, LightPrimary, themeBorder, themeColor } from '~design-system';
 import ListFooter from '../../../../components/controls/ListFooter';
 import { getBaseUrl } from '../../../../helpers/system';
 import { GithubRepository, GitlabProject } from '../../../../types/alm-integration';
@@ -104,7 +104,7 @@ export default function RepositoryList(props: Readonly<RepositoryListProps>) {
 
         {repositories.length === 0 ? (
           <div className="sw-py-6 sw-px-2">
-            <LightPrimary className="sw-body-sm">
+            <LightPrimary className="sw-typo-default">
               {formatMessage({ id: 'no_results' })}
             </LightPrimary>
           </div>
@@ -143,7 +143,7 @@ export default function RepositoryList(props: Readonly<RepositoryListProps>) {
       <SideColumn>
         {selected.size > 0 && (
           <SetupBox className="sw-rounded-2 sw-p-8 sw-mb-0">
-            <SetupBoxTitle className="sw-mb-2 sw-heading-md">
+            <SetupBoxTitle className="sw-mb-2 sw-heading-lg">
               <FormattedMessage
                 id="onboarding.create_project.x_repositories_selected"
                 values={{ count: selected.size }}
@@ -157,9 +157,13 @@ export default function RepositoryList(props: Readonly<RepositoryListProps>) {
                 />
               </SetupBoxContent>
               <div className="sw-mt-4">
-                <ButtonPrimary onClick={onImport} className="js-set-up-projects">
+                <Button
+                  onClick={onImport}
+                  className="js-set-up-projects"
+                  variety={ButtonVariety.Primary}
+                >
                   {formatMessage({ id: 'onboarding.create_project.import' })}
-                </ButtonPrimary>
+                </Button>
               </div>
             </div>
           </SetupBox>

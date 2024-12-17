@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { Path, To } from 'react-router-dom';
 import {
   getBranchLikeQuery,
@@ -54,6 +55,7 @@ type CodeScopeType = CodeScope.Overall | CodeScope.New;
 export type Query = Location['query'];
 
 const PROJECT_BASE_URL = '/dashboard';
+const SONARSOURCE_COM_URL = 'https://www.sonarsource.com';
 
 export function getComponentOverviewUrl(
   componentKey: string,
@@ -88,7 +90,7 @@ export function getProjectUrl(
     search: queryToSearchString({
       id: project,
       branch,
-      ...(codeScope && { code_scope: codeScope }),
+      ...(codeScope && { codeScope }),
     }),
   };
 }
@@ -110,7 +112,7 @@ export function getProjectQueryUrl(
     search: queryToSearchString({
       id: project,
       ...branchParameters,
-      ...(codeScope && { code_scope: codeScope }),
+      ...(codeScope && { codeScope }),
     }),
   };
 }
@@ -255,10 +257,8 @@ export function getQualityProfileUrl(name: string, language: string): To {
 }
 
 export function getQualityGateUrl(name: string): To {
-  // This is a workaround for the react router bug: https://github.com/remix-run/react-router/issues/10814
-  const qualityGateName = name.replace(/%/g, '%25');
   return {
-    pathname: '/quality_gates/show/' + encodeURIComponent(qualityGateName),
+    pathname: '/quality_gates/show/' + encodeURIComponent(name),
   };
 }
 
@@ -413,4 +413,8 @@ export function convertToTo(link: string | Location) {
 
 function linkIsLocation(link: string | Location): link is Location {
   return (link as Location).query !== undefined;
+}
+
+export function getAiCodeFixTermsOfServiceUrl(): string {
+  return `${SONARSOURCE_COM_URL}/legal/ai-codefix-terms/`;
 }

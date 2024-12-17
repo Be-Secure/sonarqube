@@ -20,10 +20,6 @@
 package org.sonar.server.component.ws;
 
 import com.google.common.base.Joiner;
-import com.tngtech.java.junit.dataprovider.DataProvider;
-import com.tngtech.java.junit.dataprovider.DataProviderRunner;
-import com.tngtech.java.junit.dataprovider.UseDataProvider;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -32,26 +28,34 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import org.apache.ibatis.session.ResultHandler;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.sonar.api.measures.Metric;
-import org.sonar.api.resources.Qualifiers;
 import org.sonar.api.server.ws.WebService;
 import org.sonar.api.server.ws.WebService.Param;
 import org.sonar.api.utils.System2;
+import org.sonar.api.web.UserRole;
 import org.sonar.core.platform.EditionProvider.Edition;
 import org.sonar.core.platform.PlatformEditionProvider;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.DbTester;
 import org.sonar.db.component.ComponentDto;
+import org.sonar.db.component.ComponentQualifiers;
 import org.sonar.db.component.ProjectData;
 import org.sonar.db.entity.EntityDto;
-import org.sonar.db.measure.LiveMeasureDto;
+import org.sonar.db.measure.MeasureDto;
 import org.sonar.db.metric.MetricDto;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.db.property.PropertyDto;
+import org.sonar.db.qualitygate.QualityGateDto;
+import org.sonar.server.ai.code.assurance.AiCodeAssurance;
+import org.sonar.server.ai.code.assurance.AiCodeAssuranceVerifier;
 import org.sonar.server.component.ws.SearchProjectsAction.RequestBuilder;
 import org.sonar.server.component.ws.SearchProjectsAction.SearchProjectsRequest;
 import org.sonar.server.es.EsTester;
@@ -63,6 +67,7 @@ import org.sonar.server.tester.UserSessionRule;
 import org.sonar.server.ws.TestRequest;
 import org.sonar.server.ws.WsActionTester;
 import org.sonarqube.ws.Common;
+import org.sonarqube.ws.Components;
 import org.sonarqube.ws.Components.Component;
 import org.sonarqube.ws.Components.SearchProjectsWsResponse;
 
@@ -72,6 +77,7 @@ import static java.util.Optional.ofNullable;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.sonar.api.measures.CoreMetrics.ALERT_STATUS_KEY;
@@ -95,6 +101,12 @@ import static org.sonar.api.server.ws.WebService.Param.PAGE;
 import static org.sonar.api.server.ws.WebService.Param.PAGE_SIZE;
 import static org.sonar.api.server.ws.WebService.Param.SORT;
 import static org.sonar.api.utils.DateUtils.formatDateTime;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_MAINTAINABILITY_RATING_KEY;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_RELIABILITY_RATING_KEY;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_SECURITY_RATING_KEY;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.SOFTWARE_QUALITY_MAINTAINABILITY_RATING_KEY;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.SOFTWARE_QUALITY_RELIABILITY_RATING_KEY;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.SOFTWARE_QUALITY_SECURITY_RATING_KEY;
 import static org.sonar.server.ws.KeyExamples.KEY_PROJECT_EXAMPLE_001;
 import static org.sonar.server.ws.KeyExamples.KEY_PROJECT_EXAMPLE_002;
 import static org.sonar.server.ws.KeyExamples.KEY_PROJECT_EXAMPLE_003;
@@ -104,7 +116,6 @@ import static org.sonarqube.ws.client.project.ProjectsWsParameters.FILTER_LANGUA
 import static org.sonarqube.ws.client.project.ProjectsWsParameters.FILTER_QUALIFIER;
 import static org.sonarqube.ws.client.project.ProjectsWsParameters.FILTER_TAGS;
 
-@RunWith(DataProviderRunner.class)
 public class SearchProjectsActionIT {
 
   private static final String NCLOC = "ncloc";
@@ -114,65 +125,99 @@ public class SearchProjectsActionIT {
   private static final String QUALITY_GATE_STATUS = "alert_status";
   private static final String ANALYSIS_DATE = "analysisDate";
 
-  @Rule
+  @RegisterExtension
   public final UserSessionRule userSession = UserSessionRule.standalone();
-  @Rule
+  @RegisterExtension
   public final EsTester es = EsTester.create();
-  @Rule
+  @RegisterExtension
   public final DbTester db = DbTester.create(System2.INSTANCE);
 
-  @DataProvider
-  public static Object[][] rating_metric_keys() {
-    return new Object[][]{{SQALE_RATING_KEY}, {RELIABILITY_RATING_KEY}, {SECURITY_RATING_KEY}};
+  private static Stream<Arguments> rating_metric_keys() {
+    return Stream.of(
+      Arguments.of(SQALE_RATING_KEY),
+      Arguments.of(RELIABILITY_RATING_KEY),
+      Arguments.of(SECURITY_RATING_KEY)
+    );
   }
 
-  @DataProvider
-  public static Object[][] new_rating_metric_keys() {
-    return new Object[][]{{NEW_MAINTAINABILITY_RATING_KEY}, {NEW_RELIABILITY_RATING_KEY}, {NEW_SECURITY_RATING_KEY}};
+  private static Stream<Arguments> software_quality_rating_metric_keys() {
+    return Stream.of(
+      Arguments.of(SOFTWARE_QUALITY_MAINTAINABILITY_RATING_KEY),
+      Arguments.of(SOFTWARE_QUALITY_RELIABILITY_RATING_KEY),
+      Arguments.of(SOFTWARE_QUALITY_SECURITY_RATING_KEY)
+    );
   }
 
-  @DataProvider
-  public static Object[][] component_qualifiers_for_valid_editions() {
-    return new Object[][]{
-      {new String[]{Qualifiers.PROJECT}, Edition.COMMUNITY},
-      {new String[]{Qualifiers.APP, Qualifiers.PROJECT}, Edition.DEVELOPER},
-      {new String[]{Qualifiers.APP, Qualifiers.PROJECT}, Edition.ENTERPRISE},
-      {new String[]{Qualifiers.APP, Qualifiers.PROJECT}, Edition.DATACENTER},
-    };
+  private static Stream<Arguments> all_rating_metric_keys() {
+    return Stream.concat(rating_metric_keys(), software_quality_rating_metric_keys());
   }
 
-  @DataProvider
-  public static Object[][] community_or_developer_edition() {
-    return new Object[][]{
-      {Edition.COMMUNITY},
-      {Edition.DEVELOPER},
-    };
+  private static Stream<Arguments> new_rating_metric_keys() {
+    return Stream.of(
+      Arguments.of(NEW_MAINTAINABILITY_RATING_KEY),
+      Arguments.of(NEW_RELIABILITY_RATING_KEY),
+      Arguments.of(NEW_SECURITY_RATING_KEY)
+    );
   }
 
-  @DataProvider
-  public static Object[][] enterprise_or_datacenter_edition() {
-    return new Object[][]{
-      {Edition.ENTERPRISE},
-      {Edition.DATACENTER},
-    };
+  private static Stream<Arguments> new_software_quality_rating_metric_keys() {
+    return Stream.of(
+      Arguments.of(NEW_SOFTWARE_QUALITY_MAINTAINABILITY_RATING_KEY),
+      Arguments.of(NEW_SOFTWARE_QUALITY_RELIABILITY_RATING_KEY),
+      Arguments.of(NEW_SOFTWARE_QUALITY_SECURITY_RATING_KEY)
+    );
   }
 
-  private DbClient dbClient = db.getDbClient();
-  private DbSession dbSession = db.getSession();
+  private static Stream<Arguments> all_new_rating_metric_keys() {
+    return Stream.concat(new_rating_metric_keys(), new_software_quality_rating_metric_keys());
+  }
 
-  private PlatformEditionProvider editionProviderMock = mock(PlatformEditionProvider.class);
-  private PermissionIndexerTester authorizationIndexerTester = new PermissionIndexerTester(es, new ProjectMeasuresIndexer(dbClient,
+  private static Stream<Arguments> component_qualifiers_for_valid_editions() {
+    return Stream.of(
+      Arguments.of(new String[]{ComponentQualifiers.PROJECT}, Edition.COMMUNITY),
+      Arguments.of(new String[]{ComponentQualifiers.APP, ComponentQualifiers.PROJECT}, Edition.DEVELOPER),
+      Arguments.of(new String[]{ComponentQualifiers.APP, ComponentQualifiers.PROJECT}, Edition.ENTERPRISE),
+      Arguments.of(new String[]{ComponentQualifiers.APP, ComponentQualifiers.PROJECT}, Edition.DATACENTER)
+    );
+  }
+
+  private static Stream<Arguments> community_or_developer_edition() {
+    return Stream.of(
+      Arguments.of(Edition.COMMUNITY),
+      Arguments.of(Edition.DEVELOPER)
+    );
+  }
+
+  private static Stream<Arguments> enterprise_or_datacenter_edition() {
+    return Stream.of(
+      Arguments.of(Edition.ENTERPRISE),
+      Arguments.of(Edition.DATACENTER)
+    );
+  }
+
+  private final DbClient dbClient = db.getDbClient();
+  private final DbSession dbSession = db.getSession();
+
+  private final PlatformEditionProvider editionProviderMock = mock(PlatformEditionProvider.class);
+  private final PermissionIndexerTester authorizationIndexerTester = new PermissionIndexerTester(es, new ProjectMeasuresIndexer(dbClient,
     es.client()));
-  private ProjectMeasuresIndex index = new ProjectMeasuresIndex(es.client(), new WebAuthorizationTypeSupport(userSession),
+  private final ProjectMeasuresIndex index = new ProjectMeasuresIndex(es.client(), new WebAuthorizationTypeSupport(userSession),
     System2.INSTANCE);
-  private ProjectMeasuresIndexer projectMeasuresIndexer = new ProjectMeasuresIndexer(db.getDbClient(), es.client());
+  private final ProjectMeasuresIndexer projectMeasuresIndexer = new ProjectMeasuresIndexer(db.getDbClient(), es.client());
 
-  private WsActionTester ws = new WsActionTester(new SearchProjectsAction(dbClient, index, userSession, editionProviderMock));
+  private final AiCodeAssuranceVerifier aiCodeAssuranceVerifier = mock(AiCodeAssuranceVerifier.class);
 
-  private RequestBuilder request = SearchProjectsRequest.builder();
+  private final WsActionTester ws = new WsActionTester(new SearchProjectsAction(dbClient, index, userSession, editionProviderMock, aiCodeAssuranceVerifier));
+
+  private final RequestBuilder request = SearchProjectsRequest.builder();
+
+  @BeforeEach
+  void setUp() {
+    when(aiCodeAssuranceVerifier.getAiCodeAssurance(any())).thenReturn(AiCodeAssurance.CONTAINS_AI_CODE);
+  }
 
   @Test
-  public void verify_definition() {
+  void verify_definition() {
     WebService.Action def = ws.getDef();
 
     assertThat(def.key()).isEqualTo("search_projects");
@@ -181,7 +226,7 @@ public class SearchProjectsActionIT {
     assertThat(def.isPost()).isFalse();
     assertThat(def.responseExampleAsString()).isNotEmpty();
     assertThat(def.params().stream().map(Param::key).toList()).containsOnly("filter", "facets", "s", "asc", "ps", "p", "f");
-    assertThat(def.changelog()).hasSize(4);
+    assertThat(def.changelog()).hasSize(7);
 
     Param sort = def.param("s");
     assertThat(sort.defaultValue()).isEqualTo("name");
@@ -207,7 +252,13 @@ public class SearchProjectsActionIT {
       "new_maintainability_rating",
       "name",
       "analysisDate",
-      "creationDate");
+      "creationDate",
+      "new_software_quality_maintainability_rating",
+      "new_software_quality_reliability_rating",
+      "new_software_quality_security_rating",
+      "software_quality_maintainability_rating",
+      "software_quality_reliability_rating",
+      "software_quality_security_rating");
 
     Param asc = def.param("asc");
     assertThat(asc.defaultValue()).isEqualTo("true");
@@ -219,29 +270,32 @@ public class SearchProjectsActionIT {
 
     Param facets = def.param("facets");
     assertThat(facets.defaultValue()).isNull();
-    assertThat(facets.possibleValues()).containsOnly("ncloc", "duplicated_lines_density", "coverage", "sqale_rating", "reliability_rating"
-      , "security_rating", "alert_status",
+    assertThat(facets.possibleValues()).containsOnly("ncloc", "duplicated_lines_density", "coverage", "sqale_rating", "reliability_rating", "security_rating", "alert_status",
       "languages", "tags", "qualifier", "new_reliability_rating", "new_security_rating", "new_maintainability_rating", "new_coverage",
       "new_duplicated_lines_density", "new_lines",
-      "security_review_rating", "security_hotspots_reviewed", "new_security_hotspots_reviewed", "new_security_review_rating");
+      "security_review_rating", "security_hotspots_reviewed", "new_security_hotspots_reviewed", "new_security_review_rating",
+      "new_software_quality_maintainability_rating",
+      "new_software_quality_reliability_rating",
+      "new_software_quality_security_rating",
+      "software_quality_maintainability_rating",
+      "software_quality_reliability_rating",
+      "software_quality_security_rating");
   }
 
   @Test
-  public void json_example() {
+  void json_example() {
     userSession.logIn();
     MetricDto coverage = db.measures().insertMetric(c -> c.setKey(COVERAGE).setValueType("PERCENT"));
     ComponentDto project1 = insertProject(
       c -> c.setKey(KEY_PROJECT_EXAMPLE_001).setName("My Project 1"),
-      p -> p.setTagsString("finance, java"),
-      new Measure(coverage, c -> c.setValue(80d)));
+      p -> p.setTagsString("finance, java"), c -> c.addValue(coverage.getKey(), 80d));
 
     ComponentDto project2 = insertProject(
       c -> c.setKey(KEY_PROJECT_EXAMPLE_002).setName("My Project 2"),
-      new Measure(coverage, c -> c.setValue(90d)));
+      c -> c.addValue(coverage.getKey(), 90d));
     ComponentDto project3 = insertProject(
       c -> c.setKey(KEY_PROJECT_EXAMPLE_003).setName("My Project 3"),
-      p -> p.setTagsString("sales, offshore, java"),
-      new Measure(coverage, c -> c.setValue(20d)));
+      p -> p.setTagsString("sales, offshore, java"), c -> c.addValue(coverage.getKey(), 20d));
     addFavourite(db.components().getProjectDtoByMainBranch(project1));
     index();
 
@@ -262,11 +316,11 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void order_by_name_case_insensitive() {
+  void order_by_name_case_insensitive() {
     userSession.logIn();
-    insertProject(c -> c.setName("Maven"));
-    insertProject(c -> c.setName("Apache"));
-    insertProject(c -> c.setName("guava"));
+    insertProject(c -> c.setName("Maven"), null);
+    insertProject(c -> c.setName("Apache"), null);
+    insertProject(c -> c.setName("guava"), null);
     index();
 
     SearchProjectsWsResponse result = call(request);
@@ -276,9 +330,9 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void paginate_result() {
+  void paginate_result() {
     userSession.logIn();
-    IntStream.rangeClosed(1, 9).forEach(i -> insertProject(c -> c.setName("PROJECT-" + i)));
+    IntStream.rangeClosed(1, 9).forEach(i -> insertProject(c -> c.setName("PROJECT-" + i), null));
     index();
 
     SearchProjectsWsResponse result = call(request.setPage(2).setPageSize(3));
@@ -293,7 +347,7 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void empty_result() {
+  void empty_result() {
     userSession.logIn();
 
     SearchProjectsWsResponse result = call(request);
@@ -306,19 +360,13 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void filter_projects_with_query() {
+  void filter_projects_with_query() {
     userSession.logIn();
     MetricDto coverage = db.measures().insertMetric(c -> c.setKey(COVERAGE).setValueType(INT.name()));
     MetricDto ncloc = db.measures().insertMetric(c -> c.setKey(NCLOC).setValueType(INT.name()));
-    ComponentDto project1 = insertProject(
-      new Measure(coverage, c -> c.setValue(81d)),
-      new Measure(ncloc, c -> c.setValue(10_000d)));
-    ComponentDto project2 = insertProject(
-      new Measure(coverage, c -> c.setValue(80d)),
-      new Measure(ncloc, c -> c.setValue(10_000d)));
-    ComponentDto project3 = insertProject(
-      new Measure(coverage, c -> c.setValue(80d)),
-      new Measure(ncloc, c -> c.setValue(10_001d)));
+    insertProject(c -> c.addValue(coverage.getKey(), 81d).addValue(ncloc.getKey(), 10_000d));
+    ComponentDto project2 = insertProject(c -> c.addValue(coverage.getKey(), 80d).addValue(ncloc.getKey(), 10_000d));
+    insertProject(c -> c.addValue(coverage.getKey(), 81d).addValue(ncloc.getKey(), 10_001d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter("coverage <= 80 and ncloc <= 10000"));
@@ -327,12 +375,12 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void filter_projects_by_quality_gate() {
+  void filter_projects_by_quality_gate() {
     userSession.logIn();
     MetricDto qualityGateStatus = db.measures().insertMetric(c -> c.setKey(QUALITY_GATE_STATUS).setValueType(LEVEL.name()));
-    ComponentDto project1 = insertProject(new Measure(qualityGateStatus, c -> c.setValue(null).setData("OK")));
-    ComponentDto project2 = insertProject(new Measure(qualityGateStatus, c -> c.setValue(null).setData("OK")));
-    ComponentDto project3 = insertProject(new Measure(qualityGateStatus, c -> c.setValue(null).setData("ERROR")));
+    ComponentDto project1 = insertProject(c -> c.addValue(qualityGateStatus.getKey(), "OK"));
+    ComponentDto project2 = insertProject(c -> c.addValue(qualityGateStatus.getKey(), "OK"));
+    insertProject(c -> c.addValue(qualityGateStatus.getKey(), "ERROR"));
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter("alert_status = OK"));
@@ -343,20 +391,18 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void filter_projects_by_languages() {
+  void filter_projects_by_languages() {
     userSession.logIn();
     MetricDto nclocMetric = db.measures().insertMetric(c -> c.setKey(NCLOC).setValueType(INT.name()));
     MetricDto languagesDistributionMetric = db.measures().insertMetric(c -> c.setKey(NCLOC_LANGUAGE_DISTRIBUTION_KEY).setValueType("DATA"));
-    ComponentDto project1 = insertProject(new Measure(languagesDistributionMetric,
-      c -> c.setValue(null).setData("<null>=2;java=6;xoo=18")));
-    db.measures().insertLiveMeasure(project1, nclocMetric, m -> m.setValue(26d));
-    ComponentDto project2 = insertProject(new Measure(languagesDistributionMetric, c -> c.setValue(null).setData("java=3;xoo=9")));
-    db.measures().insertLiveMeasure(project2, nclocMetric, m -> m.setValue(12d));
-    ComponentDto project3 = insertProject(new Measure(languagesDistributionMetric, c -> c.setValue(null).setData("xoo=1")));
-    db.measures().insertLiveMeasure(project3, nclocMetric, m -> m.setValue(1d));
-    ComponentDto project4 = insertProject(new Measure(languagesDistributionMetric,
-      c -> c.setValue(null).setData("<null>=1;java=5;xoo=13")));
-    db.measures().insertLiveMeasure(project4, nclocMetric, m -> m.setValue(19d));
+    ComponentDto project1 = insertProject(c -> c.addValue(languagesDistributionMetric.getKey(), "<null>=2;java=6;xoo=18"));
+    db.measures().insertMeasure(project1, m -> m.addValue(nclocMetric.getKey(), 26d));
+    ComponentDto project2 = insertProject(c -> c.addValue(languagesDistributionMetric.getKey(), "java=3;xoo=9"));
+    db.measures().insertMeasure(project2, m -> m.addValue(nclocMetric.getKey(), 12d));
+    ComponentDto project3 = insertProject(c -> c.addValue(languagesDistributionMetric.getKey(), "xoo=1"));
+    db.measures().insertMeasure(project3, m -> m.addValue(nclocMetric.getKey(), 1d));
+    ComponentDto project4 = insertProject(c -> c.addValue(languagesDistributionMetric.getKey(), "<null>=1;java=5;xoo=13"));
+    db.measures().insertMeasure(project4, m -> m.addValue(nclocMetric.getKey(), 19d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter("languages IN (java, js, <null>)"));
@@ -365,14 +411,14 @@ public class SearchProjectsActionIT {
       project4.getKey());
   }
 
-  @Test
-  @UseDataProvider("rating_metric_keys")
-  public void filter_projects_by_rating(String metricKey) {
+  @ParameterizedTest
+  @MethodSource("all_rating_metric_keys")
+  void filter_projects_by_rating(String metricKey) {
     userSession.logIn();
     MetricDto ratingMetric = db.measures().insertMetric(c -> c.setKey(metricKey).setValueType(INT.name()));
-    ComponentDto project1 = insertProject(new Measure(ratingMetric, c -> c.setValue(1d)));
-    ComponentDto project2 = insertProject(new Measure(ratingMetric, c -> c.setValue(2d)));
-    ComponentDto project3 = insertProject(new Measure(ratingMetric, c -> c.setValue(3d)));
+    insertProject(c -> c.addValue(ratingMetric.getKey(), 1d));
+    ComponentDto project2 = insertProject(c -> c.addValue(ratingMetric.getKey(), 2d));
+    insertProject(c -> c.addValue(ratingMetric.getKey(), 3d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter(metricKey + " = 2"));
@@ -380,14 +426,14 @@ public class SearchProjectsActionIT {
     assertThat(result.getComponentsList()).extracting(Component::getKey).containsExactly(project2.getKey());
   }
 
-  @Test
-  @UseDataProvider("new_rating_metric_keys")
-  public void filter_projects_by_new_rating(String newMetricKey) {
+  @ParameterizedTest
+  @MethodSource("all_new_rating_metric_keys")
+  void filter_projects_by_new_rating(String newMetricKey) {
     userSession.logIn();
     MetricDto ratingMetric = db.measures().insertMetric(c -> c.setKey(newMetricKey).setValueType(INT.name()));
-    insertProject(new Measure(ratingMetric, c -> c.setValue(1d)));
-    ComponentDto project2 = insertProject(new Measure(ratingMetric, c -> c.setValue(2d)));
-    insertProject(new Measure(ratingMetric, c -> c.setValue(3d)));
+    insertProject(c -> c.addValue(ratingMetric.getKey(), 1d));
+    ComponentDto project2 = insertProject(c -> c.addValue(ratingMetric.getKey(), 2d));
+    insertProject(c -> c.addValue(ratingMetric.getKey(), 3d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter(newMetricKey + " = 2"));
@@ -396,11 +442,11 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void filter_projects_by_tags() {
+  void filter_projects_by_tags() {
     userSession.logIn();
-    ComponentDto project1 = insertProject(defaults(), p -> p.setTags(asList("finance", "platform")));
-    insertProject(defaults(), p -> p.setTags(singletonList("marketing")));
-    ComponentDto project3 = insertProject(defaults(), p -> p.setTags(singletonList("offshore")));
+    ComponentDto project1 = insertProject(defaults(), p -> p.setTags(asList("finance", "platform")), null);
+    insertProject(defaults(), p -> p.setTags(singletonList("marketing")), null);
+    ComponentDto project3 = insertProject(defaults(), p -> p.setTags(singletonList("offshore")), null);
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter("tags in (finance, offshore)"));
@@ -409,12 +455,12 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void filter_projects_by_coverage() {
+  void filter_projects_by_coverage() {
     userSession.logIn();
     MetricDto coverage = db.measures().insertMetric(c -> c.setKey(COVERAGE).setValueType("PERCENT"));
-    ComponentDto project1 = insertProject(new Measure(coverage, c -> c.setValue(80d)));
-    ComponentDto project2 = insertProject(new Measure(coverage, c -> c.setValue(85d)));
-    ComponentDto project3 = insertProject(new Measure(coverage, c -> c.setValue(10d)));
+    ComponentDto project1 = insertProject(c -> c.addValue(coverage.getKey(), 80d));
+    insertProject(c -> c.addValue(coverage.getKey(), 85d));
+    ComponentDto project3 = insertProject(c -> c.addValue(coverage.getKey(), 10d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter("coverage <= 80"));
@@ -423,12 +469,12 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void filter_projects_by_new_coverage() {
+  void filter_projects_by_new_coverage() {
     userSession.logIn();
     MetricDto coverage = db.measures().insertMetric(c -> c.setKey(NEW_COVERAGE).setValueType("PERCENT"));
-    ComponentDto project1 = insertProject(new Measure(coverage, c -> c.setValue(80d)));
-    ComponentDto project2 = insertProject(new Measure(coverage, c -> c.setValue(85d)));
-    ComponentDto project3 = insertProject(new Measure(coverage, c -> c.setValue(10d)));
+    ComponentDto project1 = insertProject(c -> c.addValue(coverage.getKey(), 80d));
+    insertProject(c -> c.addValue(coverage.getKey(), 85d));
+    ComponentDto project3 = insertProject(c -> c.addValue(coverage.getKey(), 10d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter("new_coverage <= 80"));
@@ -437,12 +483,12 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void filter_projects_by_duplications() {
+  void filter_projects_by_duplications() {
     userSession.logIn();
     MetricDto duplications = db.measures().insertMetric(c -> c.setKey(DUPLICATED_LINES_DENSITY_KEY).setValueType("PERCENT"));
-    ComponentDto project1 = insertProject(new Measure(duplications, c -> c.setValue(80d)));
-    ComponentDto project2 = insertProject(new Measure(duplications, c -> c.setValue(85d)));
-    ComponentDto project3 = insertProject(new Measure(duplications, c -> c.setValue(10d)));
+    ComponentDto project1 = insertProject(c -> c.addValue(duplications.getKey(), 80d));
+    insertProject(c -> c.addValue(duplications.getKey(), 85d));
+    ComponentDto project3 = insertProject(c -> c.addValue(duplications.getKey(), 10d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter("duplicated_lines_density <= 80"));
@@ -451,13 +497,13 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void filter_projects_by_no_duplication() {
+  void filter_projects_by_no_duplication() {
     userSession.logIn();
     MetricDto coverage = db.measures().insertMetric(c -> c.setKey(COVERAGE).setValueType("PERCENT"));
     MetricDto duplications = db.measures().insertMetric(c -> c.setKey(DUPLICATED_LINES_DENSITY_KEY).setValueType("PERCENT"));
-    ComponentDto project1 = insertProject(new Measure(coverage, c -> c.setValue(10d)));
-    ComponentDto project2 = insertProject(new Measure(duplications, c -> c.setValue(0d)));
-    ComponentDto project3 = insertProject(new Measure(duplications, c -> c.setValue(79d)));
+    ComponentDto project1 = insertProject(c -> c.addValue(coverage.getKey(), 10d));
+    insertProject(c -> c.addValue(duplications.getKey(), 0d));
+    insertProject(c -> c.addValue(duplications.getKey(), 79d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter("duplicated_lines_density = NO_DATA"));
@@ -466,11 +512,11 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void filter_projects_by_no_duplication_should_not_return_projects_with_duplication() {
+  void filter_projects_by_no_duplication_should_not_return_projects_with_duplication() {
     userSession.logIn();
     MetricDto coverage = db.measures().insertMetric(c -> c.setKey(COVERAGE).setValueType("PERCENT"));
     MetricDto duplications = db.measures().insertMetric(c -> c.setKey(DUPLICATED_LINES_DENSITY_KEY).setValueType("PERCENT"));
-    insertProject(new Measure(duplications, c -> c.setValue(10d)), new Measure(coverage, c -> c.setValue(50d)));
+    insertProject(c -> c.addValue(duplications.getKey(), 10d).addValue(coverage.getKey(), 50d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter("duplicated_lines_density = NO_DATA"));
@@ -479,12 +525,12 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void filter_projects_by_new_duplications() {
+  void filter_projects_by_new_duplications() {
     userSession.logIn();
     MetricDto newDuplications = db.measures().insertMetric(c -> c.setKey(NEW_DUPLICATED_LINES_DENSITY_KEY).setValueType("PERCENT"));
-    ComponentDto project1 = insertProject(new Measure(newDuplications, c -> c.setValue(80d)));
-    ComponentDto project2 = insertProject(new Measure(newDuplications, c -> c.setValue(85d)));
-    ComponentDto project3 = insertProject(new Measure(newDuplications, c -> c.setValue(10d)));
+    ComponentDto project1 = insertProject(c -> c.addValue(newDuplications.getKey(), 80d));
+    insertProject(c -> c.addValue(newDuplications.getKey(), 85d));
+    ComponentDto project3 = insertProject(c -> c.addValue(newDuplications.getKey(), 10d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter("new_duplicated_lines_density <= 80"));
@@ -493,12 +539,12 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void filter_projects_by_ncloc() {
+  void filter_projects_by_ncloc() {
     userSession.logIn();
     MetricDto ncloc = db.measures().insertMetric(c -> c.setKey(NCLOC).setValueType(INT.name()));
-    ComponentDto project1 = insertProject(new Measure(ncloc, c -> c.setValue(80d)));
-    ComponentDto project2 = insertProject(new Measure(ncloc, c -> c.setValue(85d)));
-    ComponentDto project3 = insertProject(new Measure(ncloc, c -> c.setValue(10d)));
+    ComponentDto project1 = insertProject(c -> c.addValue(ncloc.getKey(), 80d));
+    insertProject(c -> c.addValue(ncloc.getKey(), 85d));
+    ComponentDto project3 = insertProject(c -> c.addValue(ncloc.getKey(), 10d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter("ncloc <= 80"));
@@ -507,12 +553,12 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void filter_projects_by_new_lines() {
+  void filter_projects_by_new_lines() {
     userSession.logIn();
     MetricDto newLines = db.measures().insertMetric(c -> c.setKey(NEW_LINES_KEY).setValueType(INT.name()));
-    ComponentDto project1 = insertProject(new Measure(newLines, c -> c.setValue(80d)));
-    ComponentDto project2 = insertProject(new Measure(newLines, c -> c.setValue(85d)));
-    ComponentDto project3 = insertProject(new Measure(newLines, c -> c.setValue(10d)));
+    ComponentDto project1 = insertProject(c -> c.addValue(newLines.getKey(), 80d));
+    insertProject(c -> c.addValue(newLines.getKey(), 85d));
+    ComponentDto project3 = insertProject(c -> c.addValue(newLines.getKey(), 10d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter("new_lines <= 80"));
@@ -521,12 +567,12 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void filter_projects_by_text_query() {
+  void filter_projects_by_text_query() {
     userSession.logIn();
-    insertProject(c -> c.setKey("sonar-java").setName("Sonar Java"));
-    insertProject(c -> c.setKey("sonar-groovy").setName("Sonar Groovy"));
-    insertProject(c -> c.setKey("sonar-markdown").setName("Sonar Markdown"));
-    insertProject(c -> c.setKey("sonarqube").setName("Sonar Qube"));
+    insertProject(c -> c.setKey("sonar-java").setName("Sonar Java"), null);
+    insertProject(c -> c.setKey("sonar-groovy").setName("Sonar Groovy"), null);
+    insertProject(c -> c.setKey("sonar-markdown").setName("Sonar Markdown"), null);
+    insertProject(c -> c.setKey("sonarqube").setName("Sonar Qube"), null);
     index();
 
     assertThat(call(request.setFilter("query = \"Groovy\"")).getComponentsList()).extracting(Component::getName).containsOnly("Sonar " +
@@ -539,11 +585,11 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void filter_projects_on_favorites() {
+  void filter_projects_on_favorites() {
     userSession.logIn();
     ComponentDto javaProject = insertProject();
     ComponentDto markDownProject = insertProject();
-    ComponentDto sonarQubeProject = insertProject();
+    insertProject();
     Stream.of(javaProject, markDownProject).forEach(c -> addFavourite(db.components().getProjectDtoByMainBranch(c)));
     index();
 
@@ -554,11 +600,11 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void does_not_fail_on_orphan_favorite() {
+  void does_not_fail_on_orphan_favorite() {
     userSession.logIn();
     ComponentDto javaProject = insertProject();
     ComponentDto markDownProject = insertProject();
-    ComponentDto sonarQubeProject = insertProject();
+    insertProject();
     Stream.of(javaProject, markDownProject).forEach(c -> addFavourite(db.components().getProjectDtoByMainBranch(c)));
     index();
 
@@ -571,11 +617,11 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void filtering_on_favorites_returns_empty_results_if_not_logged_in() {
+  void filtering_on_favorites_returns_empty_results_if_not_logged_in() {
     userSession.anonymous();
     ComponentDto javaProject = insertProject();
     ComponentDto markDownProject = insertProject();
-    ComponentDto sonarQubeProject = insertProject();
+    insertProject();
     Stream.of(javaProject, markDownProject).forEach(c -> addFavourite(db.components().getProjectDtoByMainBranch(c)));
     index();
 
@@ -584,13 +630,13 @@ public class SearchProjectsActionIT {
     assertThat(result.getComponentsCount()).isZero();
   }
 
-  @Test
-  @UseDataProvider("component_qualifiers_for_valid_editions")
-  public void default_filter_projects_and_apps_by_editions(String[] qualifiers, Edition edition) {
+  @ParameterizedTest
+  @MethodSource("component_qualifiers_for_valid_editions")
+  void default_filter_projects_and_apps_by_editions(String[] qualifiers, Edition edition) {
     when(editionProviderMock.get()).thenReturn(Optional.of(edition));
     userSession.logIn();
-    ComponentDto portfolio1 = insertPortfolio();
-    ComponentDto portfolio2 = insertPortfolio();
+    insertPortfolio();
+    insertPortfolio();
 
     ComponentDto application1 = insertApplication();
     ComponentDto application2 = insertApplication();
@@ -617,12 +663,12 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void should_return_projects_only_when_no_edition() {
+  void should_return_projects_only_when_no_edition() {
     when(editionProviderMock.get()).thenReturn(Optional.empty());
     userSession.logIn();
 
-    ComponentDto portfolio1 = insertPortfolio();
-    ComponentDto portfolio2 = insertPortfolio();
+    insertPortfolio();
+    insertPortfolio();
 
     insertApplication();
     insertApplication();
@@ -641,9 +687,9 @@ public class SearchProjectsActionIT {
       .containsExactly(Stream.of(project1, project2, project3).map(ComponentDto::getKey).toArray(String[]::new));
   }
 
-  @Test
-  @UseDataProvider("enterprise_or_datacenter_edition")
-  public void filter_projects_and_apps_by_APP_qualifier_when_ee_dc(Edition edition) {
+  @ParameterizedTest
+  @MethodSource("enterprise_or_datacenter_edition")
+  void filter_projects_and_apps_by_APP_qualifier_when_ee_dc(Edition edition) {
     when(editionProviderMock.get()).thenReturn(Optional.of(edition));
     userSession.logIn();
     ComponentDto application1 = insertApplication();
@@ -667,9 +713,9 @@ public class SearchProjectsActionIT {
           .toArray(String[]::new));
   }
 
-  @Test
-  @UseDataProvider("enterprise_or_datacenter_edition")
-  public void filter_projects_and_apps_by_TRK_qualifier_when_ee_or_dc(Edition edition) {
+  @ParameterizedTest
+  @MethodSource("enterprise_or_datacenter_edition")
+  void filter_projects_and_apps_by_TRK_qualifier_when_ee_or_dc(Edition edition) {
     when(editionProviderMock.get()).thenReturn(Optional.of(edition));
     userSession.logIn();
 
@@ -694,28 +740,30 @@ public class SearchProjectsActionIT {
           .toArray(String[]::new));
   }
 
-  @Test
-  @UseDataProvider("community_or_developer_edition")
-  public void fail_when_qualifier_filter_by_APP_set_when_ce_or_de(Edition edition) {
+  @ParameterizedTest
+  @MethodSource("community_or_developer_edition")
+  void fail_when_qualifier_filter_by_APP_set_when_ce_or_de(Edition edition) {
     when(editionProviderMock.get()).thenReturn(Optional.of(edition));
     userSession.logIn();
+    RequestBuilder requestBuilder = request.setFilter("qualifiers = APP");
 
-    assertThatThrownBy(() -> call(request.setFilter("qualifiers = APP")))
+    assertThatThrownBy(() -> call(requestBuilder))
+      .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @ParameterizedTest
+  @MethodSource("enterprise_or_datacenter_edition")
+  void fail_when_qualifier_filter_invalid_when_ee_or_dc(Edition edition) {
+    when(editionProviderMock.get()).thenReturn(Optional.of(edition));
+    userSession.logIn();
+    RequestBuilder requestBuilder = request.setFilter("qualifiers = BLA");
+
+    assertThatThrownBy(() -> call(requestBuilder))
       .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
-  @UseDataProvider("enterprise_or_datacenter_edition")
-  public void fail_when_qualifier_filter_invalid_when_ee_or_dc(Edition edition) {
-    when(editionProviderMock.get()).thenReturn(Optional.of(edition));
-    userSession.logIn();
-
-    assertThatThrownBy(() -> call(request.setFilter("qualifiers = BLA")))
-      .isInstanceOf(IllegalArgumentException.class);
-  }
-
-  @Test
-  public void do_not_return_isFavorite_if_anonymous_user() {
+  void do_not_return_isFavorite_if_anonymous_user() {
     userSession.anonymous();
     insertProject();
     index();
@@ -726,13 +774,13 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void return_nloc_facet() {
+  void return_nloc_facet() {
     userSession.logIn();
     MetricDto ncloc = db.measures().insertMetric(c -> c.setKey(NCLOC).setValueType(INT.name()));
-    insertProject(new Measure(ncloc, c -> c.setValue(5d)));
-    insertProject(new Measure(ncloc, c -> c.setValue(5d)));
-    insertProject(new Measure(ncloc, c -> c.setValue(10_000d)));
-    insertProject(new Measure(ncloc, c -> c.setValue(500_001d)));
+    insertProject(c -> c.addValue(ncloc.getKey(), 5d));
+    insertProject(c -> c.addValue(ncloc.getKey(), 5d));
+    insertProject(c -> c.addValue(ncloc.getKey(), 10_000d));
+    insertProject(c -> c.addValue(ncloc.getKey(), 500_001d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFacets(singletonList(NCLOC)));
@@ -751,12 +799,12 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void return_new_lines_facet() {
+  void return_new_lines_facet() {
     userSession.logIn();
     MetricDto coverage = db.measures().insertMetric(c -> c.setKey(NEW_LINES_KEY).setValueType(INT.name()));
-    insertProject(new Measure(coverage, c -> c.setValue(100d)));
-    insertProject(new Measure(coverage, c -> c.setValue(15_000d)));
-    insertProject(new Measure(coverage, c -> c.setValue(50_000d)));
+    insertProject(c -> c.addValue(coverage.getKey(), 100d));
+    insertProject(c -> c.addValue(coverage.getKey(), 15_000d));
+    insertProject(c -> c.addValue(coverage.getKey(), 50_000d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFacets(singletonList(NEW_LINES_KEY)));
@@ -775,19 +823,18 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void return_languages_facet() {
+  void return_languages_facet() {
     userSession.logIn();
     MetricDto nclocMetric = db.measures().insertMetric(c -> c.setKey(NCLOC).setValueType(INT.name()));
     MetricDto languagesDistributionMetric = db.measures().insertMetric(c -> c.setKey(NCLOC_LANGUAGE_DISTRIBUTION_KEY).setValueType("DATA"));
-    ComponentDto project1 = insertProject(new Measure(languagesDistributionMetric,
-      c -> c.setValue(null).setData("<null>=2;java=6;xoo=18")));
-    db.measures().insertLiveMeasure(project1, nclocMetric, m -> m.setValue(26d));
-    ComponentDto project2 = insertProject(new Measure(languagesDistributionMetric, c -> c.setValue(null).setData("java=5;xoo=19")));
-    db.measures().insertLiveMeasure(project2, nclocMetric, m -> m.setValue(24d));
-    ComponentDto project3 = insertProject(new Measure(languagesDistributionMetric, c -> c.setValue(null).setData("xoo=1")));
-    db.measures().insertLiveMeasure(project3, nclocMetric, m -> m.setValue(1d));
-    ComponentDto project4 = insertProject(new Measure(languagesDistributionMetric, c -> c.setValue(null).setData("<null>=1;java=3;xoo=8")));
-    db.measures().insertLiveMeasure(project4, nclocMetric, m -> m.setValue(12d));
+    ComponentDto project1 = insertProject(c -> c.addValue(languagesDistributionMetric.getKey(), "<null>=2;java=6;xoo=18"));
+    db.measures().insertMeasure(project1, m -> m.addValue(nclocMetric.getKey(), 26d));
+    ComponentDto project2 = insertProject(c -> c.addValue(languagesDistributionMetric.getKey(), "java=5;xoo=19"));
+    db.measures().insertMeasure(project2, m -> m.addValue(nclocMetric.getKey(), 24d));
+    ComponentDto project3 = insertProject(c -> c.addValue(languagesDistributionMetric.getKey(), "xoo=1"));
+    db.measures().insertMeasure(project3, m -> m.addValue(nclocMetric.getKey(), 1d));
+    ComponentDto project4 = insertProject(c -> c.addValue(languagesDistributionMetric.getKey(), "<null>=1;java=3;xoo=8"));
+    db.measures().insertMeasure(project4, m -> m.addValue(nclocMetric.getKey(), 12d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFacets(singletonList(FILTER_LANGUAGES)));
@@ -804,14 +851,14 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void return_languages_facet_with_language_having_no_project_if_language_is_in_filter() {
+  void return_languages_facet_with_language_having_no_project_if_language_is_in_filter() {
     userSession.logIn();
     MetricDto languagesDistributionMetric = db.measures().insertMetric(c -> c.setKey(NCLOC_LANGUAGE_DISTRIBUTION_KEY).setValueType("DATA"));
     MetricDto nclocMetric = db.measures().insertMetric(c -> c.setKey(NCLOC).setValueType(INT.name()));
-    ComponentDto project1 = insertProject(new Measure(languagesDistributionMetric, c -> c.setValue(null).setData("<null>=2;java=6")));
-    db.measures().insertLiveMeasure(project1, nclocMetric, m -> m.setValue(8d));
-    ComponentDto project2 = insertProject(new Measure(languagesDistributionMetric, c -> c.setValue(null).setData("java=5")));
-    db.measures().insertLiveMeasure(project2, nclocMetric, m -> m.setValue(5d));
+    ComponentDto project1 = insertProject(c -> c.addValue(languagesDistributionMetric.getKey(), "<null>=2;java=6"));
+    db.measures().insertMeasure(project1, m -> m.addValue(nclocMetric.getKey(), 8d));
+    ComponentDto project2 = insertProject(c -> c.addValue(languagesDistributionMetric.getKey(), "java=5"));
+    db.measures().insertMeasure(project2, m -> m.addValue(nclocMetric.getKey(), 5d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter("languages = xoo").setFacets(singletonList(FILTER_LANGUAGES)));
@@ -828,11 +875,11 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void return_tags_facet() {
+  void return_tags_facet() {
     userSession.logIn();
-    insertProject(defaults(), p -> p.setTags(asList("finance", "platform")));
-    insertProject(defaults(), p -> p.setTags(singletonList("offshore")));
-    insertProject(defaults(), p -> p.setTags(singletonList("offshore")));
+    insertProject(defaults(), p -> p.setTags(asList("finance", "platform")), null);
+    insertProject(defaults(), p -> p.setTags(singletonList("offshore")), null);
+    insertProject(defaults(), p -> p.setTags(singletonList("offshore")), null);
     index();
 
     SearchProjectsWsResponse result = call(request.setFacets(singletonList(FILTER_TAGS)));
@@ -849,11 +896,11 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void return_tags_facet_with_tags_having_no_project_if_tags_is_in_filter() {
+  void return_tags_facet_with_tags_having_no_project_if_tags_is_in_filter() {
     userSession.logIn();
-    insertProject(defaults(), p -> p.setTags(asList("finance", "platform")));
-    insertProject(defaults(), p -> p.setTags(singletonList("offshore")));
-    insertProject(defaults(), p -> p.setTags(singletonList("offshore")));
+    insertProject(defaults(), p -> p.setTags(asList("finance", "platform")), null);
+    insertProject(defaults(), p -> p.setTags(singletonList("offshore")), null);
+    insertProject(defaults(), p -> p.setTags(singletonList("offshore")), null);
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter("tags = marketing").setFacets(singletonList(FILTER_TAGS)));
@@ -871,17 +918,17 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void return_qualifiers_facet() {
+  void return_qualifiers_facet() {
     when(editionProviderMock.get()).thenReturn(Optional.of(Edition.ENTERPRISE));
     userSession.logIn();
-    ComponentDto application1 = insertApplication();
-    ComponentDto application2 = insertApplication();
-    ComponentDto application3 = insertApplication();
-    ComponentDto application4 = insertApplication();
+    insertApplication();
+    insertApplication();
+    insertApplication();
+    insertApplication();
 
-    ComponentDto project1 = insertProject();
-    ComponentDto project2 = insertProject();
-    ComponentDto project3 = insertProject();
+    insertProject();
+    insertProject();
+    insertProject();
     index();
 
     SearchProjectsWsResponse result = call(request.setFacets(singletonList(FILTER_QUALIFIER)));
@@ -897,13 +944,13 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void return_qualifiers_facet_with_qualifiers_having_no_project_if_qualifiers_is_in_filter() {
+  void return_qualifiers_facet_with_qualifiers_having_no_project_if_qualifiers_is_in_filter() {
     when(editionProviderMock.get()).thenReturn(Optional.of(Edition.ENTERPRISE));
     userSession.logIn();
-    ComponentDto application1 = insertApplication();
-    ComponentDto application2 = insertApplication();
-    ComponentDto application3 = insertApplication();
-    ComponentDto application4 = insertApplication();
+    insertApplication();
+    insertApplication();
+    insertApplication();
+    insertApplication();
     index();
 
     SearchProjectsWsResponse result = call(request.setFilter("qualifier = APP").setFacets(singletonList(FILTER_QUALIFIER)));
@@ -918,15 +965,15 @@ public class SearchProjectsActionIT {
         tuple("TRK", 0L));
   }
 
-  @Test
-  @UseDataProvider("rating_metric_keys")
-  public void return_rating_facet(String ratingMetricKey) {
+  @ParameterizedTest
+  @MethodSource("rating_metric_keys")
+  void return_rating_facet(String ratingMetricKey) {
     userSession.logIn();
     MetricDto ratingMetric = db.measures().insertMetric(c -> c.setKey(ratingMetricKey).setValueType("RATING"));
-    insertProject(new Measure(ratingMetric, c -> c.setValue(1d)));
-    insertProject(new Measure(ratingMetric, c -> c.setValue(1d)));
-    insertProject(new Measure(ratingMetric, c -> c.setValue(3d)));
-    insertProject(new Measure(ratingMetric, c -> c.setValue(5d)));
+    insertProject(c -> c.addValue(ratingMetric.getKey(), 1d));
+    insertProject(c -> c.addValue(ratingMetric.getKey(), 1d));
+    insertProject(c -> c.addValue(ratingMetric.getKey(), 3d));
+    insertProject(c -> c.addValue(ratingMetric.getKey(), 5d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFacets(singletonList(ratingMetricKey)));
@@ -944,15 +991,42 @@ public class SearchProjectsActionIT {
         tuple("5", 1L));
   }
 
-  @Test
-  @UseDataProvider("new_rating_metric_keys")
-  public void return_new_rating_facet(String newRatingMetricKey) {
+  @ParameterizedTest
+  @MethodSource("software_quality_rating_metric_keys")
+  void return_software_quality_rating_facet(String ratingMetricKey) {
+    userSession.logIn();
+    MetricDto ratingMetric = db.measures().insertMetric(c -> c.setKey(ratingMetricKey).setValueType("RATING"));
+    insertProject(c -> c.addValue(ratingMetric.getKey(), 1d));
+    insertProject(c -> c.addValue(ratingMetric.getKey(), 1d));
+    insertProject(c -> c.addValue(ratingMetric.getKey(), 3d));
+    insertProject(c -> c.addValue(ratingMetric.getKey(), 5d));
+    insertProject(c -> c.addValue(ratingMetric.getKey(), 5d));
+    index();
+
+    SearchProjectsWsResponse result = call(request.setFacets(singletonList(ratingMetricKey)));
+
+    Common.Facet facet = result.getFacets().getFacetsList().stream()
+      .filter(oneFacet -> ratingMetricKey.equals(oneFacet.getProperty()))
+      .findFirst().orElseThrow(IllegalStateException::new);
+    assertThat(facet.getValuesList())
+      .extracting(Common.FacetValue::getVal, Common.FacetValue::getCount)
+      .containsExactly(
+        tuple("1", 2L),
+        tuple("2", 0L),
+        tuple("3", 1L),
+        tuple("4", 0L),
+        tuple("5", 2L));
+  }
+
+  @ParameterizedTest
+  @MethodSource("new_rating_metric_keys")
+  void return_new_rating_facet(String newRatingMetricKey) {
     userSession.logIn();
     MetricDto newRatingMetric = db.measures().insertMetric(c -> c.setKey(newRatingMetricKey).setValueType("RATING"));
-    insertProject(new Measure(newRatingMetric, c -> c.setValue(1d)));
-    insertProject(new Measure(newRatingMetric, c -> c.setValue(1d)));
-    insertProject(new Measure(newRatingMetric, c -> c.setValue(3d)));
-    insertProject(new Measure(newRatingMetric, c -> c.setValue(5d)));
+    insertProject(c -> c.addValue(newRatingMetric.getKey(), 1d));
+    insertProject(c -> c.addValue(newRatingMetric.getKey(), 1d));
+    insertProject(c -> c.addValue(newRatingMetric.getKey(), 3d));
+    insertProject(c -> c.addValue(newRatingMetric.getKey(), 5d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFacets(singletonList(newRatingMetricKey)));
@@ -970,14 +1044,39 @@ public class SearchProjectsActionIT {
         tuple("5", 1L));
   }
 
+  @ParameterizedTest
+  @MethodSource("new_software_quality_rating_metric_keys")
+  void return_new_software_quality_rating_facet(String newRatingMetricKey) {
+    userSession.logIn();
+    MetricDto newRatingMetric = db.measures().insertMetric(c -> c.setKey(newRatingMetricKey).setValueType("RATING"));
+    insertProject(c -> c.addValue(newRatingMetric.getKey(), 1d));
+    insertProject(c -> c.addValue(newRatingMetric.getKey(), 1d));
+    insertProject(c -> c.addValue(newRatingMetric.getKey(), 3d));
+    index();
+
+    SearchProjectsWsResponse result = call(request.setFacets(singletonList(newRatingMetricKey)));
+
+    Common.Facet facet = result.getFacets().getFacetsList().stream()
+      .filter(oneFacet -> newRatingMetricKey.equals(oneFacet.getProperty()))
+      .findFirst().orElseThrow(IllegalStateException::new);
+    assertThat(facet.getValuesList())
+      .extracting(Common.FacetValue::getVal, Common.FacetValue::getCount)
+      .containsExactly(
+        tuple("1", 2L),
+        tuple("2", 0L),
+        tuple("3", 1L),
+        tuple("4", 0L),
+        tuple("5", 0L));
+  }
+
   @Test
-  public void return_coverage_facet() {
+  void return_coverage_facet() {
     userSession.logIn();
     MetricDto coverage = db.measures().insertMetric(c -> c.setKey(COVERAGE).setValueType("PERCENT"));
     insertProject();
-    insertProject(new Measure(coverage, c -> c.setValue(80d)));
-    insertProject(new Measure(coverage, c -> c.setValue(85d)));
-    insertProject(new Measure(coverage, c -> c.setValue(10d)));
+    insertProject(c -> c.addValue(coverage.getKey(), 80d));
+    insertProject(c -> c.addValue(coverage.getKey(), 85d));
+    insertProject(c -> c.addValue(coverage.getKey(), 10d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFacets(singletonList(COVERAGE)));
@@ -997,13 +1096,13 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void return_new_coverage_facet() {
+  void return_new_coverage_facet() {
     userSession.logIn();
     MetricDto coverage = db.measures().insertMetric(c -> c.setKey(NEW_COVERAGE).setValueType("PERCENT"));
     insertProject();
-    insertProject(new Measure(coverage, c -> c.setValue(80d)));
-    insertProject(new Measure(coverage, c -> c.setValue(85d)));
-    insertProject(new Measure(coverage, c -> c.setValue(10d)));
+    insertProject(c -> c.addValue(coverage.getKey(), 80d));
+    insertProject(c -> c.addValue(coverage.getKey(), 85d));
+    insertProject(c -> c.addValue(coverage.getKey(), 10d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFacets(singletonList(NEW_COVERAGE)));
@@ -1023,12 +1122,12 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void return_duplications_facet() {
+  void return_duplications_facet() {
     userSession.logIn();
     MetricDto coverage = db.measures().insertMetric(c -> c.setKey(DUPLICATED_LINES_DENSITY_KEY).setValueType("PERCENT"));
-    insertProject(new Measure(coverage, c -> c.setValue(10d)));
-    insertProject(new Measure(coverage, c -> c.setValue(15d)));
-    insertProject(new Measure(coverage, c -> c.setValue(5d)));
+    insertProject(c -> c.addValue(coverage.getKey(), 10d));
+    insertProject(c -> c.addValue(coverage.getKey(), 15d));
+    insertProject(c -> c.addValue(coverage.getKey(), 5d));
     insertProject();
     index();
 
@@ -1049,13 +1148,13 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void return_new_duplications_facet() {
+  void return_new_duplications_facet() {
     userSession.logIn();
     MetricDto coverage = db.measures().insertMetric(c -> c.setKey(NEW_DUPLICATED_LINES_DENSITY_KEY).setValueType("PERCENT"));
     insertProject();
-    insertProject(new Measure(coverage, c -> c.setValue(10d)));
-    insertProject(new Measure(coverage, c -> c.setValue(15d)));
-    insertProject(new Measure(coverage, c -> c.setValue(5d)));
+    insertProject(c -> c.addValue(coverage.getKey(), 10d));
+    insertProject(c -> c.addValue(coverage.getKey(), 15d));
+    insertProject(c -> c.addValue(coverage.getKey(), 5d));
     index();
 
     SearchProjectsWsResponse result = call(request.setFacets(singletonList(NEW_DUPLICATED_LINES_DENSITY_KEY)));
@@ -1075,12 +1174,12 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void return_quality_gate_facet() {
+  void return_quality_gate_facet() {
     userSession.logIn();
     MetricDto qualityGateStatus = db.measures().insertMetric(c -> c.setKey(ALERT_STATUS_KEY).setValueType(LEVEL.name()));
-    insertProject(new Measure(qualityGateStatus, c -> c.setData(Metric.Level.ERROR.name()).setValue(null)));
-    insertProject(new Measure(qualityGateStatus, c -> c.setData(Metric.Level.ERROR.name()).setValue(null)));
-    insertProject(new Measure(qualityGateStatus, c -> c.setData(Metric.Level.OK.name()).setValue(null)));
+    insertProject(c -> c.addValue(qualityGateStatus.getKey(), Metric.Level.ERROR.name()));
+    insertProject(c -> c.addValue(qualityGateStatus.getKey(), Metric.Level.ERROR.name()));
+    insertProject(c -> c.addValue(qualityGateStatus.getKey(), Metric.Level.OK.name()));
     index();
 
     SearchProjectsWsResponse result = call(request.setFacets(singletonList(ALERT_STATUS_KEY)));
@@ -1096,12 +1195,12 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void return_quality_gate_facet_without_warning_when_no_projects_in_warning() {
+  void return_quality_gate_facet_without_warning_when_no_projects_in_warning() {
     userSession.logIn();
     MetricDto qualityGateStatus = db.measures().insertMetric(c -> c.setKey(ALERT_STATUS_KEY).setValueType(LEVEL.name()));
-    insertProject(new Measure(qualityGateStatus, c -> c.setData(Metric.Level.ERROR.name()).setValue(null)));
-    insertProject(new Measure(qualityGateStatus, c -> c.setData(Metric.Level.ERROR.name()).setValue(null)));
-    insertProject(new Measure(qualityGateStatus, c -> c.setData(Metric.Level.OK.name()).setValue(null)));
+    insertProject(c -> c.addValue(qualityGateStatus.getKey(), Metric.Level.ERROR.name()));
+    insertProject(c -> c.addValue(qualityGateStatus.getKey(), Metric.Level.ERROR.name()));
+    insertProject(c -> c.addValue(qualityGateStatus.getKey(), Metric.Level.OK.name()));
     index();
 
     SearchProjectsWsResponse result = call(request.setFacets(singletonList(ALERT_STATUS_KEY)));
@@ -1117,12 +1216,12 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void default_sort_is_by_ascending_name() {
+  void default_sort_is_by_ascending_name() {
     userSession.logIn();
-    insertProject(c -> c.setName("Sonar Java"));
-    insertProject(c -> c.setName("Sonar Groovy"));
-    insertProject(c -> c.setName("Sonar Markdown"));
-    insertProject(c -> c.setName("Sonar Qube"));
+    insertProject(c -> c.setName("Sonar Java"), null);
+    insertProject(c -> c.setName("Sonar Groovy"), null);
+    insertProject(c -> c.setName("Sonar Markdown"), null);
+    insertProject(c -> c.setName("Sonar Qube"), null);
     index();
 
     SearchProjectsWsResponse result = call(request);
@@ -1132,12 +1231,12 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void sort_by_name() {
+  void sort_by_name() {
     userSession.logIn();
-    insertProject(c -> c.setName("Sonar Java"));
-    insertProject(c -> c.setName("Sonar Groovy"));
-    insertProject(c -> c.setName("Sonar Markdown"));
-    insertProject(c -> c.setName("Sonar Qube"));
+    insertProject(c -> c.setName("Sonar Java"), null);
+    insertProject(c -> c.setName("Sonar Groovy"), null);
+    insertProject(c -> c.setName("Sonar Markdown"), null);
+    insertProject(c -> c.setName("Sonar Qube"), null);
     index();
 
     assertThat(call(request.setSort("name").setAsc(true)).getComponentsList()).extracting(Component::getName)
@@ -1147,13 +1246,13 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void sort_by_coverage_then_by_name() {
+  void sort_by_coverage_then_by_name() {
     userSession.logIn();
     MetricDto coverage = db.measures().insertMetric(c -> c.setKey(COVERAGE).setValueType(INT.name()));
-    ComponentDto project1 = insertProject(c -> c.setName("Sonar Java"), new Measure(coverage, c -> c.setValue(81d)));
-    ComponentDto project2 = insertProject(c -> c.setName("Sonar Groovy"), new Measure(coverage, c -> c.setValue(81d)));
-    ComponentDto project3 = insertProject(c -> c.setName("Sonar Markdown"), new Measure(coverage, c -> c.setValue(80d)));
-    ComponentDto project4 = insertProject(c -> c.setName("Sonar Qube"), new Measure(coverage, c -> c.setValue(80d)));
+    ComponentDto project1 = insertProject(c -> c.setName("Sonar Java"), c -> c.addValue(coverage.getKey(), 81d));
+    ComponentDto project2 = insertProject(c -> c.setName("Sonar Groovy"), c -> c.addValue(coverage.getKey(), 81d));
+    ComponentDto project3 = insertProject(c -> c.setName("Sonar Markdown"), c -> c.addValue(coverage.getKey(), 80d));
+    ComponentDto project4 = insertProject(c -> c.setName("Sonar Qube"), c -> c.addValue(coverage.getKey(), 80d));
     index();
 
     assertThat(call(request.setSort(COVERAGE).setAsc(true)).getComponentsList()).extracting(Component::getKey)
@@ -1163,17 +1262,13 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void sort_by_quality_gate_then_by_name() {
+  void sort_by_quality_gate_then_by_name() {
     userSession.logIn();
     MetricDto qualityGateStatus = db.measures().insertMetric(c -> c.setKey(QUALITY_GATE_STATUS).setValueType(LEVEL.name()));
-    ComponentDto project1 = insertProject(c -> c.setName("Sonar Java"), new Measure(qualityGateStatus, c -> c.setValue(null).setData(
-      "ERROR")));
-    ComponentDto project2 = insertProject(c -> c.setName("Sonar Groovy"), new Measure(qualityGateStatus, c -> c.setValue(null).setData(
-      "ERROR")));
-    ComponentDto project3 = insertProject(c -> c.setName("Sonar Markdown"), new Measure(qualityGateStatus, c -> c.setValue(null).setData(
-      "OK")));
-    ComponentDto project4 = insertProject(c -> c.setName("Sonar Qube"), new Measure(qualityGateStatus,
-      c -> c.setValue(null).setData("OK")));
+    ComponentDto project1 = insertProject(c -> c.setName("Sonar Java"), c -> c.addValue(qualityGateStatus.getKey(), "ERROR"));
+    ComponentDto project2 = insertProject(c -> c.setName("Sonar Groovy"), c -> c.addValue(qualityGateStatus.getKey(), "ERROR"));
+    ComponentDto project3 = insertProject(c -> c.setName("Sonar Markdown"), c -> c.addValue(qualityGateStatus.getKey(), "OK"));
+    ComponentDto project4 = insertProject(c -> c.setName("Sonar Qube"), c -> c.addValue(qualityGateStatus.getKey(), "OK"));
     index();
 
     assertThat(call(request.setSort(QUALITY_GATE_STATUS).setAsc(true)).getComponentsList()).extracting(Component::getKey)
@@ -1183,7 +1278,7 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void sort_by_last_analysis_date() {
+  void sort_by_last_analysis_date() {
     userSession.logIn();
     ProjectData project1 = db.components().insertPublicProject(p -> p.setKey("project1"));
     authorizationIndexerTester.allowOnlyAnyone(project1.getProjectDto());
@@ -1208,7 +1303,7 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void return_last_analysis_date() {
+  void return_last_analysis_date() {
     userSession.logIn();
     ProjectData projectData1 = db.components().insertPublicProject();
     ComponentDto mainBranch1 = projectData1.getMainBranchComponent();
@@ -1235,7 +1330,7 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void return_leak_period_date() {
+  void return_leak_period_date() {
     when(editionProviderMock.get()).thenReturn(Optional.of(Edition.ENTERPRISE));
     userSession.logIn();
     ComponentDto project1 = db.components().insertPublicProject().getMainBranchComponent();
@@ -1250,9 +1345,8 @@ public class SearchProjectsActionIT {
     authorizationIndexerTester.allowOnlyAnyone(db.components().getProjectDtoByMainBranch(project3));
 
     MetricDto leakProjects = db.measures().insertMetric(c -> c.setKey(LEAK_PROJECTS_KEY).setValueType(DATA.name()));
-    ComponentDto application1 = insertApplication(
-      new Measure(leakProjects, c -> c.setData("{\"leakProjects\":[{\"id\": 1, \"leak\":20000000000}, {\"id\": 2, " +
-        "\"leak\":10000000000}]}")));
+    ComponentDto application1 = insertApplication(m -> m.addValue(leakProjects.getKey(),
+      ("{\"leakProjects\":[{\"id\": 1, \"leak\":20000000000}, {\"id\": 2, \"leak\":10000000000}]}")));
     db.components().insertSnapshot(application1);
 
     authorizationIndexerTester.allowOnlyAnyone(db.components().getProjectDtoByMainBranch(application1));
@@ -1269,13 +1363,15 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void return_visibility_flag() {
+  void return_visibility_flag() {
     userSession.logIn();
-    ProjectDto privateProject = db.components().insertPublicProject(componentDto -> componentDto.setName("proj_A")).getProjectDto();
+    ProjectDto privateProject = db.components().insertPrivateProject(componentDto -> componentDto.setName("proj_A")).getProjectDto();
     authorizationIndexerTester.allowOnlyAnyone(privateProject);
-    ProjectDto publicProject = db.components().insertPrivateProject(componentDto -> componentDto.setName("proj_B")).getProjectDto();
+    ProjectDto publicProject = db.components().insertPublicProject(componentDto -> componentDto.setName("proj_B")).getProjectDto();
     authorizationIndexerTester.allowOnlyAnyone(publicProject);
     index();
+
+    userSession.addProjectPermission(UserRole.USER, privateProject);
 
     SearchProjectsWsResponse result = call(request);
 
@@ -1285,8 +1381,57 @@ public class SearchProjectsActionIT {
         tuple(publicProject.getKey(), publicProject.isPrivate() ? "private" : "public"));
   }
 
+  @ParameterizedTest
+  @MethodSource("aiCodeAssuranceParams")
+  void return_ai_code_assured(boolean containsAiCode, boolean aiCodeSupportedByQg, AiCodeAssurance expected) {
+    userSession.logIn();
+
+    ProjectDto project = db.components().insertPublicProject(componentDto -> componentDto.setName("proj_A"),
+      projectDto -> projectDto.setContainsAiCode(containsAiCode)).getProjectDto();
+    QualityGateDto qualityGate = db.qualityGates().insertQualityGate(qg -> qg.setAiCodeSupported(aiCodeSupportedByQg));
+    db.qualityGates().associateProjectToQualityGate(project, qualityGate);
+
+    when(aiCodeAssuranceVerifier.getAiCodeAssurance(project)).thenReturn(expected);
+    authorizationIndexerTester.allowOnlyAnyone(project);
+    index();
+
+    SearchProjectsWsResponse result = call(request);
+
+    boolean isAiCodeAssured = AiCodeAssurance.AI_CODE_ASSURED.equals(expected);
+    assertThat(result.getComponentsList()).extracting(Component::getKey, Component::getIsAiCodeAssured, Component::getAiCodeAssurance)
+      .containsExactly(
+        tuple(project.getKey(), isAiCodeAssured, Components.AiCodeAssurance.valueOf(expected.name())));
+  }
+
+  private static Stream<Arguments> aiCodeAssuranceParams() {
+    return Stream.of(
+      Arguments.of(false, false, AiCodeAssurance.NONE),
+      Arguments.of(false, true, AiCodeAssurance.NONE),
+      Arguments.of(true, false, AiCodeAssurance.CONTAINS_AI_CODE),
+      Arguments.of(true, true, AiCodeAssurance.AI_CODE_ASSURED)
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void return_ai_codefix_enabled(Boolean isEnabled) {
+    userSession.logIn();
+    ProjectDto project = db.components().insertPublicProject(componentDto -> componentDto.setName("proj_A"),
+      projectDto -> {
+        projectDto.setAiCodeFixEnabled(isEnabled);
+      }).getProjectDto();
+    authorizationIndexerTester.allowOnlyAnyone(project);
+    index();
+
+    SearchProjectsWsResponse result = call(request);
+
+    assertThat(result.getComponentsList()).extracting(Component::getKey, Component::getIsAiCodeFixEnabled)
+      .containsExactly(
+        tuple(project.getKey(), isEnabled));
+  }
+
   @Test
-  public void does_not_return_branches() {
+  void does_not_return_branches() {
     ProjectDto project = db.components().insertPublicProject().getProjectDto();
     authorizationIndexerTester.allowOnlyAnyone(project);
     db.components().insertProjectBranch(project);
@@ -1299,7 +1444,7 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void fail_when_filter_metrics_are_unknown() {
+  void fail_when_filter_metrics_are_unknown() {
     userSession.logIn();
 
     request.setFilter("debt > 80");
@@ -1310,7 +1455,7 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void fail_when_sort_metrics_are_unknown() {
+  void fail_when_sort_metrics_are_unknown() {
     userSession.logIn();
 
     request.setSort("debt");
@@ -1321,7 +1466,7 @@ public class SearchProjectsActionIT {
   }
 
   @Test
-  public void fail_if_page_size_greater_than_500() {
+  void fail_if_page_size_greater_than_500() {
     userSession.logIn();
     request.setPageSize(501);
     assertThatThrownBy(() -> call(request))
@@ -1354,36 +1499,48 @@ public class SearchProjectsActionIT {
 
   private int projectCount = 0;
 
-  private ComponentDto insertProject(Measure... measures) {
-    return insertProject(defaults(), projectDto -> projectDto.setName("project_" + projectCount++), measures);
+  private ComponentDto insertProject() {
+    return insertProject(defaults(), projectDto -> projectDto.setName("project_" + projectCount++), null);
   }
 
-  private ComponentDto insertProject(Consumer<ComponentDto> componentConsumer, Measure... measures) {
-    return insertProject(componentConsumer, defaults(), measures);
+  private ComponentDto insertProject(Consumer<MeasureDto> measureConsumer) {
+    return insertProject(defaults(), projectDto -> projectDto.setName("project_" + projectCount++), measureConsumer);
   }
 
-  private ComponentDto insertProject(Consumer<ComponentDto> componentConsumer, Consumer<ProjectDto> projectConsumer, Measure... measures) {
+  private ComponentDto insertProject(Consumer<ComponentDto> componentConsumer, @Nullable Consumer<MeasureDto> measureConsumer) {
+    return insertProject(componentConsumer, defaults(), measureConsumer);
+  }
+
+  private ComponentDto insertProject(Consumer<ComponentDto> componentConsumer, Consumer<ProjectDto> projectConsumer, @Nullable Consumer<MeasureDto> measureConsumer) {
     ComponentDto project = db.components().insertPublicProject(componentConsumer, projectConsumer).getMainBranchComponent();
-    Arrays.stream(measures).forEach(m -> db.measures().insertLiveMeasure(project, m.metric, m.consumer));
+    if (measureConsumer != null) {
+      db.measures().insertMeasure(project, measureConsumer);
+    }
     return project;
   }
 
   private int applicationCount = 0;
 
-  private ComponentDto insertApplication(Measure... measures) {
-    return insertApplication(componentDto -> componentDto.setName("app_" + applicationCount++), measures);
+  private ComponentDto insertApplication() {
+    return insertApplication(componentDto -> componentDto.setName("app_" + applicationCount++), null);
   }
 
-  private ComponentDto insertApplication(Consumer<ComponentDto> componentConsumer, Measure... measures) {
+  private ComponentDto insertApplication(Consumer<MeasureDto> measureConsumer) {
+    return insertApplication(componentDto -> componentDto.setName("app_" + applicationCount++), measureConsumer);
+  }
+
+  private ComponentDto insertApplication(Consumer<ComponentDto> componentConsumer, @Nullable Consumer<MeasureDto> measureConsumer) {
     ComponentDto application = db.components().insertPublicApplication(componentConsumer).getMainBranchComponent();
-    Arrays.stream(measures).forEach(m -> db.measures().insertLiveMeasure(application, m.metric, m.consumer));
+    if (measureConsumer != null) {
+      db.measures().insertMeasure(application, measureConsumer);
+    }
     return application;
   }
 
   private void index() {
     projectMeasuresIndexer.indexAll();
     ResultHandler<EntityDto> rh = r -> {
-      if (!r.getResultObject().getQualifier().equals(Qualifiers.SUBVIEW)) {
+      if (!r.getResultObject().getQualifier().equals(ComponentQualifiers.SUBVIEW)) {
         authorizationIndexerTester.allowOnlyAnyone(r.getResultObject());
       }
     };
@@ -1392,16 +1549,6 @@ public class SearchProjectsActionIT {
 
   private ComponentDto insertPortfolio() {
     return db.components().insertPublicPortfolio();
-  }
-
-  private static class Measure {
-    private final MetricDto metric;
-    private final Consumer<LiveMeasureDto> consumer;
-
-    public Measure(MetricDto metric, Consumer<LiveMeasureDto> consumer) {
-      this.metric = metric;
-      this.consumer = consumer;
-    }
   }
 
   private static <T> Consumer<T> defaults() {

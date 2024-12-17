@@ -17,13 +17,15 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Note } from 'design-system';
+
+import { Tooltip } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { Note } from '~design-system';
 import { ComponentContext } from '../../app/components/componentContext/ComponentContext';
 import { translate } from '../../helpers/l10n';
-import { useBranchesQuery } from '../../queries/branch';
+import { useCurrentBranchQuery } from '../../queries/branch';
+import { StaleTime } from '../../queries/common';
 import { AnalysisEvent, ProjectAnalysisEventCategory } from '../../types/project-activity';
-import Tooltip from '../controls/Tooltip';
 import { DefinitionChangeEventInner, isDefinitionChangeEvent } from './DefinitionChangeEventInner';
 import { RichQualityGateEventInner, isRichQualityGateEvent } from './RichQualityGateEventInner';
 import {
@@ -39,7 +41,7 @@ export interface EventInnerProps {
 
 export default function EventInner({ event, readonly }: EventInnerProps) {
   const { component } = React.useContext(ComponentContext);
-  const { data: { branchLike } = {} } = useBranchesQuery(component);
+  const { data: branchLike } = useCurrentBranchQuery(component, StaleTime.LONG);
   if (isRichQualityGateEvent(event)) {
     return <RichQualityGateEventInner event={event} readonly={readonly} />;
   } else if (isDefinitionChangeEvent(event)) {
@@ -47,7 +49,7 @@ export default function EventInner({ event, readonly }: EventInnerProps) {
   } else if (isRichQualityProfileEvent(event)) {
     return (
       <div>
-        <Note className="sw-mr-1 sw-body-sm-highlight">
+        <Note className="sw-mr-1 sw-typo-semibold">
           {translate('event.category', event.category)}
         </Note>
         <Note>
@@ -69,11 +71,11 @@ export default function EventInner({ event, readonly }: EventInnerProps) {
       <div className="sw-min-w-0 sw-flex-1 sw-py-1/2">
         <div className="sw-flex sw-items-start">
           <span>
-            <Note className="sw-mr-1 sw-body-sm-highlight">
+            <Note className="sw-mr-1 sw-typo-semibold">
               {translate('event.category', event.category)}
               {event.category === 'VERSION' && ':'}
             </Note>
-            <Note className="sw-body-sm" title={event.description}>
+            <Note className="sw-typo-default" title={event.description}>
               {event.name}
             </Note>
           </span>

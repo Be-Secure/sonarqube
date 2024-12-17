@@ -17,17 +17,18 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import styled from '@emotion/styled';
 import { differenceInDays } from 'date-fns';
-import { Highlight, Note, themeBorder, themeColor } from 'design-system';
 import * as React from 'react';
 import { WrappedComponentProps, injectIntl } from 'react-intl';
+import { Highlight, Note, themeBorder, themeColor } from '~design-system';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import Tooltip from '../../../components/controls/Tooltip';
 import DateFormatter, { longFormatterOption } from '../../../components/intl/DateFormatter';
 import DateFromNow from '../../../components/intl/DateFromNow';
 import DateTimeFormatter, { formatterOption } from '../../../components/intl/DateTimeFormatter';
-import { translate, translateWithParameters } from '../../../helpers/l10n';
+import { translate } from '../../../helpers/l10n';
 import { getNewCodePeriodDate, getNewCodePeriodLabel } from '../../../helpers/new-code-period';
 import { NewCodeDefinitionType } from '../../../types/new-code-definition';
 import { ComponentMeasure, Period } from '../../../types/types';
@@ -64,7 +65,7 @@ class LeakPeriodLegend extends React.PureComponent<LeakPeriodLegendProps & Wrapp
 
     const label = (
       <LeakPeriodLabel className="sw-px-2 sw-py-1 sw-rounded-1">
-        <Highlight>{translateWithParameters('component_measures.leak_legend.new_code')}</Highlight>{' '}
+        <Highlight>{translate('component_measures.leak_legend.new_code')}</Highlight>{' '}
         {leakPeriodLabel}
       </LeakPeriodLabel>
     );

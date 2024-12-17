@@ -17,9 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Badge, QualityGateIndicator } from 'design-system';
+
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
+import { Badge, QualityGateIndicator } from '~design-system';
 import { isDefinitionChangeEvent } from '../../../components/activity-graph/DefinitionChangeEventInner';
 import { isRichQualityGateEvent } from '../../../components/activity-graph/RichQualityGateEventInner';
 import {
@@ -81,7 +82,7 @@ export function Event({ event }: Props) {
             <QualityGateIndicator status={event.qualityGate.status} size="sm" />
           )}
         </div>
-        <span className="sw-body-sm-highlight">
+        <span className="sw-typo-semibold">
           {translate(`event.quality_gate.${event.qualityGate.status}`)}
         </span>
       </div>

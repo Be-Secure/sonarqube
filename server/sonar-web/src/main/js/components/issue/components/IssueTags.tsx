@@ -17,8 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { PopupPlacement, Tags } from 'design-system';
+
 import * as React from 'react';
+import { PopupPlacement, Tags } from '~design-system';
 import { setIssueTags } from '../../../api/issues';
 import withComponentContext from '../../../app/components/componentContext/withComponentContext';
 import { translate } from '../../../helpers/l10n';
@@ -66,8 +67,8 @@ export class IssueTags extends React.PureComponent<Props> {
       <Tags
         allowUpdate={this.props.canSetTags && !component?.needIssueSync}
         ariaTagsListLabel={translate('issue.tags')}
-        className="js-issue-edit-tags sw-body-xs"
-        tagsClassName="sw-body-xs"
+        className="js-issue-edit-tags sw-typo-sm"
+        tagsClassName="sw-typo-sm"
         emptyText={translate('issue.no_tag')}
         menuId="issue-tags-menu"
         onClose={this.handleClose}

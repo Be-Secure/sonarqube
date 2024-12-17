@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { BuildToolExampleBuilder } from '../AnalysisCommand';
 
 const dotNetExample: BuildToolExampleBuilder = ({
@@ -34,8 +35,6 @@ definitions:
           - dotnetcore
           - sonar
         script:
-          - apt-get update
-          - apt-get install --yes --no-install-recommends openjdk-17-jre
           - dotnet tool install --global dotnet-sonarscanner
           - export PATH="$PATH:/root/.dotnet/tools"
           - dotnet sonarscanner begin /k:"${projectKey}" /d:"sonar.token=\${SONAR_TOKEN}"  /d:"sonar.host.url=\${SONAR_HOST_URL}"

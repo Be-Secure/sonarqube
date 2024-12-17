@@ -17,8 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonSecondary, PageTitle } from 'design-system';
+
+import { Button } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { PageTitle } from '~design-system';
 import { addIssueComment, deleteIssueComment, editIssueComment } from '../../../api/issues';
 import { updateIssue } from '../../../components/issue/actions';
 import { translate } from '../../../helpers/l10n';
@@ -78,14 +80,14 @@ export default class IssueReviewHistoryAndComments extends React.PureComponent<P
       <div>
         <PageTitle
           as="h2"
-          className="sw-body-md-highlight"
+          className="sw-typo-lg-semibold"
           text={translate('hotspot.section.activity')}
         />
 
         {issue.actions.includes(IssueActions.Comment) && (
-          <ButtonSecondary className="sw-mt-4 sw-mb-2" onClick={this.handleShowCommentModal}>
+          <Button className="sw-mt-4 sw-mb-2" onClick={this.handleShowCommentModal}>
             {translate('issue.activity.add_comment')}
-          </ButtonSecondary>
+          </Button>
         )}
 
         <IssueReviewHistory

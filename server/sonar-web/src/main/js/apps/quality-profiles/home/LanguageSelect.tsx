@@ -17,9 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { LabelValueSelectOption, SearchSelectDropdown } from 'design-system';
+
 import * as React from 'react';
 import { useIntl } from 'react-intl';
+import { LabelValueSelectOption, SearchSelectDropdown } from '~design-system';
 import { useRouter } from '~sonar-aligned/components/hoc/withRouter';
 import { PROFILE_PATH } from '../constants';
 import { getProfilesForLanguagePath } from '../utils';
@@ -54,7 +55,7 @@ export default function LanguageSelect(props: Readonly<Props>) {
 
   return (
     <div className="sw-mb-4">
-      <span className="sw-mr-2 sw-body-sm-highlight">
+      <span className="sw-mr-2 sw-typo-semibold">
         {intl.formatMessage({ id: 'quality_profiles.filter_by' })}
       </span>
       <SearchSelectDropdown

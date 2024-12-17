@@ -17,8 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Switch } from 'design-system';
+
 import * as React from 'react';
+import { Switch } from '~design-system';
 import { translate } from '../../../helpers/l10n';
 import { CURRENTS } from '../constants';
 
@@ -41,12 +42,9 @@ export default function CurrentsFilter(props: Readonly<CurrentsFilterProps>) {
 
   return (
     <Switch
+      name={translate('background_tasks.currents_filter.ONLY_CURRENTS')}
       value={checked}
       onChange={handleChange}
-      labels={{
-        on: translate('background_tasks.currents_filter.ONLY_CURRENTS'),
-        off: translate('background_tasks.currents_filter.ALL'),
-      }}
     />
   );
 }

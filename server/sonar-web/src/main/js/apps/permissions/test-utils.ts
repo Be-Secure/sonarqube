@@ -17,9 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { waitFor } from '@testing-library/react';
 import { UserEvent } from '@testing-library/user-event/dist/types/setup/setup';
-import selectEvent from 'react-select-event';
 import { byRole, byText } from '~sonar-aligned/helpers/testSelector';
 import { Visibility } from '~sonar-aligned/types/component';
 import { Permissions } from '../../types/permissions';
@@ -40,9 +40,11 @@ export function getPageObject(user: UserEvent) {
       }),
     visibilityRadio: (visibility: Visibility) =>
       byRole('radio', { name: `visibility.${visibility}` }),
-    githubLogo: byRole('img', { name: 'project_permission.github_managed' }),
+    githubLogo: byRole('img', { name: 'project_permission.managed.alm.github' }),
     githubExplanations: byText('roles.page.description.github'),
-    confirmRemovePermissionDialog: byRole('dialog', {
+    gitlabLogo: byRole('img', { name: 'project_permission.managed.alm.gitlab' }),
+    gitlabExplanations: byText('roles.page.description.gitlab'),
+    confirmRemovePermissionDialog: byRole('alertdialog', {
       name: 'project_permission.remove_only_confirmation_title',
     }),
     nonGHProjectWarning: byText('project_permission.local_project_with_github_provisioning'),
@@ -93,7 +95,9 @@ export function getPageObject(user: UserEvent) {
       await user.click(ui.closeModalBtn.get());
     },
     async chooseTemplate(name: string) {
-      await selectEvent.select(ui.templateSelect.get(), [name]);
+      await user.click(ui.templateSelect.get());
+      await user.click(byRole('option', { name }).get());
+
       await user.click(ui.confirmApplyTemplateBtn.get());
     },
     async toggleFilterByPermission(permission: Permissions) {

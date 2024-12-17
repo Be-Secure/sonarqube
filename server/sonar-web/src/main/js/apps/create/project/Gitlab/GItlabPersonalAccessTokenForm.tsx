@@ -17,6 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+import { FormattedMessage } from 'react-intl';
 import {
   ButtonPrimary,
   FlagErrorIcon,
@@ -26,9 +28,7 @@ import {
   LightPrimary,
   Link,
   Spinner,
-} from 'design-system';
-import React from 'react';
-import { FormattedMessage } from 'react-intl';
+} from '~design-system';
 import { translate } from '../../../../helpers/l10n';
 import { AlmInstanceBase } from '../../../../types/alm-settings';
 import { usePersonalAccessToken } from '../usePersonalAccessToken';
@@ -69,10 +69,10 @@ export default function GitlabPersonalAccessTokenForm({
 
   return (
     <form className="sw-mt-3 sw-w-[50%]" onSubmit={handleSubmit}>
-      <LightPrimary as="h2" className="sw-heading-md">
+      <LightPrimary as="h2" className="sw-heading-lg">
         {translate('onboarding.create_project.pat_form.title')}
       </LightPrimary>
-      <LightPrimary as="p" className="sw-mt-2 sw-mb-4 sw-body-sm">
+      <LightPrimary as="p" className="sw-mt-2 sw-mb-4 sw-typo-default">
         {translate('onboarding.create_project.pat_form.help.gitlab')}
       </LightPrimary>
 

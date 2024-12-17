@@ -17,7 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { MetricKey } from '~sonar-aligned/types/metrics';
+import { SOFTWARE_QUALITY_RATING_METRICS_MAP } from '../../../helpers/constants';
 
 interface Domains {
   [domain: string]: { categories?: string[]; order: string[] };
@@ -31,16 +33,20 @@ export const domains: Domains = {
     categories: [NEW_CODE_CATEGORY, OVERALL_CATEGORY],
     order: [
       NEW_CODE_CATEGORY,
-      MetricKey.new_reliability_issues,
+      MetricKey.new_software_quality_reliability_issues,
       MetricKey.new_bugs,
       MetricKey.new_reliability_rating,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.new_reliability_rating],
       MetricKey.new_reliability_remediation_effort,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.new_reliability_remediation_effort],
 
       OVERALL_CATEGORY,
-      MetricKey.reliability_issues,
+      MetricKey.software_quality_reliability_issues,
       MetricKey.bugs,
       MetricKey.reliability_rating,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.reliability_rating],
       MetricKey.reliability_remediation_effort,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.reliability_remediation_effort],
     ],
   },
 
@@ -48,16 +54,20 @@ export const domains: Domains = {
     categories: [NEW_CODE_CATEGORY, OVERALL_CATEGORY],
     order: [
       NEW_CODE_CATEGORY,
-      MetricKey.new_security_issues,
+      MetricKey.new_software_quality_security_issues,
       MetricKey.new_vulnerabilities,
       MetricKey.new_security_rating,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.new_security_rating],
       MetricKey.new_security_remediation_effort,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.new_security_remediation_effort],
 
       OVERALL_CATEGORY,
-      MetricKey.security_issues,
+      MetricKey.software_quality_security_issues,
       MetricKey.vulnerabilities,
       MetricKey.security_rating,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.security_rating],
       MetricKey.security_remediation_effort,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.security_remediation_effort],
     ],
   },
 
@@ -67,11 +77,13 @@ export const domains: Domains = {
       NEW_CODE_CATEGORY,
       MetricKey.new_security_hotspots,
       MetricKey.new_security_review_rating,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.new_security_review_rating],
       MetricKey.new_security_hotspots_reviewed,
 
       OVERALL_CATEGORY,
       MetricKey.security_hotspots,
       MetricKey.security_review_rating,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.security_review_rating],
       MetricKey.security_hotspots_reviewed,
     ],
   },
@@ -80,19 +92,26 @@ export const domains: Domains = {
     categories: [NEW_CODE_CATEGORY, OVERALL_CATEGORY],
     order: [
       NEW_CODE_CATEGORY,
-      MetricKey.new_maintainability_issues,
+      MetricKey.new_software_quality_maintainability_issues,
       MetricKey.new_code_smells,
       MetricKey.new_technical_debt,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.new_technical_debt],
       MetricKey.new_sqale_debt_ratio,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.new_sqale_debt_ratio],
       MetricKey.new_maintainability_rating,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.new_maintainability_rating],
 
       OVERALL_CATEGORY,
-      MetricKey.maintainability_issues,
+      MetricKey.software_quality_maintainability_issues,
       MetricKey.code_smells,
       MetricKey.sqale_index,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.sqale_index],
       MetricKey.sqale_debt_ratio,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.sqale_debt_ratio],
       MetricKey.sqale_rating,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.sqale_rating],
       MetricKey.effort_to_reach_maintainability_rating_a,
+      SOFTWARE_QUALITY_RATING_METRICS_MAP[MetricKey.effort_to_reach_maintainability_rating_a],
     ],
   },
 
@@ -158,11 +177,11 @@ export const domains: Domains = {
   },
 
   Complexity: {
-    order: ['complexity', 'function_complexity', 'file_complexity', 'class_complexity'],
+    order: [MetricKey.complexity],
   },
 
   Releasability: {
-    order: ['releasability_rating', 'releasability_effort', 'alert_status'],
+    order: [MetricKey.releasability_rating, MetricKey.releasability_effort, MetricKey.alert_status],
   },
 
   Issues: {

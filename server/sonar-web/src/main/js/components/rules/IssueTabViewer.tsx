@@ -17,30 +17,35 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import classNames from 'classnames';
-import { LAYOUT_FOOTER_HEIGHT, ToggleButton } from 'design-system';
 import { cloneDeep, debounce, groupBy } from 'lodash';
 import * as React from 'react';
 import { Location } from 'react-router-dom';
+import { LAYOUT_FOOTER_HEIGHT, ToggleButton } from '~design-system';
 import { dismissNotice } from '../../api/users';
 import { CurrentUserContextInterface } from '../../app/components/current-user/CurrentUserContext';
 import withCurrentUserContext from '../../app/components/current-user/withCurrentUserContext';
 import { RuleDescriptionSections } from '../../apps/coding-rules/rule';
-import IssueGuide from '../../apps/issues/components/IssueGuide';
 import IssueHeader from '../../apps/issues/components/IssueHeader';
 import StyledHeader from '../../apps/issues/components/StyledHeader';
 import { fillBranchLike } from '../../helpers/branch-like';
 import { translate } from '../../helpers/l10n';
+import { withUseGetFixSuggestionsIssues } from '../../queries/fix-suggestions';
 import { Issue, RuleDetails } from '../../types/types';
-import { NoticeType } from '../../types/users';
+import { CurrentUser, NoticeType } from '../../types/users';
 import ScreenPositionHelper from '../common/ScreenPositionHelper';
 import withLocation from '../hoc/withLocation';
 import MoreInfoRuleDescription from './MoreInfoRuleDescription';
 import RuleDescription from './RuleDescription';
+import { TabSelectorContext } from './TabSelectorContext';
 
 interface IssueTabViewerProps extends CurrentUserContextInterface {
   activityTabContent?: React.ReactNode;
+  aiSuggestionAvailable: boolean;
   codeTabContent?: React.ReactNode;
+  currentUser: CurrentUser;
+  cveId?: string;
   extendedDescription?: string;
   issue: Issue;
   location: Location;
@@ -49,6 +54,7 @@ interface IssueTabViewerProps extends CurrentUserContextInterface {
   ruleDetails: RuleDetails;
   selectedFlowIndex?: number;
   selectedLocationIndex?: number;
+  suggestionTabContent?: React.ReactNode;
 }
 interface State {
   displayEducationalPrinciplesNotification?: boolean;
@@ -70,6 +76,7 @@ export enum TabKeys {
   WhyIsThisAnIssue = 'why',
   HowToFixIt = 'how_to_fix',
   AssessTheIssue = 'assess_the_problem',
+  CodeFix = 'code_fix',
   Activity = 'activity',
   MoreInfo = 'more_info',
 }
@@ -118,6 +125,7 @@ export class IssueTabViewer extends React.PureComponent<IssueTabViewerProps, Sta
       issue,
       selectedFlowIndex,
       selectedLocationIndex,
+      aiSuggestionAvailable,
     } = this.props;
 
     const { selectedTab } = this.state;
@@ -127,8 +135,9 @@ export class IssueTabViewer extends React.PureComponent<IssueTabViewerProps, Sta
       prevProps.ruleDescriptionContextKey !== ruleDescriptionContextKey ||
       prevProps.issue !== issue ||
       prevProps.selectedFlowIndex !== selectedFlowIndex ||
-      prevProps.selectedLocationIndex !== selectedLocationIndex ||
-      prevProps.currentUser !== currentUser
+      (prevProps.selectedLocationIndex ?? -1) !== (selectedLocationIndex ?? -1) ||
+      prevProps.currentUser !== currentUser ||
+      prevProps.aiSuggestionAvailable !== aiSuggestionAvailable
     ) {
       this.setState((pState) =>
         this.computeState(
@@ -172,9 +181,12 @@ export class IssueTabViewer extends React.PureComponent<IssueTabViewerProps, Sta
 
     const tabs = this.computeTabs(displayEducationalPrinciplesNotification);
 
+    const selectedTab =
+      resetSelectedTab || !prevState.selectedTab ? tabs[0] : prevState.selectedTab;
+
     return {
       tabs,
-      selectedTab: resetSelectedTab || !prevState.selectedTab ? tabs[0] : prevState.selectedTab,
+      selectedTab,
       displayEducationalPrinciplesNotification,
     };
   };
@@ -186,7 +198,10 @@ export class IssueTabViewer extends React.PureComponent<IssueTabViewerProps, Sta
       ruleDescriptionContextKey,
       extendedDescription,
       activityTabContent,
+      cveId,
       issue,
+      suggestionTabContent,
+      aiSuggestionAvailable,
     } = this.props;
 
     // As we might tamper with the description later on, we clone to avoid any side effect
@@ -227,6 +242,7 @@ export class IssueTabViewer extends React.PureComponent<IssueTabViewerProps, Sta
               descriptionSectionsByKey[RuleDescriptionSections.DEFAULT] ??
               descriptionSectionsByKey[RuleDescriptionSections.ROOT_CAUSE]
             ).concat(descriptionSectionsByKey[RuleDescriptionSections.INTRODUCTION] ?? [])}
+            cveId={cveId}
           />
         ),
       },
@@ -253,6 +269,16 @@ export class IssueTabViewer extends React.PureComponent<IssueTabViewerProps, Sta
           />
         ),
       },
+      ...(aiSuggestionAvailable
+        ? [
+            {
+              value: TabKeys.CodeFix,
+              key: TabKeys.CodeFix,
+              label: translate('coding_rules.description_section.title', TabKeys.CodeFix),
+              content: suggestionTabContent,
+            },
+          ]
+        : []),
       {
         value: TabKeys.Activity,
         key: TabKeys.Activity,
@@ -330,9 +356,11 @@ export class IssueTabViewer extends React.PureComponent<IssueTabViewerProps, Sta
   };
 
   handleSelectTabs = (currentTabKey: TabKeys) => {
-    this.setState(({ tabs }) => ({
-      selectedTab: tabs.find((tab) => tab.key === currentTabKey) || tabs[0],
-    }));
+    this.setState(({ tabs }) => {
+      return {
+        selectedTab: tabs.find((tab) => tab.key === currentTabKey) || tabs[0],
+      };
+    });
   };
 
   render() {
@@ -352,11 +380,10 @@ export class IssueTabViewer extends React.PureComponent<IssueTabViewerProps, Sta
             }}
             className="sw-overflow-y-auto"
           >
-            <IssueGuide
-              // See IssueGuide for an explanation on why we want top > 0.
-              run={top > 0}
-            />
-            <StyledHeader headerHeight={this.headerNode?.clientHeight ?? 0} className="sw-z-normal">
+            <StyledHeader
+              headerHeight={this.headerNode?.clientHeight ?? 0}
+              className="sw-z-issue-header"
+            >
               <div className="sw-p-6 sw-pb-4" ref={(node) => (this.headerNode = node)}>
                 <IssueHeader
                   issue={issue}
@@ -378,19 +405,20 @@ export class IssueTabViewer extends React.PureComponent<IssueTabViewerProps, Sta
               aria-labelledby={`tab-${selectedTab.key}`}
               id={`tabpanel-${selectedTab.key}`}
             >
-              {
-                // Preserve tabs state by always rendering all of them. Only hide them when not selected
-                tabs.map((tab) => (
+              {tabs
+                .filter((t) => t.key === selectedTab.key)
+                .map((tab) => (
                   <div
                     className={classNames({
                       'sw-hidden': tab.key !== selectedTab.key,
                     })}
                     key={tab.key}
                   >
-                    {tab.content}
+                    <TabSelectorContext.Provider value={this.handleSelectTabs}>
+                      {tab.content}
+                    </TabSelectorContext.Provider>
                   </div>
-                ))
-              }
+                ))}
             </div>
           </div>
         )}
@@ -399,4 +427,6 @@ export class IssueTabViewer extends React.PureComponent<IssueTabViewerProps, Sta
   }
 }
 
-export default withCurrentUserContext(withLocation(IssueTabViewer));
+export default withCurrentUserContext(
+  withLocation(withUseGetFixSuggestionsIssues<IssueTabViewerProps>(IssueTabViewer)),
+);

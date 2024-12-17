@@ -17,30 +17,67 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonSecondary, FlagMessage, Link, Spinner } from 'design-system';
+
+import { Button, Spinner } from '@sonarsource/echoes-react';
+import { noop } from 'lodash';
 import * as React from 'react';
-import { doImport } from '../../../api/project-dump';
+import { FlagMessage, Link } from '~design-system';
 import DateFromNow from '../../../components/intl/DateFromNow';
 import DateTimeFormatter from '../../../components/intl/DateTimeFormatter';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { getComponentBackgroundTaskUrl } from '../../../helpers/urls';
-import { DumpStatus, DumpTask } from '../../../types/project-dump';
+import { useLastActivityQuery } from '../../../queries/ce';
+import { StaleTime } from '../../../queries/common';
+import { useProjectDumpStatusQuery, useProjectImportMutation } from '../../../queries/project-dump';
+import { DumpTask } from '../../../types/project-dump';
 import { TaskStatuses, TaskTypes } from '../../../types/tasks';
+import { getImportExportActivityParams } from '../utils';
 
 interface Props {
-  analysis?: DumpTask;
   componentKey: string;
   importEnabled: boolean;
-  loadStatus: () => void;
-  status: DumpStatus;
-  task?: DumpTask;
 }
+const PROGRESS_STATUS = [TaskStatuses.Pending, TaskStatuses.InProgress];
+const REFRESH_INTERVAL = 5000;
 
 export default function Import(props: Readonly<Props>) {
-  const handleImport = () => {
-    doImport(props.componentKey).then(props.loadStatus, () => {
-      /* no catch needed */
-    });
+  const { componentKey, importEnabled } = props;
+
+  const {
+    data: task,
+    refetch: refetchImportActivity,
+    isLoading: isTaskLoading,
+  } = useLastActivityQuery(getImportExportActivityParams(componentKey, TaskTypes.ProjectImport), {
+    refetchInterval: ({ state: { data } }) => {
+      return data && PROGRESS_STATUS.includes(data.status) ? REFRESH_INTERVAL : undefined;
+    },
+  });
+  const { data: analysis, isLoading: isAnalysisActivityLoading } = useLastActivityQuery(
+    getImportExportActivityParams(componentKey, TaskTypes.Report),
+    {
+      staleTime: StaleTime.SHORT,
+    },
+  );
+  const {
+    data: status,
+    isLoading: isStatusLoading,
+    refetch: refetchDumpStatus,
+  } = useProjectDumpStatusQuery(componentKey, {
+    refetchInterval: () => {
+      return task && PROGRESS_STATUS.includes(task.status) ? REFRESH_INTERVAL : undefined;
+    },
+  });
+  const { mutateAsync: doImport } = useProjectImportMutation();
+  const isLoading = isTaskLoading || isAnalysisActivityLoading || isStatusLoading;
+
+  const handleImport = async () => {
+    try {
+      await doImport(componentKey);
+      refetchImportActivity();
+      refetchDumpStatus();
+    } catch (_) {
+      noop();
+    }
   };
 
   function renderWhenCanNotImport() {
@@ -57,13 +94,13 @@ export default function Import(props: Readonly<Props>) {
     return (
       <>
         <div className="sw-mt-4">{translate('project_dump.import_form_description')}</div>
-        <ButtonSecondary
+        <Button
           aria-label={translate('project_dump.do_import')}
           className="sw-mt-4"
           onClick={handleImport}
         >
           {translate('project_dump.do_import')}
-        </ButtonSecondary>
+        </Button>
       </>
     );
   }
@@ -134,8 +171,6 @@ export default function Import(props: Readonly<Props>) {
     );
   }
 
-  const { importEnabled, status, task, analysis } = props;
-
   function renderContent(): React.ReactNode {
     switch (task?.status) {
       case TaskStatuses.Success:
@@ -150,9 +185,9 @@ export default function Import(props: Readonly<Props>) {
       case TaskStatuses.Failed:
         return renderWhenImportFailed();
       default:
-        if (!status.canBeImported) {
+        if (status && !status.canBeImported) {
           return renderWhenCanNotImport();
-        } else if (!status.dumpToImport) {
+        } else if (status && status.dumpToImport === undefined) {
           return renderWhenNoDump();
         }
         return <div>{renderImportForm()}</div>;
@@ -162,14 +197,16 @@ export default function Import(props: Readonly<Props>) {
   return (
     <>
       <div className="sw-my-4">
-        <span className="sw-heading-md">{translate('project_dump.import')}</span>
+        <h2 className="sw-heading-lg">{translate('project_dump.import')}</h2>
       </div>
 
-      {importEnabled ? (
-        renderContent()
-      ) : (
-        <div>{translate('project_dump.import_form_description_disabled')}</div>
-      )}
+      <Spinner isLoading={isLoading}>
+        {importEnabled ? (
+          renderContent()
+        ) : (
+          <div>{translate('project_dump.import_form_description_disabled')}</div>
+        )}
+      </Spinner>
     </>
   );
 }

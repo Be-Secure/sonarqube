@@ -19,6 +19,7 @@
  */
 
 import { LinkHighlight, LinkStandalone, Spinner } from '@sonarsource/echoes-react';
+import * as React from 'react';
 import {
   Breadcrumbs,
   FlagMessage,
@@ -27,8 +28,8 @@ import {
   LightPrimary,
   SubTitle,
   Title,
-} from 'design-system';
-import * as React from 'react';
+} from '~design-system';
+import { Image } from '~sonar-aligned/components/common/Image';
 import { isMainBranch } from '~sonar-aligned/helpers/branch-like';
 import { AnalysisStatus } from '../../apps/overview/components/AnalysisStatus';
 import { translate } from '../../helpers/l10n';
@@ -38,7 +39,6 @@ import { AlmKeys, AlmSettingsInstance, ProjectAlmBindingResponse } from '../../t
 import { MainBranch } from '../../types/branch-like';
 import { Component } from '../../types/types';
 import { LoggedInUser } from '../../types/users';
-import { Image } from '../common/Image';
 import AzurePipelinesTutorial from './azure-pipelines/AzurePipelinesTutorial';
 import BitbucketPipelinesTutorial from './bitbucket-pipelines/BitbucketPipelinesTutorial';
 import GitHubActionTutorial from './github-action/GitHubActionTutorial';
@@ -56,7 +56,7 @@ export interface TutorialSelectionRendererProps {
   currentUser: LoggedInUser;
   currentUserCanScanProject: boolean;
   loading: boolean;
-  projectBinding?: ProjectAlmBindingResponse;
+  projectBinding?: ProjectAlmBindingResponse | null;
   selectedTutorial?: TutorialModes;
   willRefreshAutomatically?: boolean;
 }
@@ -98,7 +98,7 @@ export default function TutorialSelectionRenderer(props: TutorialSelectionRender
     willRefreshAutomatically,
   } = props;
 
-  const { data: { branchLikes } = { branchLikes: [] } } = useBranchesQuery(component);
+  const { data: branchLikes = [] } = useBranchesQuery(component);
 
   const mainBranchName =
     (branchLikes.find((b) => isMainBranch(b)) as MainBranch | undefined)?.name ||
@@ -137,18 +137,18 @@ export default function TutorialSelectionRenderer(props: TutorialSelectionRender
   }
 
   return (
-    <div className="sw-body-sm">
+    <div className="sw-typo-default">
       <AnalysisStatus component={component} className="sw-mb-4 sw-w-max" />
 
       {selectedTutorial === undefined && (
         <div className="sw-flex sw-flex-col">
-          <Title className="sw-mb-6 sw-heading-lg">
+          <Title className="sw-mb-6 sw-heading-xl">
             {translate('onboarding.tutorial.page.title')}
           </Title>
 
           <LightPrimary>{translate('onboarding.tutorial.page.description')}</LightPrimary>
 
-          <SubTitle className="sw-mt-12 sw-mb-4 sw-heading-md">
+          <SubTitle className="sw-mt-12 sw-mb-4 sw-heading-lg">
             {translate('onboarding.tutorial.choose_method')}
           </SubTitle>
 

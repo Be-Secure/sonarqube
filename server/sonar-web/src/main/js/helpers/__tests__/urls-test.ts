@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { searchParamsToQuery } from '~sonar-aligned/helpers/router';
 import { queryToSearchString } from '~sonar-aligned/helpers/urls';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
@@ -124,7 +125,7 @@ describe('#getComponentOverviewUrl', () => {
     ).toEqual(
       expect.objectContaining({
         pathname: '/dashboard',
-        search: queryToSearchString({ id: SIMPLE_COMPONENT_KEY, code_scope: 'new' }),
+        search: queryToSearchString({ id: SIMPLE_COMPONENT_KEY, codeScope: 'new' }),
       }),
     );
   });
@@ -139,7 +140,7 @@ describe('#getComponentOverviewUrl', () => {
     ).toEqual(
       expect.objectContaining({
         pathname: '/dashboard',
-        search: queryToSearchString({ id: SIMPLE_COMPONENT_KEY, code_scope: 'overall' }),
+        search: queryToSearchString({ id: SIMPLE_COMPONENT_KEY, codeScope: 'overall' }),
       }),
     );
   });

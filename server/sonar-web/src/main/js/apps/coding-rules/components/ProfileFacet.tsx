@@ -19,9 +19,9 @@
  */
 
 import styled from '@emotion/styled';
-import { FacetBox, FacetItem, HelperHintIcon, Note, themeColor } from 'design-system';
 import { sortBy } from 'lodash';
 import * as React from 'react';
+import { FacetBox, FacetItem, HelperHintIcon, Note, themeColor } from '~design-system';
 import DocHelpTooltip from '~sonar-aligned/components/controls/DocHelpTooltip';
 import { Profile } from '../../../api/quality-profiles';
 import { DocLink } from '../../../helpers/doc-links';
@@ -110,7 +110,7 @@ export default class ProfileFacet extends React.PureComponent<Props> {
         <FacetToggleActiveStyle
           selected={!!activation}
           aria-checked={activation}
-          className="js-active sw-body-xs"
+          className="js-active sw-typo-sm"
           onClick={isCompare ? this.stopPropagation : this.handleActiveClick}
           role="radio"
           tabIndex={-1}
@@ -120,7 +120,7 @@ export default class ProfileFacet extends React.PureComponent<Props> {
         <FacetToggleInActiveStyle
           selected={!activation}
           aria-checked={!activation}
-          className="js-inactive sw-body-xs sw-ml-1"
+          className="js-inactive sw-typo-sm sw-ml-1"
           onClick={isCompare ? this.stopPropagation : this.handleInactiveClick}
           role="radio"
           tabIndex={-1}
@@ -162,7 +162,6 @@ export default class ProfileFacet extends React.PureComponent<Props> {
 
     const property = 'profile';
     const headerId = `facet_${property}`;
-
     const count = value ? 1 : undefined;
 
     return (
@@ -174,7 +173,6 @@ export default class ProfileFacet extends React.PureComponent<Props> {
         onClear={this.handleClear}
         onClick={this.handleHeaderClick}
         open={open}
-        clearIconLabel={translate('clear')}
         count={count}
         help={
           <DocHelpTooltip

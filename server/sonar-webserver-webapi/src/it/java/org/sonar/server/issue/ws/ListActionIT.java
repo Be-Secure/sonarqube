@@ -40,8 +40,8 @@ import org.sonar.db.DbTester;
 import org.sonar.db.component.BranchType;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.component.ProjectData;
+import org.sonar.db.issue.ImpactDto;
 import org.sonar.db.issue.IssueDto;
-import org.sonar.db.metric.MetricDto;
 import org.sonar.db.protobuf.DbIssues;
 import org.sonar.db.rule.RuleDto;
 import org.sonar.db.user.UserDto;
@@ -74,6 +74,7 @@ import static org.sonar.api.issue.Issue.STATUS_CLOSED;
 import static org.sonar.api.issue.Issue.STATUS_CONFIRMED;
 import static org.sonar.api.issue.Issue.STATUS_OPEN;
 import static org.sonar.api.issue.Issue.STATUS_RESOLVED;
+import static org.sonar.api.issue.impact.SoftwareQuality.MAINTAINABILITY;
 import static org.sonar.api.measures.CoreMetrics.ANALYSIS_FROM_SONARQUBE_9_4_KEY;
 import static org.sonar.api.utils.DateUtils.formatDateTime;
 import static org.sonar.api.utils.DateUtils.parseDate;
@@ -86,6 +87,7 @@ import static org.sonar.db.rule.RuleTesting.XOO_X1;
 import static org.sonar.db.rule.RuleTesting.XOO_X2;
 import static org.sonar.db.rule.RuleTesting.newRule;
 import static org.sonar.server.tester.UserSessionRule.standalone;
+import static org.sonarqube.ws.Common.Impact.newBuilder;
 
 @RunWith(DataProviderRunner.class)
 public class ListActionIT {
@@ -196,7 +198,8 @@ public class ListActionIT {
       .setMessageFormattings(DbIssues.MessageFormattings.newBuilder().addMessageFormatting(MESSAGE_FORMATTING).build())
       .setStatus(STATUS_OPEN)
       .setResolution(null)
-      .setSeverity("MAJOR")
+      .setSeverity("BLOCKER")
+      .replaceAllImpacts(List.of(new ImpactDto().setSoftwareQuality(MAINTAINABILITY).setSeverity(org.sonar.api.issue.impact.Severity.BLOCKER)))
       .setAuthorLogin("John")
       .setAssigneeUuid(simon.getUuid())
       .setTags(asList("bug", "owasp"))
@@ -217,12 +220,13 @@ public class ListActionIT {
       .extracting(
         Issue::getKey, Issue::getRule, Issue::getSeverity, Issue::getComponent, Issue::getResolution, Issue::getStatus, Issue::getMessage, Issue::getMessageFormattingsList,
         Issue::getEffort, Issue::getAssignee, Issue::getAuthor, Issue::getLine, Issue::getHash, Issue::getTagsList, Issue::getCreationDate, Issue::getUpdateDate,
-        Issue::getQuickFixAvailable, Issue::getCodeVariantsList)
+        Issue::getQuickFixAvailable, Issue::getCodeVariantsList, Issue::getImpactsList)
       .containsExactlyInAnyOrder(
-        tuple(issue.getKey(), rule.getKey().toString(), Severity.MAJOR, file.getKey(), "", STATUS_OPEN, "the message",
+        tuple(issue.getKey(), rule.getKey().toString(), Severity.BLOCKER, file.getKey(), "", STATUS_OPEN, "the message",
           MessageFormattingUtils.dbMessageFormattingListToWs(List.of(MESSAGE_FORMATTING)), "10min",
           simon.getLogin(), "John", 42, "a227e508d6646b55a086ee11d63b21e9", asList("bug", "owasp"), formatDateTime(issue.getIssueCreationDate()),
-          formatDateTime(issue.getIssueUpdateDate()), false, List.of("variant1", "variant2")));
+          formatDateTime(issue.getIssueUpdateDate()), false, List.of("variant1", "variant2"),
+          List.of(newBuilder().setSoftwareQuality(Common.SoftwareQuality.MAINTAINABILITY).setSeverity(Common.ImpactSeverity.ImpactSeverity_BLOCKER).build())));
 
     assertThat(response.getComponentsList())
       .extracting(
@@ -639,8 +643,7 @@ public class ListActionIT {
     RuleDto rule = newIssueRule();
 
     db.components().insertSnapshot(project, s -> s.setLast(true).setPeriodMode(REFERENCE_BRANCH.name()));
-    MetricDto metric = db.measures().insertMetric(metricDto -> metricDto.setKey(ANALYSIS_FROM_SONARQUBE_9_4_KEY));
-    db.measures().insertLiveMeasure(project, metric);
+    db.measures().insertMeasure(project, m -> m.addValue(ANALYSIS_FROM_SONARQUBE_9_4_KEY, 1.0D));
 
     List<String> beforeNewCodePeriod = IntStream.range(0, 10).mapToObj(number -> db.issues().insertIssue(rule, project, file, i -> i
       .setEffort(10L)

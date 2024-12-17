@@ -17,10 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { last } from 'lodash';
-import React from 'react';
 import { Route } from 'react-router-dom';
 import { byRole } from '~sonar-aligned/helpers/testSelector';
 import ComponentsServiceMock from '../../../api/mocks/ComponentsServiceMock';
@@ -77,7 +77,7 @@ function getPageObjects() {
 
   const ui = {
     pageTitle: byRole('heading', { name: 'update_key.page' }),
-    updateKeyDialog: byRole('dialog'),
+    updateKeyDialog: byRole('alertdialog'),
     newKeyInput: byRole('textbox'),
     updateInputButton: byRole('button', { name: 'update_verb' }),
     resetInputButton: byRole('button', { name: 'reset_verb' }),

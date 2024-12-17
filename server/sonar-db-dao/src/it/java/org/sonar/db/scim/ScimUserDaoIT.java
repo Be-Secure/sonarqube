@@ -39,9 +39,10 @@ import org.sonar.db.Pagination;
 import org.sonar.db.user.GroupDto;
 import org.sonar.db.user.UserDto;
 
-import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
+import static org.apache.commons.lang3.RandomStringUtils.secure;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.AssertionsForClassTypes.tuple;
 import static org.assertj.core.api.Fail.fail;
 
 class ScimUserDaoIT {
@@ -118,16 +119,16 @@ class ScimUserDaoIT {
     List<String> expectedScimUserUuids) {
     generateScimUsers(totalScimUsers);
 
-    List<ScimUserDto> scimUserDtos = scimUserDao.findScimUsers(dbSession, ScimUserQuery.empty(), OffsetBasedPagination.forOffset(offset,
+    List<ScimUserWithUsernameDto> scimUserDtos = scimUserDao.findScimUsers(dbSession, ScimUserQuery.empty(), OffsetBasedPagination.forOffset(offset,
       pageSize));
 
     List<String> scimUsersUuids = toScimUsersUuids(scimUserDtos);
     assertThat(scimUsersUuids).containsExactlyElementsOf(expectedScimUserUuids);
   }
 
-  private List<String> toScimUsersUuids(Collection<ScimUserDto> scimUserDtos) {
+  private List<String> toScimUsersUuids(Collection<ScimUserWithUsernameDto> scimUserDtos) {
     return scimUserDtos.stream()
-      .map(ScimUserDto::getScimUserUuid)
+      .map(ScimUserWithUsernameDto::getScimUserUuid)
       .toList();
   }
 
@@ -194,7 +195,7 @@ class ScimUserDaoIT {
     insertScimUsersWithUsers(userLogins);
     ScimUserQuery query = ScimUserQuery.builder().userName(search).build();
 
-    List<ScimUserDto> scimUsersByQuery = scimUserDao.findScimUsers(dbSession, query, Pagination.all());
+    List<ScimUserWithUsernameDto> scimUsersByQuery = scimUserDao.findScimUsers(dbSession, query, Pagination.all());
 
     List<String> scimUsersUuids = toScimUsersUuids(scimUsersByQuery);
     assertThat(scimUsersUuids).containsExactlyElementsOf(expectedScimUserUuids);
@@ -212,13 +213,30 @@ class ScimUserDaoIT {
 
     ScimUserQuery query = ScimUserQuery.builder().groupUuid(group1dto.getUuid()).build();
 
-    List<ScimUserDto> scimUsers = scimUserDao.findScimUsers(dbSession, query, Pagination.all());
+    List<ScimUserWithUsernameDto> scimUsers = scimUserDao.findScimUsers(dbSession, query, Pagination.all());
 
     List<String> scimUsersUuids = toScimUsersUuids(scimUsers);
     assertThat(scimUsersUuids).containsExactlyInAnyOrder(
       users.get("userAInGroupA").getScimUserUuid(),
       users.get("userBInGroupA").getScimUserUuid()
     );
+  }
+
+  @Test
+  void findScimUsers_shouldReturnTheExpectedScimUsersWithUsername() {
+    insertScimUsersWithUsers(List.of("userA", "userB"));
+
+    ScimUserQuery query = ScimUserQuery.builder().userName("userA").build();
+
+    List<ScimUserWithUsernameDto> scimUsers = scimUserDao.findScimUsers(dbSession, query, Pagination.all());
+
+    List<String> scimUsersUuids = toScimUsersUuids(scimUsers);
+
+    assertThat(scimUsers)
+      .extracting(ScimUserWithUsernameDto::getScimUserUuid, ScimUserWithUsernameDto::getUserName)
+      .contains(
+        tuple(scimUsersUuids.get(0), "userA")
+      );
   }
 
   private GroupDto createGroupWithUsers(ScimUserTestData... testUsers) {
@@ -238,7 +256,7 @@ class ScimUserDaoIT {
 
     ScimUserQuery query = ScimUserQuery.builder().scimUserUuids(expectedScimUserUuids).build();
 
-    List<ScimUserDto> scimUsersByQuery = scimUserDao.findScimUsers(dbSession, query, Pagination.all());
+    List<ScimUserWithUsernameDto> scimUsersByQuery = scimUserDao.findScimUsers(dbSession, query, Pagination.all());
 
     List<String> scimUsersUuids = toScimUsersUuids(scimUsersByQuery);
     assertThat(scimUsersByQuery)
@@ -255,10 +273,10 @@ class ScimUserDaoIT {
 
     ScimUserQuery query = ScimUserQuery.builder().scimUserUuids(scimUserUuids).userName("username_5").build();
 
-    List<ScimUserDto> scimUsersByQuery = scimUserDao.findScimUsers(dbSession, query, Pagination.all());
+    List<ScimUserWithUsernameDto> scimUsersByQuery = scimUserDao.findScimUsers(dbSession, query, Pagination.all());
 
     assertThat(scimUsersByQuery).hasSize(1)
-      .extracting(ScimUserDto::getScimUserUuid)
+      .extracting(ScimUserWithUsernameDto::getScimUserUuid)
       .contains("6");
   }
 
@@ -271,11 +289,11 @@ class ScimUserDaoIT {
 
     ScimUserQuery query = ScimUserQuery.builder().userUuids(allUsersUuid).build();
 
-    List<ScimUserDto> scimUsersByQuery = scimUserDao.findScimUsers(dbSession, query, Pagination.all());
+    List<ScimUserWithUsernameDto> scimUsersByQuery = scimUserDao.findScimUsers(dbSession, query, Pagination.all());
 
     assertThat(scimUsersByQuery)
       .hasSameSizeAs(allUsersUuid)
-      .extracting(ScimUserDto::getUserUuid)
+      .extracting(ScimUserWithUsernameDto::getUserUuid)
       .containsAll(allUsersUuid);
   }
 
@@ -288,10 +306,10 @@ class ScimUserDaoIT {
 
     ScimUserQuery query = ScimUserQuery.builder().userUuids(allUsersUuid).userName("username_5").build();
 
-    List<ScimUserDto> scimUsersByQuery = scimUserDao.findScimUsers(dbSession, query, Pagination.all());
+    List<ScimUserWithUsernameDto> scimUsersByQuery = scimUserDao.findScimUsers(dbSession, query, Pagination.all());
 
     assertThat(scimUsersByQuery).hasSize(1)
-      .extracting(ScimUserDto::getScimUserUuid)
+      .extracting(ScimUserWithUsernameDto::getScimUserUuid)
       .contains("6");
   }
 
@@ -342,7 +360,7 @@ class ScimUserDaoIT {
 
   @Test
   void deleteFromUserUuid_shouldNotFail_whenNoUser() {
-    assertThatCode(() -> scimUserDao.deleteByUserUuid(dbSession, randomAlphanumeric(6))).doesNotThrowAnyException();
+    assertThatCode(() -> scimUserDao.deleteByUserUuid(dbSession, secure().nextAlphanumeric(6))).doesNotThrowAnyException();
   }
 
   private List<ScimUserTestData> insertScimUsersWithUsers(List<String> userLogins) {
@@ -359,7 +377,7 @@ class ScimUserDaoIT {
   }
 
   private ScimUserTestData insertScimUser(String scimUserUuid) {
-    return insertScimUser(scimUserUuid, randomAlphanumeric(40));
+    return insertScimUser(scimUserUuid, secure().nextAlphanumeric(40));
   }
 
   private ScimUserTestData insertScimUser(String scimUserUuid, String userUuid) {

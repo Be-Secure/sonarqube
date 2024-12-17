@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { Status } from '~sonar-aligned/types/common';
 import { MetricKey } from '~sonar-aligned/types/metrics';
 
@@ -99,6 +100,7 @@ export interface HistoryItem {
 export interface MeasureHistory {
   history: HistoryItem[];
   metric: MetricKey;
+  splitPointDate?: Date;
 }
 
 export interface Serie {

@@ -19,8 +19,11 @@
  */
 package org.sonar.xoo.rule;
 
+import java.util.HashMap;
+import java.util.Map;
 import javax.annotation.Nullable;
 import org.sonar.api.SonarRuntime;
+import org.sonar.api.config.Configuration;
 import org.sonar.api.issue.impact.Severity;
 import org.sonar.api.issue.impact.SoftwareQuality;
 import org.sonar.api.rule.RuleScope;
@@ -34,10 +37,10 @@ import org.sonar.api.utils.Version;
 import org.sonar.xoo.Xoo;
 import org.sonar.xoo.Xoo2;
 import org.sonar.xoo.checks.Check;
-import org.sonar.xoo.rule.variant.HotspotWithCodeVariantsSensor;
 import org.sonar.xoo.rule.hotspot.HotspotWithContextsSensor;
 import org.sonar.xoo.rule.hotspot.HotspotWithSingleContextSensor;
 import org.sonar.xoo.rule.hotspot.HotspotWithoutContextSensor;
+import org.sonar.xoo.rule.variant.HotspotWithCodeVariantsSensor;
 import org.sonar.xoo.rule.variant.IssueWithCodeVariantsSensor;
 
 import static org.sonar.api.server.rule.RuleDescriptionSection.RuleDescriptionSectionKeys.ASSESS_THE_PROBLEM_SECTION_KEY;
@@ -63,12 +66,16 @@ public class XooRulesDefinition implements RulesDefinition {
   @Nullable
   private final Version version;
 
+  @Nullable
+  private final Configuration configuration;
+
   public XooRulesDefinition() {
-    this(null);
+    this(null, null);
   }
 
-  public XooRulesDefinition(@Nullable SonarRuntime sonarRuntime) {
+  public XooRulesDefinition(@Nullable SonarRuntime sonarRuntime, @Nullable Configuration configuration) {
     this.version = sonarRuntime != null ? sonarRuntime.getApiVersion() : null;
+    this.configuration = configuration;
   }
 
   @Override
@@ -120,10 +127,16 @@ public class XooRulesDefinition implements RulesDefinition {
     ruleWithParameters.createParam("integer").setType(RuleParamType.INTEGER);
     ruleWithParameters.createParam("float").setType(RuleParamType.FLOAT);
 
+    Map<SoftwareQuality, Severity> customImpacts = getCustomImpactsForOneIssuePerLine();
     NewRule oneIssuePerLine = repo.createRule(OneIssuePerLineSensor.RULE_KEY).setName("One Issue Per Line")
       .setCleanCodeAttribute(CleanCodeAttribute.COMPLETE)
-      .addDefaultImpact(SoftwareQuality.MAINTAINABILITY, Severity.MEDIUM)
       .setTags("line");
+    if (!customImpacts.isEmpty()) {
+      customImpacts.forEach(oneIssuePerLine::addDefaultImpact);
+    } else {
+      oneIssuePerLine.addDefaultImpact(SoftwareQuality.MAINTAINABILITY, Severity.INFO);
+    }
+
     addDescriptionSectionsWithoutContexts(oneIssuePerLine, "Generate an issue on each line of a file. It requires the metric \"lines\".");
     addHowToFixSectionsWithContexts(oneIssuePerLine);
     oneIssuePerLine
@@ -133,7 +146,7 @@ public class XooRulesDefinition implements RulesDefinition {
 
     NewRule oneQuickFixPerLine = repo.createRule(OneQuickFixPerLineSensor.RULE_KEY).setName("One Quick Fix Per Line")
       .setCleanCodeAttribute(CleanCodeAttribute.DISTINCT)
-      .addDefaultImpact(SoftwareQuality.MAINTAINABILITY, Severity.MEDIUM)
+      .addDefaultImpact(SoftwareQuality.MAINTAINABILITY, Severity.BLOCKER)
       .setTags("line");
     addAllDescriptionSections(oneQuickFixPerLine,
       "Generate an issue with quick fix available on each line of a file. It requires the metric \"lines\".");
@@ -215,7 +228,6 @@ public class XooRulesDefinition implements RulesDefinition {
       .setType(RuleType.SECURITY_HOTSPOT);
     addAllDescriptionSections(hotspotWithRangeAndMultipleLocations, "Hotspot with range and multiple locations");
 
-
     NewRule issueOnEachFileWithExtUnknown = repo.createRule(OneIssuePerUnknownFileSensor.RULE_KEY).setName("Creates issues on each file with extension 'unknown'");
     addAllDescriptionSections(issueOnEachFileWithExtUnknown, "This issue is generated on each file with extenstion 'unknown'");
 
@@ -240,6 +252,19 @@ public class XooRulesDefinition implements RulesDefinition {
       .setCleanCodeAttribute(CleanCodeAttribute.TRUSTWORTHY)
       .setType(RuleType.VULNERABILITY);
     addAllDescriptionSections(oneVulnerabilityIssuePerProject, "Generate an issue on each project");
+
+    if (configuration != null && configuration.get("sonar.xoo.OneVulnerabilityPerLine.securityStandards").isPresent()) {
+      String[] standards = configuration.get("sonar.xoo.OneVulnerabilityPerLine.securityStandards").get().split(",");
+      for (String standard : standards) {
+        NewRule oneVulnerabilityIssuePerSecurityStandard = repo.createRule(OneVulnerabilityPerSecurityStandardSensor.RULE_KEY_PREFIX + standard)
+          .setName("One Vulnerability per line containing '%s'".formatted(standard))
+          .addDefaultImpact(SoftwareQuality.SECURITY, Severity.MEDIUM)
+          .setCleanCodeAttribute(CleanCodeAttribute.TRUSTWORTHY)
+          .setType(RuleType.VULNERABILITY);
+        addSecurityStandard(oneVulnerabilityIssuePerSecurityStandard, standard);
+        addAllDescriptionSections(oneVulnerabilityIssuePerSecurityStandard, "Generate an issue on each line containing '" + standard + "'.");
+      }
+    }
 
     oneVulnerabilityIssuePerProject
       .setDebtRemediationFunction(oneVulnerabilityIssuePerProject.debtRemediationFunctions().linearWithOffset("25min", "1h"))
@@ -273,7 +298,7 @@ public class XooRulesDefinition implements RulesDefinition {
       oneVulnerabilityIssuePerProject
         .addOwaspTop10(Y2017, OwaspTop10.A9, OwaspTop10.A10)
         .addOwaspTop10(Y2021, OwaspTop10.A6, OwaspTop10.A9)
-        .addCwe(250, 564, 546, 943);
+        .addCwe(89, 250, 311, 546, 564, 943);
     }
 
     if (version != null && version.isGreaterThanOrEqual(Version.create(9, 5))) {
@@ -297,6 +322,13 @@ public class XooRulesDefinition implements RulesDefinition {
         .addOwaspAsvs(OwaspAsvsVersion.V4_0, "11.1.2", "14.5.1", "14.5.4");
     }
 
+    if (version != null && version.isGreaterThanOrEqual(Version.create(10, 7))) {
+      hotspot
+        .addStig(StigVersion.ASD_V5R3, "V-222599", "V-222615", "V-222653");
+      oneVulnerabilityIssuePerProject
+        .addStig(StigVersion.ASD_V5R3, "V-222596", "V-222608", "V-222653");
+    }
+
     NewRule hotspotWithContexts = repo.createRule(HotspotWithContextsSensor.RULE_KEY)
       .setName("Find security hotspots with contexts")
       .setType(RuleType.SECURITY_HOTSPOT)
@@ -318,6 +350,46 @@ public class XooRulesDefinition implements RulesDefinition {
     addAllDescriptionSections(hotspotWithCodeVariants, "Search for a given variant in Xoo files");
 
     repo.done();
+  }
+
+  private Map<SoftwareQuality, Severity> getCustomImpactsForOneIssuePerLine() {
+    Map<SoftwareQuality, Severity> customImpacts = new HashMap<>();
+    if (configuration != null && configuration.get("sonar.xoo.OneIssuePerLine.impacts").isPresent()) {
+      String[] impacts = configuration.get("sonar.xoo.OneIssuePerLine.impacts").get().split(",");
+      for (String impact : impacts) {
+        String[] impactArray = impact.split(":");
+        customImpacts.put(SoftwareQuality.valueOf(impactArray[0]), Severity.valueOf(impactArray[1]));
+      }
+    }
+    return customImpacts;
+  }
+
+  private void addSecurityStandard(NewRule rule, String standard) {
+    String[] splitStandard = standard.split(":");
+    switch (splitStandard[0]) {
+      case "cwe":
+        rule.addCwe(Integer.parseInt(splitStandard[1]));
+        break;
+      case "owaspTop10":
+        rule.addOwaspTop10(Y2017, OwaspTop10.valueOf(splitStandard[1]));
+        break;
+      case "owaspTop10-2021":
+        rule.addOwaspTop10(Y2021, OwaspTop10.valueOf(splitStandard[1]));
+        break;
+      case "stig-ASD_V5R3":
+        if (version != null && version.isGreaterThanOrEqual(Version.create(10, 7))) {
+          rule.addStig(StigVersion.ASD_V5R3, splitStandard[1]);
+        }
+        break;
+      case "pciDss-3.2":
+        rule.addPciDss(PciDssVersion.V3_2, splitStandard[1]);
+        break;
+      case "pciDss-4.0":
+        rule.addPciDss(PciDssVersion.V4_0, splitStandard[1]);
+        break;
+      default:
+        throw new IllegalArgumentException("Unknown standard: " + standard);
+    }
   }
 
   private static void defineRulesXooExternalWithCct(Context context) {

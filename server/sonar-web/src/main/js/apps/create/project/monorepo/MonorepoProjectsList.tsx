@@ -17,9 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonSecondary, SubTitle } from 'design-system';
-import React from 'react';
+
+import { Button } from '@sonarsource/echoes-react';
 import { FormattedMessage } from 'react-intl';
+import { SubTitle } from '~design-system';
 import { ProjectData, ProjectValidationCard } from '../components/ProjectValidation';
 
 interface Props {
@@ -60,9 +61,9 @@ export function MonorepoProjectsList({
       </div>
 
       <div className="sw-flex sw-justify-end sw-mt-4">
-        <ButtonSecondary onClick={onAddProject}>
+        <Button onClick={onAddProject}>
           <FormattedMessage id="onboarding.create_project.monorepo.add_project" />
-        </ButtonSecondary>
+        </Button>
       </div>
     </div>
   );

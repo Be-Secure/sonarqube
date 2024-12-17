@@ -17,8 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { LightLabel, PageContentFontWrapper, Title } from 'design-system';
+
 import * as React from 'react';
+import { LightLabel, PageContentFontWrapper, Title } from '~design-system';
 import { translate } from '../../../helpers/l10n';
 import { Component } from '../../../types/types';
 import { LoggedInUser } from '../../../types/users';
@@ -58,7 +59,7 @@ export default class OtherTutorial extends React.PureComponent<Props, State> {
     const { step, token } = this.state;
 
     return (
-      <PageContentFontWrapper className="sw-body-sm">
+      <PageContentFontWrapper className="sw-typo-default">
         <div className="sw-mb-4">
           <Title>{translate('onboarding.project_analysis.header')} </Title>
           <LightLabel>{translate('onboarding.project_analysis.description')}</LightLabel>

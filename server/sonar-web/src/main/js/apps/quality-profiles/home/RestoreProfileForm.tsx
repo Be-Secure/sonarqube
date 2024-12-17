@@ -17,10 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonPrimary, FileInput, FlagMessage, FormField, Modal, Spinner } from 'design-system';
-import * as React from 'react';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import { useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
+import { FileInput, FlagMessage, FormField, Modal } from '~design-system';
 import { restoreQualityProfile } from '../../../api/quality-profiles';
 import MandatoryFieldsExplanation from '../../../components/ui/MandatoryFieldsExplanation';
 
@@ -115,21 +116,16 @@ export default function RestoreProfileForm({ onClose, onRestore }: Readonly<Prop
         </form>
       }
       primaryButton={
-        ruleSuccesses == null ? (
-          <>
-            <Spinner loading={loading} />
-            <ButtonPrimary
-              disabled={loading}
-              onClick={handleFormSubmit}
-              id="restore-profile-submit"
-            >
-              {intl.formatMessage({ id: 'restore' })}
-            </ButtonPrimary>
-          </>
-        ) : (
-          <ButtonPrimary id="restore-profile-cancel" onClick={onClose}>
-            {intl.formatMessage({ id: 'close' })}
-          </ButtonPrimary>
+        ruleSuccesses == null && (
+          <Button
+            isDisabled={loading}
+            isLoading={loading}
+            onClick={handleFormSubmit}
+            id="restore-profile-submit"
+            variety={ButtonVariety.Primary}
+          >
+            {intl.formatMessage({ id: 'restore' })}
+          </Button>
         )
       }
       secondaryButtonLabel={intl.formatMessage({ id: ruleSuccesses == null ? 'cancel' : 'close' })}

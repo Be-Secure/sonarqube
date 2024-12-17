@@ -17,7 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import styled from '@emotion/styled';
+import { groupBy, omit } from 'lodash';
+import * as React from 'react';
 import {
   LAYOUT_GLOBAL_NAV_HEIGHT,
   LAYOUT_PROJECT_NAV_HEIGHT,
@@ -26,27 +29,22 @@ import {
   getTabPanelId,
   themeColor,
   themeShadow,
-} from 'design-system';
-import { groupBy, omit } from 'lodash';
-import * as React from 'react';
+} from '~design-system';
+import { useComponent } from '../../../app/components/componentContext/withComponentContext';
 import RuleDescription from '../../../components/rules/RuleDescription';
 import { isInput, isShortcut } from '../../../helpers/keyboardEventHelpers';
 import { KeyboardKeys } from '../../../helpers/keycodes';
 import { translate } from '../../../helpers/l10n';
 import { useRefreshBranchStatus } from '../../../queries/branch';
-import { BranchLike } from '../../../types/branch-like';
 import { Hotspot, HotspotStatusOption } from '../../../types/security-hotspots';
-import { Component } from '../../../types/types';
 import { RuleDescriptionSection, RuleDescriptionSections } from '../../coding-rules/rule';
 import useStickyDetection from '../hooks/useStickyDetection';
-import HotspotSnippetHeader from './HotspotSnippetHeader';
 import StatusReviewButton from './status/StatusReviewButton';
 
 interface Props {
   activityTabContent: React.ReactNode;
-  branchLike?: BranchLike;
   codeTabContent: React.ReactNode;
-  component: Component;
+  cveId?: string;
   hotspot: Hotspot;
   onUpdateHotspot: (statusUpdate?: boolean, statusOption?: HotspotStatusOption) => Promise<void>;
   ruleDescriptionSections?: RuleDescriptionSection[];
@@ -76,11 +74,11 @@ export default function HotspotViewerTabs(props: Props) {
     hotspot,
     ruleDescriptionSections,
     ruleLanguage,
-    component,
-    branchLike,
+    cveId,
   } = props;
 
-  const refreshBranchStatus = useRefreshBranchStatus();
+  const { component } = useComponent();
+  const refreshBranchStatus = useRefreshBranchStatus(component?.key);
   const isSticky = useStickyDetection('.hotspot-tabs', {
     offset: TABS_OFFSET,
   });
@@ -169,8 +167,7 @@ export default function HotspotViewerTabs(props: Props) {
     document.addEventListener('keydown', handleKeyboardNavigation);
 
     return () => document.removeEventListener('keydown', handleKeyboardNavigation);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleKeyboardNavigation]);
 
   React.useEffect(() => {
     setCurrentTab(tabs[0]);
@@ -206,9 +203,6 @@ export default function HotspotViewerTabs(props: Props) {
           />
           {isSticky && <StatusReviewButton hotspot={hotspot} onStatusChange={handleStatusChange} />}
         </div>
-        {currentTab.value === TabKeys.Code && codeTabContent && (
-          <HotspotSnippetHeader hotspot={hotspot} component={component} branchLike={branchLike} />
-        )}
       </StickyTabs>
       <div
         aria-labelledby={getTabId(currentTab.value)}
@@ -219,7 +213,11 @@ export default function HotspotViewerTabs(props: Props) {
         {currentTab.value === TabKeys.Code && codeTabContent}
 
         {currentTab.value === TabKeys.RiskDescription && rootCauseDescriptionSections && (
-          <RuleDescription language={ruleLanguage} sections={rootCauseDescriptionSections} />
+          <RuleDescription
+            language={ruleLanguage}
+            sections={rootCauseDescriptionSections}
+            cveId={cveId}
+          />
         )}
 
         {currentTab.value === TabKeys.VulnerabilityDescription &&

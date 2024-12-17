@@ -17,12 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import * as React from 'react';
 import { byRole, byText } from '~sonar-aligned/helpers/testSelector';
-import { ComponentQualifier } from '~sonar-aligned/types/component';
-import { MetricKey, MetricType } from '~sonar-aligned/types/metrics';
+import { MetricKey } from '~sonar-aligned/types/metrics';
 import BranchesServiceMock from '../../../../api/mocks/BranchesServiceMock';
 import { fetchQualityGate, getQualityGateProjectStatus } from '../../../../api/quality-gates';
 import CurrentUserContextProvider from '../../../../app/components/current-user/CurrentUserContextProvider';
@@ -32,17 +31,24 @@ import {
   mockQualityGate,
   mockQualityGateProjectCondition,
 } from '../../../../helpers/mocks/quality-gates';
-import { mockLoggedInUser, mockMeasure, mockMetric } from '../../../../helpers/testMocks';
+import { mockLoggedInUser } from '../../../../helpers/testMocks';
 import { renderComponent } from '../../../../helpers/testReactTestingUtils';
 import { ComponentPropsType } from '../../../../helpers/testUtils';
 import { CaycStatus } from '../../../../types/types';
 import { NoticeType } from '../../../../types/users';
 import PullRequestOverview from '../PullRequestOverview';
 
+jest.mock('../../../../api/ce', () => ({
+  getAnalysisStatus: jest.fn().mockResolvedValue({ component: { warnings: [] } }),
+}));
+
 jest.mock('../../../../api/measures', () => {
+  const { mockMeasure, mockMetric } = jest.requireActual('../../../../helpers/testMocks');
+  const { ComponentQualifier } = jest.requireActual('~sonar-aligned/types/component');
+  const { MetricKey, MetricType } = jest.requireActual('~sonar-aligned/types/metrics');
   return {
     ...jest.requireActual('../../../../sonar-aligned/types/metrics'),
-    getMeasuresWithMetrics: jest.fn().mockResolvedValue({
+    getMeasuresWithPeriodAndMetrics: jest.fn().mockResolvedValue({
       component: {
         key: '',
         name: '',

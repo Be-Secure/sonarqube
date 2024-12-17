@@ -17,9 +17,16 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { IconMoreVertical, Spinner, Tooltip } from '@sonarsource/echoes-react';
-import { ActionCell, Avatar, ContentCell, InteractiveIcon, TableRow } from 'design-system';
+
+import {
+  ButtonIcon,
+  ButtonSize,
+  ButtonVariety,
+  IconMoreVertical,
+  Spinner,
+} from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { ActionCell, Avatar, ContentCell, TableRow } from '~design-system';
 import DateFromNow from '../../../components/intl/DateFromNow';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { useUserGroupsCountQuery } from '../../../queries/group-memberships';
@@ -31,6 +38,7 @@ import TokensFormModal from './TokensFormModal';
 import UserActions from './UserActions';
 import UserListItemIdentity from './UserListItemIdentity';
 import UserScmAccounts from './UserScmAccounts';
+import ViewGroupsModal from './ViewGroupsModal';
 
 export interface UserListItemProps {
   identityProvider?: IdentityProvider;
@@ -79,31 +87,39 @@ export default function UserListItem(props: Readonly<UserListItemProps>) {
       <ContentCell>
         <Spinner isLoading={groupsAreLoading}>
           {groupsCount}
-          {manageProvider === undefined && (
-            <Tooltip content={translate('users.update_groups')}>
-              <InteractiveIcon
-                Icon={IconMoreVertical}
-                className="it__user-groups sw-ml-2"
-                aria-label={translateWithParameters('users.update_users_groups', user.login)}
-                onClick={() => setOpenGroupForm(true)}
-                size="small"
-              />
-            </Tooltip>
-          )}
+          <ButtonIcon
+            Icon={IconMoreVertical}
+            tooltipContent={
+              manageProvider === undefined
+                ? translate('users.update_groups')
+                : translate('users.view_groups')
+            }
+            className="it__user-groups sw-ml-2"
+            ariaLabel={translateWithParameters(
+              manageProvider === undefined
+                ? 'users.update_users_groups'
+                : 'users.view_users_groups',
+              user.login,
+            )}
+            onClick={() => setOpenGroupForm(true)}
+            size={ButtonSize.Medium}
+            variety={ButtonVariety.DefaultGhost}
+          />
         </Spinner>
       </ContentCell>
       <ContentCell>
         <Spinner isLoading={tokensAreLoading}>
           {tokens?.length}
-          <Tooltip content={translateWithParameters('users.update_tokens')}>
-            <InteractiveIcon
-              Icon={IconMoreVertical}
-              className="it__user-tokens sw-ml-2"
-              aria-label={translateWithParameters('users.update_tokens_for_x', name ?? login)}
-              onClick={() => setOpenTokenForm(true)}
-              size="small"
-            />
-          </Tooltip>
+
+          <ButtonIcon
+            Icon={IconMoreVertical}
+            tooltipContent={translateWithParameters('users.update_tokens')}
+            className="it__user-tokens sw-ml-2"
+            ariaLabel={translateWithParameters('users.update_tokens_for_x', name ?? login)}
+            onClick={() => setOpenTokenForm(true)}
+            size={ButtonSize.Medium}
+            variety={ButtonVariety.DefaultGhost}
+          />
         </Spinner>
       </ContentCell>
 
@@ -112,7 +128,12 @@ export default function UserListItem(props: Readonly<UserListItemProps>) {
       </ActionCell>
 
       {openTokenForm && <TokensFormModal onClose={() => setOpenTokenForm(false)} user={user} />}
-      {openGroupForm && <GroupsForm onClose={() => setOpenGroupForm(false)} user={user} />}
+      {openGroupForm && manageProvider === undefined && (
+        <GroupsForm onClose={() => setOpenGroupForm(false)} user={user} />
+      )}
+      {openGroupForm && manageProvider !== undefined && (
+        <ViewGroupsModal onClose={() => setOpenGroupForm(false)} user={user} />
+      )}
     </TableRow>
   );
 }

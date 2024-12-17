@@ -25,6 +25,7 @@ import org.sonar.server.plugins.ServerPluginRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class RuleDefinitionsLoaderTest {
 
@@ -36,10 +37,15 @@ public class RuleDefinitionsLoaderTest {
   }
 
   @Test
-  public void load_definitions() {
-    RulesDefinition.Context context = new RuleDefinitionsLoader(mock(ServerPluginRepository.class),
+  public void load_returns_definition() {
+    var serverPluginRepository = mock(ServerPluginRepository.class);
+    var findbugsDefinitions = new FindbugsDefinitions();
+    var builtInJavaDefinitions = new JavaDefinitions();
+    when(serverPluginRepository.getPluginKey(findbugsDefinitions)).thenReturn("findbugs");
+    when(serverPluginRepository.getPluginKey(builtInJavaDefinitions)).thenReturn(null);
+    RulesDefinition.Context context = new RuleDefinitionsLoader(serverPluginRepository,
       new RulesDefinition[] {
-        new FindbugsDefinitions(), new JavaDefinitions()
+        findbugsDefinitions, builtInJavaDefinitions
       }).load();
 
     assertThat(context.repositories()).hasSize(2);

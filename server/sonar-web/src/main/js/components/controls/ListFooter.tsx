@@ -17,10 +17,12 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import styled from '@emotion/styled';
+import { Button } from '@sonarsource/echoes-react';
 import classNames from 'classnames';
-import { ButtonSecondary, Spinner, themeColor } from 'design-system';
 import * as React from 'react';
+import { Spinner } from '~design-system';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricType } from '~sonar-aligned/types/metrics';
 import { translate, translateWithParameters } from '../../helpers/l10n';
@@ -73,26 +75,26 @@ export default function ListFooter(props: ListFooterProps) {
   let button;
   if (needReload && props.reload) {
     button = (
-      <ButtonSecondary
+      <Button
         data-test="reload"
-        className="sw-ml-2 sw-body-sm"
-        disabled={loading}
+        className="sw-ml-2 sw-typo-default"
+        isDisabled={loading}
         onClick={props.reload}
       >
         {translate('reload')}
-      </ButtonSecondary>
+      </Button>
     );
   } else if (hasMore && props.loadMore) {
     button = (
-      <ButtonSecondary
+      <Button
         aria-label={loadMoreAriaLabel}
         data-test="show-more"
-        className="sw-ml-2 sw-body-sm"
-        disabled={loading}
+        className="sw-ml-2 sw-typo-default"
+        isDisabled={loading}
         onClick={onLoadMore}
       >
         {translate('show_more')}
-      </ButtonSecondary>
+      </Button>
     );
   }
 
@@ -102,12 +104,12 @@ export default function ListFooter(props: ListFooterProps) {
       ref={rootNode}
       className={classNames(
         'list-footer', // .list-footer is only used by Selenium tests; we should find a way to remove it.
-        'sw-body-sm sw-flex sw-items-center sw-justify-center',
+        'sw-typo-default sw-flex sw-items-center sw-justify-center',
         { 'sw-opacity-50 sw-duration-500 sw-ease-in-out': !ready },
         className,
       )}
     >
-      <span aria-live="polite" aria-busy={loading}>
+      <output aria-busy={loading}>
         {total !== undefined
           ? translateWithParameters(
               'x_of_y_shown',
@@ -115,7 +117,7 @@ export default function ListFooter(props: ListFooterProps) {
               formatMeasure(total, MetricType.Integer),
             )
           : translateWithParameters('x_show', formatMeasure(count, MetricType.Integer))}
-      </span>
+      </output>
       {button}
       <Spinner loading={loading} className="sw-ml-2" />
     </StyledDiv>
@@ -123,7 +125,7 @@ export default function ListFooter(props: ListFooterProps) {
 }
 
 const StyledDiv = styled.div`
-  color: ${themeColor('pageContentLight')};
+  color: var(--echoes-color-text-subdued);
 
   margin-top: 1rem /* 16px */;
 `;

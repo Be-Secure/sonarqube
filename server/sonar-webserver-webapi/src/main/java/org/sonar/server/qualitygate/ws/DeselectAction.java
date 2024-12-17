@@ -52,7 +52,10 @@ public class DeselectAction implements QualityGatesWsAction {
       .setPost(true)
       .setSince("4.3")
       .setHandler(this)
-      .setChangelog(new Change("6.6", "The parameter 'gateId' was removed"),
+      .setChangelog(
+        new Change("10.8", "Allow to change the Quality Gate of a project flagged as containing AI code."),
+        new Change("10.7", "It is not possible anymore to change the Quality Gate of a project flagged as containing AI code."),
+        new Change("6.6", "The parameter 'gateId' was removed"),
         new Change("8.3", "The parameter 'projectId' was removed"));
 
     action.createParam(PARAM_PROJECT_KEY)

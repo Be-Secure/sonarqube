@@ -17,10 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { LightLabel, TextError } from 'design-system';
+
 import * as React from 'react';
 import { useIntl } from 'react-intl';
 import { To } from 'react-router-dom';
+import { LightLabel, TextError } from '~design-system';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricKey, MetricType } from '~sonar-aligned/types/metrics';
 import { QualityGateStatusConditionEnhanced } from '../../../types/quality-gates';
@@ -54,7 +55,7 @@ export default function MeasuresCardNumber(
       failed={conditionFailed}
       {...rest}
     >
-      <span className="sw-body-xs sw-mt-3">
+      <span className="sw-typo-sm sw-mt-3">
         {showRequired &&
           condition &&
           (conditionFailed ? (

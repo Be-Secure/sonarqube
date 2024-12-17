@@ -17,12 +17,14 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 export enum TaskTypes {
   Report = 'REPORT',
   IssueSync = 'ISSUE_SYNC',
   GithubProvisioning = 'GITHUB_AUTH_PROVISIONING',
   GithubProjectPermissionsProvisioning = 'GITHUB_PROJECT_PERMISSIONS_PROVISIONING',
   GitlabProvisioning = 'GITLAB_AUTH_PROVISIONING',
+  GitlabProjectPermissionsProvisioning = 'GITLAB_PROJECT_PERMISSIONS_PROVISIONING',
   AppRefresh = 'APP_REFRESH',
   ViewRefresh = 'VIEW_REFRESH',
   ProjectExport = 'PROJECT_EXPORT',

@@ -18,8 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { PageTitle } from 'design-system';
-import * as React from 'react';
+import { Heading } from '@sonarsource/echoes-react';
 import { Helmet } from 'react-helmet-async';
 import { useCurrentLoginUser } from '../../../app/components/current-user/CurrentUserContext';
 import ResetPasswordForm from '../../../components/common/ResetPasswordForm';
@@ -36,10 +35,9 @@ export default function Security() {
 
       {currentUser.local && (
         <>
-          <PageTitle
-            className="sw-heading-md sw-my-6"
-            text={translate('my_profile.password.title')}
-          />
+          <Heading as="h2" className="sw-mt-6" hasMarginBottom>
+            {translate('my_profile.password.title')}
+          </Heading>
 
           <ResetPasswordForm user={currentUser} />
         </>

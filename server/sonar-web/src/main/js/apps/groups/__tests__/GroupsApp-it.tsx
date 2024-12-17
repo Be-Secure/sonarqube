@@ -17,14 +17,15 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import * as React from 'react';
 import { byRole, byText } from '~sonar-aligned/helpers/testSelector';
 import DopTranslationServiceMock from '../../../api/mocks/DopTranslationServiceMock';
 import GithubProvisioningServiceMock from '../../../api/mocks/GithubProvisioningServiceMock';
 import GroupMembershipsServiceMock from '../../../api/mocks/GroupMembersipsServiceMock';
 import GroupsServiceMock from '../../../api/mocks/GroupsServiceMock';
+import SettingsServiceMock from '../../../api/mocks/SettingsServiceMock';
 import SystemServiceMock from '../../../api/mocks/SystemServiceMock';
 import UsersServiceMock from '../../../api/mocks/UsersServiceMock';
 import { mockGitHubConfiguration } from '../../../helpers/mocks/dop-translation';
@@ -42,16 +43,18 @@ const groupMembershipsHandler = new GroupMembershipsServiceMock();
 const userHandler = new UsersServiceMock(groupMembershipsHandler);
 const dopTranslationHandler = new DopTranslationServiceMock();
 const githubHandler = new GithubProvisioningServiceMock(dopTranslationHandler);
+const settingsHandler = new SettingsServiceMock();
 
 const ui = {
   createGroupButton: byRole('button', { name: 'groups.create_group' }),
-  infoManageMode: byText(/groups\.page\.managed_description/),
+  infoManageMode: byText(/groups\.page\.managed_description\.recommendation/),
   description: byText('user_groups.page.description'),
   allFilter: byRole('radio', { name: 'all' }),
   selectedFilter: byRole('radio', { name: 'selected' }),
   unselectedFilter: byRole('radio', { name: 'unselected' }),
   localAndManagedFilter: byRole('radio', { name: 'all' }),
-  managedFilter: byRole('radio', { name: 'managed' }),
+  managedByScimFilter: byRole('radio', { name: 'managed.managed.SCIM' }),
+  managedByGithubFilter: byRole('radio', { name: 'managed.managed.github' }),
   localFilter: byRole('radio', { name: 'local' }),
   searchInput: byRole('searchbox', { name: 'search.search_by_name' }),
   updateButton: byRole('menuitem', { name: 'update_details' }),
@@ -95,6 +98,8 @@ const ui = {
     name: 'local-group local 3',
   }),
 
+  samlWarning: byText('users.update_groups.saml_enabled'),
+
   githubProvisioningPending: byText(/synchronization_pending/),
   githubProvisioningInProgress: byText(/synchronization_in_progress/),
   githubProvisioningSuccess: byText(/synchronization_successful/),
@@ -102,6 +107,7 @@ const ui = {
 };
 
 beforeEach(() => {
+  settingsHandler.reset();
   handler.reset();
   systemHandler.reset();
   dopTranslationHandler.reset();
@@ -274,6 +280,42 @@ describe('in non managed mode', () => {
 
     expect(await screen.findAllByRole('row')).toHaveLength(16);
   });
+
+  it('should display a warning if SAML is enabled', async () => {
+    [
+      {
+        key: 'sonar.auth.saml.signature.enabled',
+        value: 'false',
+      },
+      {
+        key: 'sonar.auth.saml.enabled',
+        value: 'true',
+      },
+      {
+        key: 'sonar.auth.saml.applicationId',
+        value: 'sonarqube',
+      },
+      {
+        key: 'sonar.auth.saml.providerName',
+        value: 'SAML',
+      },
+    ].forEach((setting: any) => settingsHandler.set(setting.key, setting.value));
+
+    const user = userEvent.setup();
+    renderGroupsApp();
+
+    expect(await ui.localGroupRow.find()).toBeInTheDocument();
+
+    await user.click(ui.localGroupEditMembersButton.get());
+
+    expect(await ui.membersDialog.find()).toBeInTheDocument();
+
+    expect(await ui.getMembers()).toHaveLength(3);
+    expect(ui.samlWarning.get()).toBeInTheDocument();
+
+    await user.click(ui.doneButton.get());
+    expect(ui.membersDialog.query()).not.toBeInTheDocument();
+  });
 });
 
 describe('in manage mode', () => {
@@ -344,7 +386,7 @@ describe('in manage mode', () => {
     const user = userEvent.setup();
     renderGroupsApp();
 
-    await user.click(await ui.managedFilter.find());
+    await user.click(await ui.managedByScimFilter.find());
 
     expect(await ui.managedGroupRow.find()).toBeInTheDocument();
     expect(ui.localGroupRow.query()).not.toBeInTheDocument();
@@ -428,7 +470,7 @@ describe('in manage mode', () => {
       const user = userEvent.setup();
       renderGroupsApp();
 
-      await user.click(await ui.managedFilter.find());
+      await user.click(await ui.managedByGithubFilter.find());
 
       expect(
         within(await ui.githubManagedGroupRow.find()).getByRole('img', { name: 'github' }),

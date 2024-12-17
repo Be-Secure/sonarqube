@@ -20,7 +20,7 @@
 
 import { IconProject, Spinner } from '@sonarsource/echoes-react';
 import { omit } from 'lodash';
-import * as React from 'react';
+import { useIntl } from 'react-intl';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import { MetricKey } from '~sonar-aligned/types/metrics';
 import { getTree, searchProjects } from '../../../api/components';
@@ -62,6 +62,7 @@ export function ProjectFacet(props: Readonly<Props>) {
     referencedComponents,
     stats,
   } = props;
+  const intl = useIntl();
 
   const handleSearch = (
     query: string,
@@ -133,7 +134,7 @@ export function ProjectFacet(props: Readonly<Props>) {
 
   return (
     <ListStyleFacet<SearchedProject>
-      facetHeader={translate('issues.facet.projects')}
+      facetHeader={intl.formatMessage({ id: 'issues.facet.projects' })}
       fetching={fetching}
       getFacetItemText={getProjectName}
       getSearchResultKey={(project) => project.key}
@@ -166,7 +167,7 @@ function ProjectItem({
     select: (data) => data.components.find((el) => el.key === projectKey),
   });
 
-  const label = projectName ?? (isLoading ? '' : data?.name ?? projectKey);
+  const label = projectName ?? (isLoading ? '' : (data?.name ?? projectKey));
 
   return (
     <div className="sw-flex sw-items-center">

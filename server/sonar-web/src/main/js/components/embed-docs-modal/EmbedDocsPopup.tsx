@@ -18,101 +18,99 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { ItemDivider, ItemHeader, ItemLink, OpenNewTabIcon } from 'design-system';
+import { DropdownMenu, IconSlideshow } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { useCurrentUser } from '../../app/components/current-user/CurrentUserContext';
+import { CustomEvents } from '../../helpers/constants';
 import { DocLink } from '../../helpers/doc-links';
 import { translate } from '../../helpers/l10n';
+import { Permissions } from '../../types/permissions';
 import { SuggestionLink } from '../../types/types';
-import { Image } from '../common/Image';
 import { DocItemLink } from './DocItemLink';
 import { SuggestionsContext } from './SuggestionsContext';
 
-function IconLink({
-  icon = 'embed-doc/sq-icon.svg',
-  link,
-  text,
-}: {
-  icon?: string;
-  link: string;
-  text: string;
-}) {
-  return (
-    <ItemLink to={link}>
-      <Image
-        alt={text}
-        aria-hidden
-        className="sw-mr-2"
-        height="18"
-        src={`/images/${icon}`}
-        width="18"
-      />
-      {text}
-    </ItemLink>
-  );
-}
-
-function Suggestions({
-  firstItemRef,
-  suggestions,
-}: {
-  firstItemRef: React.RefObject<HTMLAnchorElement>;
-  suggestions: SuggestionLink[];
-}) {
+function Suggestions({ suggestions }: Readonly<{ suggestions: SuggestionLink[] }>) {
   return (
     <>
-      <ItemHeader id="suggestion">{translate('docs.suggestion')}</ItemHeader>
-      {suggestions.map((suggestion, i) => (
-        <DocItemLink
-          innerRef={i === 0 ? firstItemRef : undefined}
-          key={suggestion.link}
-          to={suggestion.link}
-        >
+      <DropdownMenu.GroupLabel>{translate('docs.suggestion')}</DropdownMenu.GroupLabel>
+
+      {suggestions.map((suggestion) => (
+        <DocItemLink key={suggestion.link} to={suggestion.link}>
           {suggestion.text}
         </DocItemLink>
       ))}
-      <ItemDivider />
+
+      <DropdownMenu.Separator />
     </>
   );
 }
 
 export function EmbedDocsPopup() {
   const firstItemRef = React.useRef<HTMLAnchorElement>(null);
+  const { currentUser } = useCurrentUser();
   const { suggestions } = React.useContext(SuggestionsContext);
 
   React.useEffect(() => {
     firstItemRef.current?.focus();
   }, []);
 
+  const runModeTour = () => {
+    document.dispatchEvent(new CustomEvent(CustomEvents.RunTourMode));
+  };
+
+  const isAdminOrQGAdmin =
+    currentUser.permissions?.global.includes(Permissions.Admin) ||
+    currentUser.permissions?.global.includes(Permissions.QualityGateAdmin);
+
   return (
     <>
-      {suggestions.length !== 0 && (
-        <Suggestions firstItemRef={firstItemRef} suggestions={suggestions} />
-      )}
-      <DocItemLink innerRef={suggestions.length === 0 ? firstItemRef : undefined} to={DocLink.Root}>
-        {translate('docs.documentation')}
-      </DocItemLink>
-      <ItemLink to="/web_api">{translate('api_documentation.page')}</ItemLink>
-      <ItemLink to="/web_api_v2">{translate('api_documentation.page.v2')}</ItemLink>
-      <ItemDivider />
-      <ItemLink to="https://community.sonarsource.com/">
-        <OpenNewTabIcon />
+      {suggestions.length !== 0 && <Suggestions suggestions={suggestions} />}
+
+      <DocItemLink to={DocLink.Root}>{translate('docs.documentation')}</DocItemLink>
+
+      <DropdownMenu.ItemLink to="/web_api">
+        {translate('api_documentation.page')}
+      </DropdownMenu.ItemLink>
+
+      <DropdownMenu.ItemLink to="/web_api_v2">
+        {translate('api_documentation.page.v2')}
+      </DropdownMenu.ItemLink>
+
+      <DropdownMenu.Separator />
+
+      <DropdownMenu.ItemLink to="https://community.sonarsource.com/">
         {translate('docs.get_help')}
-      </ItemLink>
-      <ItemDivider />
-      <ItemHeader id="stay_connected">{translate('docs.stay_connected')}</ItemHeader>
-      <IconLink
-        link="https://www.sonarsource.com/products/sonarqube/whats-new/?referrer=sonarqube"
-        text={translate('docs.news')}
-      />
-      <IconLink
-        link="https://www.sonarsource.com/products/sonarqube/roadmap/?referrer=sonarqube"
-        text={translate('docs.roadmap')}
-      />
-      <IconLink
-        icon="embed-doc/x-icon-black.svg"
-        link="https://twitter.com/SonarQube"
-        text="X @SonarQube"
-      />
+      </DropdownMenu.ItemLink>
+
+      <DropdownMenu.Separator />
+
+      <DropdownMenu.GroupLabel>{translate('docs.stay_connected')}</DropdownMenu.GroupLabel>
+
+      <DropdownMenu.ItemLink to="https://www.sonarsource.com/products/sonarqube/whats-new/?referrer=sonarqube">
+        {translate('docs.news')}
+      </DropdownMenu.ItemLink>
+
+      <DropdownMenu.ItemLink to="https://www.sonarsource.com/products/sonarqube/roadmap/?referrer=sonarqube">
+        {translate('docs.roadmap')}
+      </DropdownMenu.ItemLink>
+
+      <DropdownMenu.ItemLink to="https://twitter.com/SonarQube">X @SonarQube</DropdownMenu.ItemLink>
+
+      {isAdminOrQGAdmin && (
+        <>
+          <DropdownMenu.Separator />
+
+          <DropdownMenu.GroupLabel>{translate('tours')}</DropdownMenu.GroupLabel>
+
+          <DropdownMenu.ItemButton
+            prefix={<IconSlideshow />}
+            data-guiding-id="mode-tour-2"
+            onClick={runModeTour}
+          >
+            {translate('mode_tour.name')}
+          </DropdownMenu.ItemButton>
+        </>
+      )}
     </>
   );
 }

@@ -17,10 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { QualityGateIndicator } from 'design-system';
+
 import { sortBy } from 'lodash';
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
+import { QualityGateIndicator } from '~design-system';
 import { Status } from '~sonar-aligned/types/common';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import DateTimeFormatter from '../../../components/intl/DateTimeFormatter';
@@ -72,9 +73,9 @@ export function Analysis(props: Readonly<AnalysisProps>) {
   );
 
   return (
-    <div data-analysis-key={analysis.key} className="sw-body-sm">
+    <div data-analysis-key={analysis.key} className="sw-typo-default">
       <div className="sw-flex sw-justify-between sw-mb-1">
-        <div className="sw-body-sm-highlight">
+        <div className="sw-typo-semibold">
           <DateTimeFormatter date={analysis.date} />
         </div>
         {qualityGateStatus !== undefined && (
@@ -91,7 +92,7 @@ export function Analysis(props: Readonly<AnalysisProps>) {
                 ),
               }}
             />
-            <span className="sw-body-sm-highlight">
+            <span className="sw-typo-semibold">
               <FormattedMessage id={`metric.level.${qualityGateStatus}`} />
             </span>
           </div>

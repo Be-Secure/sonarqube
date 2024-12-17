@@ -18,9 +18,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { ButtonSecondary, Spinner } from 'design-system';
 import React, { FormEvent } from 'react';
 import { FormattedMessage } from 'react-intl';
+import { ButtonSecondary, Spinner } from '~design-system';
 import DocumentationLink from '../../../../components/common/DocumentationLink';
 import ConfirmModal from '../../../../components/controls/ConfirmModal';
 import { DocLink } from '../../../../helpers/doc-links';
@@ -137,7 +137,7 @@ export default function SamlAuthenticationTab(props: SamlAuthenticationProps) {
             />
             <ProvisioningSection
               provisioningType={
-                newScimStatus ?? scimStatus ? ProvisioningType.auto : ProvisioningType.jit
+                (newScimStatus ?? scimStatus) ? ProvisioningType.auto : ProvisioningType.jit
               }
               onChangeProvisioningType={(val: ProvisioningType) =>
                 setNewScimStatus(val === ProvisioningType.auto)
@@ -204,24 +204,23 @@ export default function SamlAuthenticationTab(props: SamlAuthenticationProps) {
                 </>
               }
             />
-            {showConfirmProvisioningModal && (
-              <ConfirmModal
-                onConfirm={() => handleConfirmChangeProvisioning()}
-                header={translate(
-                  'settings.authentication.saml.confirm',
-                  newScimStatus ? 'scim' : 'jit',
-                )}
-                onClose={() => setShowConfirmProvisioningModal(false)}
-                isDestructive={!newScimStatus}
-                confirmButtonText={translate('yes')}
-              >
-                {translate(
-                  'settings.authentication.saml.confirm',
-                  newScimStatus ? 'scim' : 'jit',
-                  'description',
-                )}
-              </ConfirmModal>
-            )}
+            <ConfirmModal
+              onConfirm={() => handleConfirmChangeProvisioning()}
+              header={translate(
+                'settings.authentication.saml.confirm',
+                newScimStatus ? 'scim' : 'jit',
+              )}
+              onClose={() => setShowConfirmProvisioningModal(false)}
+              isDestructive={!newScimStatus}
+              isOpen={showConfirmProvisioningModal}
+              confirmButtonText={translate('yes')}
+            >
+              {translate(
+                'settings.authentication.saml.confirm',
+                newScimStatus ? 'scim' : 'jit',
+                'description',
+              )}
+            </ConfirmModal>
           </>
         )}
         {showEditModal && (

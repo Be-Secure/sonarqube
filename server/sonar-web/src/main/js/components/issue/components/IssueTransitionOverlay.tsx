@@ -17,26 +17,19 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import {
-  ButtonPrimary,
-  ButtonSecondary,
-  HighlightRing,
-  InputTextArea,
-  ItemDivider,
-  PageContentFontWrapper,
-  Spinner,
-} from 'design-system';
-import * as React from 'react';
+
+import { Button, ButtonVariety, DropdownMenu, Spinner } from '@sonarsource/echoes-react';
 import { useState } from 'react';
-import { useIntl } from 'react-intl';
+import { InputTextArea } from '~design-system';
 import { translate } from '../../../helpers/l10n';
 import { IssueActions, IssueTransition } from '../../../types/issues';
 import { Issue } from '../../../types/types';
-import { isTransitionDeprecated, isTransitionHidden, transitionRequiresComment } from '../helpers';
+import { isTransitionHidden, transitionRequiresComment } from '../helpers';
 import { IssueTransitionItem } from './IssueTransitionItem';
+import IssueTransitionOverlayHeader from './IssueTransitionOverlayHeader';
+import { SelectedTransitionItem } from './SelectedTransitionItem';
 
 export type Props = {
-  guideStepIndex: number;
   issue: Pick<Issue, 'transitions' | 'actions'>;
   loading?: boolean;
   onClose: () => void;
@@ -44,8 +37,7 @@ export type Props = {
 };
 
 export function IssueTransitionOverlay(props: Readonly<Props>) {
-  const { issue, onClose, onSetTransition, loading, guideStepIndex } = props;
-  const intl = useIntl();
+  const { issue, onClose, onSetTransition, loading } = props;
 
   const [comment, setComment] = useState('');
   const [selectedTransition, setSelectedTransition] = useState<IssueTransition>();
@@ -70,76 +62,61 @@ export function IssueTransitionOverlay(props: Readonly<Props>) {
   const filteredTransitions = issue.transitions.filter(
     (transition) => !isTransitionHidden(transition),
   );
-  const filteredTransitionsRecommended = filteredTransitions.filter(
-    (t) => !isTransitionDeprecated(t),
-  );
-  const filteredTransitionsDeprecated = filteredTransitions.filter(isTransitionDeprecated);
 
   return (
-    <ul className="sw-flex sw-flex-col">
-      {filteredTransitionsRecommended.map((transition) => (
-        <HighlightRing
-          key={transition}
-          data-guiding-id={transition === IssueTransition.Accept ? 'issue-accept-transition' : ''}
-        >
-          <IssueTransitionItem
-            transition={transition}
-            selected={
-              selectedTransition === transition ||
-              (guideStepIndex === 1 && transition === IssueTransition.Accept)
-            }
-            onSelectTransition={selectTransition}
-          />
-        </HighlightRing>
-      ))}
-      {filteredTransitionsRecommended.length > 0 && filteredTransitionsDeprecated.length > 0 && (
-        <ItemDivider />
-      )}
-      <HighlightRing data-guiding-id="issue-deprecated-transitions">
-        {filteredTransitionsDeprecated.map((transition) => (
-          <IssueTransitionItem
-            key={transition}
-            transition={transition}
-            selected={selectedTransition === transition || guideStepIndex === 2}
-            onSelectTransition={selectTransition}
-          />
-        ))}
-      </HighlightRing>
+    <Spinner isLoading={!selectedTransition && loading} className="sw-ml-4">
+      <IssueTransitionOverlayHeader
+        onBack={() => setSelectedTransition(undefined)}
+        onClose={onClose}
+        selected={Boolean(selectedTransition)}
+      />
+      <DropdownMenu.Separator />
+      <ul className="sw-flex sw-flex-col">
+        {!selectedTransition &&
+          filteredTransitions.map((transition, index) => (
+            <div key={transition}>
+              <IssueTransitionItem
+                transition={transition}
+                selected={selectedTransition === transition}
+                hasCommentAction={transitionRequiresComment(transition)}
+                onSelectTransition={selectTransition}
+              />
+              {index !== filteredTransitions.length - 1 && <DropdownMenu.Separator />}
+            </div>
+          ))}
 
-      {selectedTransition && (
-        <>
-          <ItemDivider />
-          <div className="sw-mx-4 sw-mt-2">
-            <PageContentFontWrapper className="sw-font-semibold">
-              {intl.formatMessage({ id: 'issue.transition.comment' })}
-            </PageContentFontWrapper>
-            <InputTextArea
-              autoFocus
-              onChange={(event) => setComment(event.currentTarget.value)}
-              placeholder={translate(
-                'issue.transition.comment.placeholder',
-                selectedTransition ?? '',
-              )}
-              rows={5}
-              value={comment}
-              size="large"
-              className="sw-mt-2"
-            />
-            <Spinner loading={loading} className="sw-float-right sw-m-2">
-              <div className="sw-mt-2 sw-flex sw-gap-3 sw-justify-end">
-                <ButtonPrimary onClick={handleResolve}>{translate('resolve')}</ButtonPrimary>
-                <ButtonSecondary onClick={onClose}>{translate('cancel')}</ButtonSecondary>
+        {selectedTransition && (
+          <>
+            <SelectedTransitionItem transition={selectedTransition} />
+            <DropdownMenu.Separator />
+            <div className="sw-mx-3 sw-mt-2">
+              <div className="sw-font-semibold">{translate('issue.transition.comment')}</div>
+              <div className="sw-flex sw-flex-col">
+                <InputTextArea
+                  autoFocus
+                  className="sw-mt-2 sw-resize"
+                  onChange={(event) => setComment(event.currentTarget.value)}
+                  placeholder={translate(
+                    'issue.transition.comment.placeholder',
+                    selectedTransition ?? '',
+                  )}
+                  rows={3}
+                  size="large"
+                  value={comment}
+                />
               </div>
-            </Spinner>
-          </div>
-        </>
-      )}
-
-      {!selectedTransition && loading && (
-        <div className="sw-flex sw-justify-center sw-m-2">
-          <Spinner loading className="sw-float-right sw-2" />
-        </div>
-      )}
-    </ul>
+              <div className="sw-mt-2 sw-flex sw-gap-3 sw-justify-end">
+                <Button variety={ButtonVariety.Primary} onClick={handleResolve}>
+                  {translate('issue.transition.change_status')}
+                </Button>
+                <Button variety={ButtonVariety.Default} onClick={onClose}>
+                  {translate('cancel')}
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </ul>
+    </Spinner>
   );
 }

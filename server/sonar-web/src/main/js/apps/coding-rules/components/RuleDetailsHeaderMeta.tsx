@@ -17,8 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Badge, HelperHintIcon, Link, Note, SeparatorCircleIcon } from 'design-system';
-import React from 'react';
+
+import { Badge, HelperHintIcon, Link, Note, SeparatorCircleIcon } from '~design-system';
 import HelpTooltip from '~sonar-aligned/components/controls/HelpTooltip';
 import Tooltip from '../../../components/controls/Tooltip';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
@@ -38,7 +38,7 @@ export default function RuleDetailsHeaderMeta(props: Readonly<Props>) {
   const externalEngine = ruleDetails.repo.replace(new RegExp(`^${EXTERNAL_RULE_REPO_PREFIX}`), '');
 
   return (
-    <Note className="sw-flex sw-flex-wrap sw-items-center sw-gap-2 sw-body-xs" as="ul">
+    <Note className="sw-flex sw-flex-wrap sw-items-center sw-gap-2 sw-typo-sm" as="ul">
       {/* Template */}
       {!ruleDetails.isExternal && ruleDetails.isTemplate && (
         <>

@@ -17,9 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import selectEvent from 'react-select-event';
 import {
   byLabelText,
   byPlaceholderText,
@@ -323,9 +323,7 @@ function getPageObject() {
   const selectors = {
     pageHeading: byRole('heading', { name: 'background_tasks.page' }),
     numberOfWorkers: () => byLabelText(`background_tasks.number_of_workers`),
-    onlyLatestAnalysis: byRole('switch', {
-      name: 'background_tasks.currents_filter.ALL',
-    }),
+    onlyLatestAnalysis: byRole('switch'),
     search: byPlaceholderText('background_tasks.search_by_task_or_component'),
     fromDateInput: byLabelText('start_date'),
     toDateInput: byLabelText('end_date'),
@@ -354,7 +352,9 @@ function getPageObject() {
     },
 
     async changeTaskFilter(fieldLabel: string, value: string) {
-      await selectEvent.select(screen.getByRole('combobox', { name: fieldLabel }), [value]);
+      await user.click(byRole('combobox', { name: fieldLabel }).get());
+      await user.click(byRole('option', { name: value }).get());
+
       expect(await screen.findByRole('button', { name: 'reload' })).toBeEnabled();
     },
 
@@ -410,8 +410,12 @@ function getPageObject() {
     async clickOnTaskAction(rowIndex: number, label: string) {
       const row = ui.getAllRows()[rowIndex];
       expect(row).toBeVisible();
-      await user.click(within(row).getByRole('button', { name: 'background_tasks.show_actions' }));
-      await user.click(within(row).getByRole('menuitem', { name: label }));
+      await user.click(
+        within(row).getByRole('button', {
+          name: `background_tasks.show_actions_for_task_x_in_list.${rowIndex}`,
+        }),
+      );
+      await user.click(screen.getByRole('menuitem', { name: label }));
     },
   };
 

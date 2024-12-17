@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { mapValues, omitBy, pick } from 'lodash';
 import { Path, URLSearchParamsInit, createSearchParams } from 'react-router-dom';
 import { cleanQuery } from '../../helpers/query';
@@ -77,6 +78,8 @@ export function getComponentSecurityHotspotsUrl(
         SecurityStandard.PCI_DSS_3_2,
         SecurityStandard.PCI_DSS_4_0,
         SecurityStandard.OWASP_ASVS_4_0,
+        SecurityStandard.CASA,
+        SecurityStandard.STIG_ASD_V5R3,
         'owaspAsvsLevel',
       ]),
     }),

@@ -17,10 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { withTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { ClipboardIconButton, Note, QualifierIcon, themeBorder, themeColor } from 'design-system';
-import React from 'react';
+import { ClipboardIconButton, Note, QualifierIcon, themeBorder, themeColor } from '~design-system';
 import withCurrentUserContext from '../../../app/components/current-user/withCurrentUserContext';
 
 import { LinkHighlight, LinkStandalone } from '@sonarsource/echoes-react';
@@ -52,7 +52,7 @@ function HotspotSnippetHeader(props: HotspotSnippetHeaderProps) {
 
   return (
     <StyledHeader
-      className={`sw-box-border sw-flex sw-gap-2 sw-justify-between -sw-mb-4 sw-mt-6 sw-px-4
+      className={`sw-box-border sw-flex sw-gap-2 sw-justify-between sw-mt-6 sw-px-4
                   sw-py-3`}
     >
       <Note className="sw-flex sw-flex-1 sw-flex-wrap sw-gap-2 sw-items-center sw-my-1/2">

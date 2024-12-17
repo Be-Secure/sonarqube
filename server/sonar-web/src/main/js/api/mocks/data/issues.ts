@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { keyBy, times } from 'lodash';
 import { mockSnippetsByComponent } from '../../../helpers/mocks/sources';
 import { mockLoggedInUser, mockRawIssue } from '../../../helpers/testMocks';
@@ -322,6 +323,7 @@ export function mockIssuesList(baseComponentKey = PARENT_COMPONENT_KEY): IssueDa
         issueStatus: IssueStatus.Open,
         ruleDescriptionContextKey: 'spring',
         author: 'bob.marley@test.com',
+        cveId: 'CVE-2021-12345',
       }),
       snippets: keyBy(
         [

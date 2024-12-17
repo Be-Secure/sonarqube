@@ -17,13 +17,18 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { DestructiveIcon, TrashIcon } from 'design-system';
+
+import { ButtonIcon, ButtonVariety, IconDelete } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { translateWithParameters } from '../../../../helpers/l10n';
 import { DefaultSpecializedInputProps, getEmptyValue, getPropertyName } from '../../utils';
 import PrimitiveInput from './PrimitiveInput';
 
-export default class MultiValueInput extends React.PureComponent<DefaultSpecializedInputProps> {
+interface Props extends DefaultSpecializedInputProps {
+  innerRef: React.ForwardedRef<HTMLInputElement>;
+}
+
+class MultiValueInput extends React.PureComponent<Props> {
   ensureValue = () => {
     return this.props.value || [];
   };
@@ -41,29 +46,33 @@ export default class MultiValueInput extends React.PureComponent<DefaultSpeciali
   };
 
   renderInput(value: any, index: number, isLast: boolean) {
-    const { setting, isDefault, name } = this.props;
+    const { ariaDescribedBy, setting, isDefault, name, innerRef } = this.props;
     return (
       <li className="sw-flex sw-items-center sw-mb-2" key={index}>
         <PrimitiveInput
+          ariaDescribedBy={ariaDescribedBy}
+          index={index}
           isDefault={isDefault}
           name={name}
           hasValueChanged={this.props.hasValueChanged}
           onChange={(value) => this.handleSingleInputChange(index, value)}
+          ref={index === 0 ? innerRef : null}
           setting={setting}
           value={value}
         />
 
         {!isLast && (
           <div className="sw-inline-block sw-ml-2">
-            <DestructiveIcon
-              Icon={TrashIcon}
+            <ButtonIcon
+              Icon={IconDelete}
               className="js-remove-value"
-              aria-label={translateWithParameters(
+              ariaLabel={translateWithParameters(
                 'settings.definition.delete_value',
                 getPropertyName(setting.definition),
                 value,
               )}
               onClick={() => this.handleDeleteValue(index)}
+              variety={ButtonVariety.DangerGhost}
             />
           </div>
         )}
@@ -85,3 +94,9 @@ export default class MultiValueInput extends React.PureComponent<DefaultSpeciali
     );
   }
 }
+
+export default React.forwardRef(
+  (props: DefaultSpecializedInputProps, ref: React.ForwardedRef<HTMLInputElement>) => (
+    <MultiValueInput innerRef={ref} {...props} />
+  ),
+);

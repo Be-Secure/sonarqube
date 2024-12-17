@@ -35,6 +35,7 @@ import org.sonar.api.rule.RuleKey;
 import org.sonar.api.rules.CleanCodeAttribute;
 import org.sonar.api.server.debt.DebtRemediationFunction;
 import org.sonar.api.server.debt.internal.DefaultDebtRemediationFunction;
+import org.sonar.core.rule.ImpactFormatter;
 import org.sonar.db.issue.ImpactDto;
 import org.sonar.db.rule.DeprecatedRuleKeyDto;
 import org.sonar.db.rule.RuleDescriptionSectionContextDto;
@@ -164,7 +165,7 @@ public class RuleMapper {
   }
 
   private static Common.Impact toImpact(ImpactDto impactDto) {
-    Common.ImpactSeverity severity = Common.ImpactSeverity.valueOf(impactDto.getSeverity().name());
+    Common.ImpactSeverity severity = ImpactFormatter.mapImpactSeverity(impactDto.getSeverity());
     Common.SoftwareQuality softwareQuality = Common.SoftwareQuality.valueOf(impactDto.getSoftwareQuality().name());
     return Common.Impact.newBuilder().setSeverity(severity).setSoftwareQuality(softwareQuality).build();
   }

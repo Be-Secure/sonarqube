@@ -17,17 +17,19 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { SubnavigationGroup, SubnavigationItem } from 'design-system';
+
 import { sortBy } from 'lodash';
 import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { SubnavigationGroup, SubnavigationItem } from '~design-system';
 import withAvailableFeatures, {
   WithAvailableFeaturesProps,
 } from '../../../app/components/available-features/withAvailableFeatures';
+import { translate } from '../../../helpers/l10n';
 import { getGlobalSettingsUrl, getProjectSettingsUrl } from '../../../helpers/urls';
 import { Feature } from '../../../types/features';
 import { Component } from '../../../types/types';
-import { CATEGORY_OVERRIDES } from '../constants';
+import { AI_CODE_FIX_CATEGORY, CATEGORY_OVERRIDES } from '../constants';
 import { getCategoryName } from '../utils';
 import { ADDITIONAL_CATEGORIES } from './AdditionalCategories';
 
@@ -55,31 +57,42 @@ function CategoriesList(props: Readonly<CategoriesListProps>) {
   );
 
   const categoriesWithName = categories
-    .filter((key) => !CATEGORY_OVERRIDES[key.toLowerCase()])
+    .filter((key) => CATEGORY_OVERRIDES[key.toLowerCase()] === undefined)
     .map((key) => ({
       key,
       name: getCategoryName(key),
     }))
     .concat(
-      ADDITIONAL_CATEGORIES.filter((c) => c.displayTab)
-        .filter((c) =>
-          component
-            ? // Project settings
-              c.availableForProject
-            : // Global settings
-              c.availableGlobally,
-        )
-        .filter((c) => props.hasFeature(Feature.BranchSupport) || !c.requiresBranchSupport),
+      ADDITIONAL_CATEGORIES.filter((c) => {
+        const availableForCurrentMenu = component
+          ? // Project settings
+            c.availableForProject
+          : // Global settings
+            c.availableGlobally;
+
+        return (
+          c.displayTab &&
+          availableForCurrentMenu &&
+          (props.hasFeature(Feature.BranchSupport) || !c.requiresBranchSupport) &&
+          (props.hasFeature(Feature.FixSuggestions) || c.key !== AI_CODE_FIX_CATEGORY)
+        );
+      }),
     );
   const sortedCategories = sortBy(categoriesWithName, (category) => category.name.toLowerCase());
 
   return (
-    <SubnavigationGroup className="sw-box-border it__subnavigation_menu">
+    <SubnavigationGroup
+      as="nav"
+      aria-label={translate('settings.page')}
+      className="sw-box-border it__subnavigation_menu"
+    >
       {sortedCategories.map((c) => {
         const category = c.key !== defaultCategory ? c.key.toLowerCase() : undefined;
+        const isActive = c.key.toLowerCase() === selectedCategory.toLowerCase();
         return (
           <SubnavigationItem
-            active={c.key.toLowerCase() === selectedCategory.toLowerCase()}
+            active={isActive}
+            ariaCurrent={isActive}
             onClick={() => openCategory(category)}
             key={c.key}
           >

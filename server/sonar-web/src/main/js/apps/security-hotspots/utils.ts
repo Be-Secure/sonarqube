@@ -17,9 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { HotspotRatingEnum } from 'design-system';
+
 import { flatten, groupBy, sortBy } from 'lodash';
+import { HotspotRatingEnum } from '~design-system';
 import {
+  renderCASACategory,
   renderCWECategory,
   renderOwaspAsvs40Category,
   renderOwaspTop102021Category,
@@ -27,6 +29,7 @@ import {
   renderPciDss32Category,
   renderPciDss40Category,
   renderSonarSourceSecurityCategory,
+  renderStigCategory,
 } from '../../helpers/security-standard';
 import { SecurityStandard } from '../../types/security';
 import {
@@ -61,6 +64,8 @@ export const SECURITY_STANDARDS = [
   SecurityStandard.PCI_DSS_3_2,
   SecurityStandard.PCI_DSS_4_0,
   SecurityStandard.OWASP_ASVS_4_0,
+  SecurityStandard.CASA,
+  SecurityStandard.STIG_ASD_V5R3,
 ];
 
 export const SECURITY_STANDARD_RENDERER = {
@@ -71,6 +76,8 @@ export const SECURITY_STANDARD_RENDERER = {
   [SecurityStandard.PCI_DSS_3_2]: renderPciDss32Category,
   [SecurityStandard.PCI_DSS_4_0]: renderPciDss40Category,
   [SecurityStandard.OWASP_ASVS_4_0]: renderOwaspAsvs40Category,
+  [SecurityStandard.CASA]: renderCASACategory,
+  [SecurityStandard.STIG_ASD_V5R3]: renderStigCategory,
 };
 
 export function mapRules(rules: Array<{ key: string; name: string }>): Dict<string> {

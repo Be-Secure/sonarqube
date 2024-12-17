@@ -18,10 +18,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { LargeCenteredLayout, PageContentFontWrapper, Spinner } from 'design-system';
-import * as React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { LargeCenteredLayout, PageContentFontWrapper, Spinner } from '~design-system';
 import { createWebhook, deleteWebhook, searchWebhooks, updateWebhook } from '../../../api/webhooks';
 import withComponentContext from '../../../app/components/componentContext/withComponentContext';
 import Suggestions from '../../../components/embed-docs-modal/Suggestions';
@@ -101,7 +100,7 @@ export function App({ component }: AppProps) {
 
   return (
     <LargeCenteredLayout id="project-webhooks">
-      <PageContentFontWrapper className="sw-my-8 sw-body-sm">
+      <PageContentFontWrapper className="sw-my-8 sw-typo-default">
         <Suggestions suggestion={DocLink.Webhooks} />
         <Helmet defer={false} title={translate('webhooks.page')} />
         <PageHeader>

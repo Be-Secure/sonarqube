@@ -17,15 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import {
-  ButtonSecondary,
-  ChevronDownIcon,
-  Dropdown,
-  ItemButton,
-  PopupPlacement,
-  PopupZLevel,
-  TextMuted,
-} from 'design-system';
+
+import { ButtonGroup, InputSize, Select } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { translate } from '../../helpers/l10n';
 import { GraphType } from '../../types/project-activity';
@@ -44,7 +37,7 @@ interface Props {
   selectedMetrics?: string[];
 }
 
-export default function GraphsHeader(props: Props) {
+export default function GraphsHeader(props: Readonly<Props>) {
   const {
     className,
     graph,
@@ -66,41 +59,24 @@ export default function GraphsHeader(props: Props) {
   const noCustomGraph =
     props.onAddCustomMetric === undefined || props.onRemoveCustomMetric === undefined;
 
-  const options = React.useMemo(() => {
-    const types = getGraphTypes(noCustomGraph);
-
-    return types.map((type) => {
-      const label = translate('project_activity.graphs', type);
-
-      return (
-        <ItemButton key={label} onClick={() => handleGraphChange(type)}>
-          {label}
-        </ItemButton>
-      );
-    });
-  }, [noCustomGraph, handleGraphChange]);
-
   return (
     <div className={className}>
-      <div className="sw-flex">
-        <Dropdown
-          id="activity-graph-type"
-          size="auto"
-          placement={PopupPlacement.BottomLeft}
-          zLevel={PopupZLevel.Content}
-          overlay={options}
-        >
-          <ButtonSecondary
-            aria-label={translate('project_activity.graphs.choose_type')}
-            className={
-              'sw-body-sm sw-flex sw-flex-row sw-justify-between sw-pl-3 sw-pr-2 sw-w-32 ' +
-              'sw-z-normal' // needed because the legends overlap part of the button
-            }
-          >
-            <TextMuted text={translate('project_activity.graphs', graph)} />
-            <ChevronDownIcon className="sw-ml-1 sw-mr-0 sw-pr-0" />
-          </ButtonSecondary>
-        </Dropdown>
+      <ButtonGroup>
+        <label htmlFor="graph-type" className="sw-typo-semibold">
+          {translate('project_activity.graphs.choose_type')}
+        </label>
+        <Select
+          id="graph-type"
+          hasDropdownAutoWidth
+          onChange={handleGraphChange}
+          isNotClearable
+          value={graph}
+          size={InputSize.Small}
+          data={getGraphTypes(noCustomGraph).map((type) => ({
+            value: type,
+            label: translate('project_activity.graphs', type),
+          }))}
+        />
 
         {isCustomGraph(graph) &&
           props.onAddCustomMetric !== undefined &&
@@ -113,7 +89,7 @@ export default function GraphsHeader(props: Props) {
               selectedMetrics={selectedMetrics}
             />
           )}
-      </div>
+      </ButtonGroup>
     </div>
   );
 }

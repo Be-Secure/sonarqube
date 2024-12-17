@@ -17,9 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import styled from '@emotion/styled';
-import { Badge, BranchIcon, themeBorder, themeContrast } from 'design-system';
-import * as React from 'react';
+import { Badge, BranchIcon, themeBorder } from '~design-system';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { collapsePath, limitComponentName } from '../../../helpers/path';
@@ -58,7 +58,7 @@ export default function ComponentBreadcrumbs({
         'issues.on_file_x',
         `${displayProject ? issue.projectName + ', ' : ''}${componentName}`,
       )}
-      className="sw-flex sw-box-border sw-body-sm sw-w-full sw-pb-2 sw-pt-4 sw-truncate"
+      className="sw-flex sw-box-border sw-typo-default sw-w-full sw-pb-2 sw-pt-4 sw-truncate"
     >
       {displayProject && (
         <span title={projectName}>
@@ -88,7 +88,7 @@ export default function ComponentBreadcrumbs({
 }
 
 const DivStyled = styled.div`
-  color: ${themeContrast('breadcrumb')};
+  color: var(--echoes-color-text-subdued);
   &:not(:last-child) {
     border-bottom: ${themeBorder('default')};
   }

@@ -17,13 +17,26 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { addGlobalSuccessMessage } from 'design-system';
-import { getValue, getValues, resetSettingValue, setSettingValue } from '../api/settings';
-import { translate } from '../helpers/l10n';
-import { ExtendedSettingDefinition } from '../types/settings';
 
-type SettingValue = string | boolean | string[];
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { addGlobalSuccessMessage } from '~design-system';
+import {
+  getValue,
+  getValues,
+  resetSettingValue,
+  setSettingValue,
+  setSimpleSettingValue,
+} from '../api/settings';
+import { translate } from '../helpers/l10n';
+import { ExtendedSettingDefinition, SettingValue } from '../types/settings';
+import { createQueryHook } from './common';
+import { invalidateAllMeasures } from './measures';
+
+const SETTINGS_SAVE_SUCCESS_MESSAGE = translate(
+  'settings.authentication.form.settings.save_success',
+);
+
+type SettingFinalValue = string | boolean | string[];
 
 export function useGetValuesQuery(keys: string[]) {
   return useQuery({
@@ -34,14 +47,16 @@ export function useGetValuesQuery(keys: string[]) {
   });
 }
 
-export function useGetValueQuery(key: string, component?: string) {
-  return useQuery({
-    queryKey: ['settings', 'details', key] as const,
-    queryFn: ({ queryKey: [_a, _b, key] }) => {
-      return getValue({ key, component }).then((v) => v ?? null);
-    },
-  });
-}
+export const useGetValueQuery = createQueryHook(
+  ({ key, component }: { component?: string; key: string }) => {
+    return queryOptions({
+      queryKey: ['settings', 'details', key] as const,
+      queryFn: ({ queryKey: [_a, _b, key] }) => {
+        return getValue({ key, component }).then((v) => v ?? null);
+      },
+    });
+  },
+);
 
 export function useResetSettingsMutation() {
   const queryClient = useQueryClient();
@@ -63,7 +78,7 @@ export function useSaveValuesMutation() {
     mutationFn: (
       values: {
         definition: ExtendedSettingDefinition;
-        newValue?: SettingValue;
+        newValue?: SettingFinalValue;
       }[],
     ) => {
       return Promise.all(
@@ -89,7 +104,7 @@ export function useSaveValuesMutation() {
           queryClient.invalidateQueries({ queryKey: ['settings', 'details', key] });
         });
         queryClient.invalidateQueries({ queryKey: ['settings', 'values'] });
-        addGlobalSuccessMessage(translate('settings.authentication.form.settings.save_success'));
+        addGlobalSuccessMessage(SETTINGS_SAVE_SUCCESS_MESSAGE);
       }
     },
   });
@@ -105,7 +120,7 @@ export function useSaveValueMutation() {
     }: {
       component?: string;
       definition: ExtendedSettingDefinition;
-      newValue: SettingValue;
+      newValue: SettingFinalValue;
     }) => {
       if (isDefaultValue(newValue, definition)) {
         return resetSettingValue({ keys: definition.key, component });
@@ -115,12 +130,41 @@ export function useSaveValueMutation() {
     onSuccess: (_, { definition }) => {
       queryClient.invalidateQueries({ queryKey: ['settings', 'details', definition.key] });
       queryClient.invalidateQueries({ queryKey: ['settings', 'values'] });
-      addGlobalSuccessMessage(translate('settings.authentication.form.settings.save_success'));
+      invalidateAllMeasures(queryClient);
+      addGlobalSuccessMessage(SETTINGS_SAVE_SUCCESS_MESSAGE);
     },
   });
 }
 
-function isDefaultValue(value: SettingValue, definition: ExtendedSettingDefinition) {
+export function useSaveSimpleValueMutation(
+  updateCache = false,
+  successMessage = SETTINGS_SAVE_SUCCESS_MESSAGE,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ key, value }: { key: string; value: string }) => {
+      return setSimpleSettingValue({ key, value });
+    },
+    onSuccess: (_, { value, key }) => {
+      if (updateCache) {
+        queryClient.setQueryData<SettingValue>(['settings', 'details', key], (oldData) =>
+          oldData
+            ? {
+                ...oldData,
+                value: oldData.value !== undefined ? String(value) : undefined,
+              }
+            : oldData,
+        );
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['settings', 'details', key] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['settings', 'values', [key]] });
+      addGlobalSuccessMessage(successMessage);
+    },
+  });
+}
+
+function isDefaultValue(value: SettingFinalValue, definition: ExtendedSettingDefinition) {
   const defaultValue = definition.defaultValue ?? '';
   if (definition.multiValues) {
     return defaultValue === (value as string[]).join(',');

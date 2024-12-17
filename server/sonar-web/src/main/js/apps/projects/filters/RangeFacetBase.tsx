@@ -17,9 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import classNames from 'classnames';
-import { FacetBox, FacetItem, HighlightedFacetItems, LightLabel } from 'design-system';
 import * as React from 'react';
+import { FacetBox, FacetItem, HighlightedFacetItems, LightLabel } from '~design-system';
 import { RawQuery } from '~sonar-aligned/types/router';
 import { translate } from '../../../helpers/l10n';
 import { isDefined } from '../../../helpers/types';
@@ -31,6 +32,7 @@ export type Option = string | number;
 
 interface Props {
   className?: string;
+  description?: string;
   facet?: Facet;
   getFacetValueForOption?: (facet: Facet, option: Option) => number;
   header: string;
@@ -153,10 +155,13 @@ export default class RangeFacetBase extends React.PureComponent<Props> {
   };
 
   render() {
-    const { className, header, property } = this.props;
+    const { className, header, property, description } = this.props;
 
     return (
       <FacetBox className={className} name={header} data-key={property} open>
+        {description && (
+          <LightLabel className="sw-mb-4 sw--mt-2 sw-block">{description}</LightLabel>
+        )}
         {this.renderOptions()}
       </FacetBox>
     );

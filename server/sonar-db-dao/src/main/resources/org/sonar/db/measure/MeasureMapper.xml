@@ -3,85 +3,143 @@
 
 <mapper namespace="org.sonar.db.measure.MeasureMapper">
 
-  <sql id="measureColumns">
-    pm.uuid as uuid,
-    pm.metric_uuid as metricUuid,
-    pm.component_uuid as componentUuid,
-    pm.analysis_uuid as analysisUuid,
-    pm.value as value,
-    pm.text_value as textValue,
-    pm.alert_status as alertStatus,
-    pm.alert_text as alertText,
-    pm.measure_data as dataValue
-  </sql>
-
-  <select id="selectLastMeasure" parameterType="map" resultType="Measure">
-    select <include refid="measureColumns"/>
-    from project_measures pm
-    inner join metrics m on m.uuid = pm.metric_uuid
-    inner join snapshots s on s.uuid = pm.analysis_uuid
-    where
-    pm.component_uuid = #{componentUuid,jdbcType=VARCHAR} and
-    m.name = #{metricKey,jdbcType=VARCHAR} and
-    s.islast= ${_true}
-  </select>
-
-  <select id="selectMeasure" parameterType="map" resultType="Measure">
-    select <include refid="measureColumns"/>
-    from project_measures pm
-    inner join metrics m on m.uuid = pm.metric_uuid
-    inner join snapshots s on s.uuid = pm.analysis_uuid
-    where
-    pm.component_uuid = #{componentUuid,jdbcType=VARCHAR} and
-    m.name = #{metricKey,jdbcType=VARCHAR} and
-    s.uuid = #{analysisUuid,jdbcType=VARCHAR}
-  </select>
-
-  <sql id="selectByQueryCommonJoins">
-    inner join snapshots analysis on analysis.uuid = pm.analysis_uuid
-    <if test="query.getMetricKeys() != null">
-      inner join metrics m on m.uuid = pm.metric_uuid
-    </if>
-  </sql>
-
-  <select id="selectPastMeasuresOnSeveralAnalyses" parameterType="map" resultType="Measure">
-    select <include refid="measureColumns"/>
-    from project_measures pm
-    inner join snapshots analysis on analysis.uuid = pm.analysis_uuid
-    where
-    pm.component_uuid = #{query.componentUuid, jdbcType=VARCHAR}
-    <if test="query.from!= null">
-      and analysis.created_at>=#{query.from, jdbcType=BIGINT}
-    </if>
-    <if test="query.to!=null">
-      and analysis.created_at&lt;#{query.to, jdbcType=BIGINT}
-    </if>
-    and pm.metric_uuid in <foreach item="metricUuid" collection="query.metricUuids" open="(" separator="," close=")">#{metricUuid, jdbcType=VARCHAR}</foreach>
-    and analysis.status=#{query.status, jdbcType=VARCHAR}
-  </select>
-
-  <insert id="insert" parameterType="Measure" useGeneratedKeys="false">
-    insert into project_measures (
-    uuid,
-    value,
-    metric_uuid,
+  <insert id="insert" parameterType="map" useGeneratedKeys="false">
+    insert into measures (
     component_uuid,
-    analysis_uuid,
-    text_value,
-    alert_status,
-    alert_text,
-    measure_data)
-    VALUES (
-    #{uuid, jdbcType=VARCHAR},
-    #{value, jdbcType=DOUBLE},
-    #{metricUuid, jdbcType=VARCHAR},
-    #{componentUuid, jdbcType=VARCHAR},
-    #{analysisUuid, jdbcType=VARCHAR},
-    #{textValue, jdbcType=VARCHAR},
-    #{alertStatus, jdbcType=VARCHAR},
-    #{alertText, jdbcType=VARCHAR},
-    #{dataValue, jdbcType=BINARY}
+    branch_uuid,
+    json_value,
+    json_value_hash,
+    created_at,
+    updated_at
+    ) values (
+    #{dto.componentUuid, jdbcType=VARCHAR},
+    #{dto.branchUuid, jdbcType=VARCHAR},
+    #{dto.jsonValue, jdbcType=VARCHAR},
+    #{dto.jsonValueHash, jdbcType=BIGINT},
+    #{now, jdbcType=BIGINT},
+    #{now, jdbcType=BIGINT}
     )
   </insert>
+
+  <update id="update" parameterType="map" useGeneratedKeys="false">
+    update measures set
+    json_value = #{dto.jsonValue, jdbcType=VARCHAR},
+    json_value_hash = #{dto.jsonValueHash, jdbcType=BIGINT},
+    updated_at = #{now, jdbcType=BIGINT}
+    where component_uuid = #{dto.componentUuid, jdbcType=VARCHAR}
+  </update>
+
+  <sql id="columns">
+    m.component_uuid as componentUuid,
+    m.branch_uuid as branchUuid,
+    m.json_value as jsonValue,
+    m.json_value_hash as jsonValueHash
+  </sql>
+
+  <select id="selectByComponentUuids" parameterType="map" resultType="org.sonar.db.measure.MeasureDto">
+    select
+    <include refid="columns"/>
+    from measures m
+    where
+    m.component_uuid in
+    <foreach item="componentUuid" collection="componentUuids" open="(" separator="," close=")">
+      #{componentUuid, jdbcType=VARCHAR}
+    </foreach>
+  </select>
+
+  <select id="scrollSelectByComponentUuid" resultType="org.sonar.db.measure.MeasureDto" fetchSize="${_scrollFetchSize}"
+          resultSetType="FORWARD_ONLY">
+    select
+    <include refid="columns"/>
+    from measures m
+    where
+    m.component_uuid = #{componentUuid, jdbcType=VARCHAR}
+  </select>
+
+  <select id="selectMeasureHashesForBranch" resultType="org.sonar.db.measure.MeasureHash">
+    select component_uuid, json_value_hash
+    from measures
+    where branch_uuid = #{branchUuid, jdbcType=VARCHAR}
+  </select>
+
+  <select id="selectBranchMeasuresForProject" parameterType="map" resultType="org.sonar.db.measure.MeasureDto">
+    select
+    <include refid="columns"/>
+    from measures m
+    inner join project_branches b on b.uuid = m.component_uuid
+    inner join projects p on p.uuid = b.project_uuid and p.qualifier = 'TRK'
+    where b.project_uuid = #{projectUuid,jdbcType=VARCHAR}
+  </select>
+
+  <select id="selectTreeByQuery" parameterType="map" resultType="org.sonar.db.measure.MeasureDto" fetchSize="${_scrollFetchSize}"
+          resultSetType="FORWARD_ONLY">
+    select <include refid="columns"/> from measures m
+    inner join components p on p.uuid = m.component_uuid
+    <!-- TODO do we really need another join on components ? Using m.project_uuid should be enough -->
+    <include refid="org.sonar.db.component.ComponentMapper.selectDescendantsJoins"/>
+    <where>
+      p.enabled = ${_true}
+      <if test="query.qualifiers != null">
+        and p.qualifier in
+        <foreach collection="query.qualifiers" item="qualifier" open="(" close=")" separator=",">
+          #{qualifier,jdbcType=VARCHAR}
+        </foreach>
+      </if>
+      <if test="query.nameOrKeyQuery != null">
+        and (
+        p.kee = #{query.nameOrKeyQuery,jdbcType=VARCHAR}
+        or
+        upper(p.name) like #{query.nameOrKeyUpperLikeQuery,jdbcType=VARCHAR} escape '/'
+        )
+      </if>
+    </where>
+
+    -- Add measures of base component
+    union all
+    select <include refid="columns"/> from measures m
+    inner join components p on p.uuid = m.component_uuid and m.component_uuid = #{baseUuid, jdbcType=VARCHAR}
+    <where>
+      p.enabled = ${_true}
+      <if test="query.qualifiers != null">
+        and p.qualifier in
+        <foreach collection="query.qualifiers" item="qualifier" open="(" close=")" separator=",">
+          #{qualifier,jdbcType=VARCHAR}
+        </foreach>
+      </if>
+      <if test="query.nameOrKeyQuery != null">
+        and (
+        p.kee = #{query.nameOrKeyQuery,jdbcType=VARCHAR}
+        or
+        upper(p.name) like #{query.nameOrKeyUpperLikeQuery,jdbcType=VARCHAR} escape '/'
+        )
+      </if>
+    </where>
+  </select>
+
+  <select id="selectAllForProjectMainBranches" resultType="org.sonar.db.measure.ProjectMainBranchMeasureDto">
+    select p.uuid as projectUuid, m.json_value as jsonValue
+    from measures m
+    inner join project_branches pb on pb.uuid = m.component_uuid
+    inner join projects p on p.uuid = pb.project_uuid
+    where
+    p.qualifier = 'TRK'
+    and pb.is_main = ${_true}
+  </select>
+
+  <select id="selectAllForProjectMainBranchesAssociatedToDefaultQualityProfile" resultType="org.sonar.db.measure.ProjectMainBranchMeasureDto">
+    select p.uuid as projectUuid, m.json_value as jsonValue
+    from measures m
+    inner join project_branches pb on pb.uuid = m.component_uuid
+    inner join projects p on p.uuid = pb.project_uuid
+    where
+    pb.is_main = ${_true}
+    and p.uuid not in (select project_uuid from project_qprofiles)
+  </select>
+
+  <select id="selectAllForMainBranches" resultType="org.sonar.db.measure.MeasureDto">
+    select <include refid="columns"/> from measures m
+    inner join project_branches pb on pb.uuid = m.component_uuid and pb.is_main = ${_true}
+    inner join projects p on p.uuid = pb.project_uuid and p.qualifier = 'TRK'
+  </select>
 
 </mapper>

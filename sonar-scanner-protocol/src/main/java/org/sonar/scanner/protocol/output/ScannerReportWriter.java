@@ -19,6 +19,7 @@
  */
 package org.sonar.scanner.protocol.output;
 
+import com.google.protobuf.AbstractMessageLite;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -77,11 +78,7 @@ public class ScannerReportWriter {
 
   public void appendComponentIssue(int componentRef, ScannerReport.Issue issue) {
     File file = fileStructure.fileFor(FileStructure.Domain.ISSUES, componentRef);
-    try (OutputStream out = new BufferedOutputStream(new FileOutputStream(file, true))) {
-      issue.writeDelimitedTo(out);
-    } catch (Exception e) {
-      throw ContextException.of("Unable to write issue", e).addContext("file", file);
-    }
+    appendDelimitedTo(file, issue, "issue");
   }
 
   public File writeComponentChangedLines(int componentRef, ScannerReport.ChangedLines changedLines) {
@@ -92,28 +89,24 @@ public class ScannerReportWriter {
 
   public void appendComponentExternalIssue(int componentRef, ScannerReport.ExternalIssue issue) {
     File file = fileStructure.fileFor(FileStructure.Domain.EXTERNAL_ISSUES, componentRef);
-    try (OutputStream out = new BufferedOutputStream(new FileOutputStream(file, true))) {
-      issue.writeDelimitedTo(out);
-    } catch (Exception e) {
-      throw ContextException.of("Unable to write external issue", e).addContext("file", file);
-    }
+    appendDelimitedTo(file, issue, "external issue");
   }
 
   public void appendAdHocRule(ScannerReport.AdHocRule adHocRule) {
     File file = fileStructure.adHocRules();
-    try (OutputStream out = new BufferedOutputStream(new FileOutputStream(file, true))) {
-      adHocRule.writeDelimitedTo(out);
-    } catch (Exception e) {
-      throw ContextException.of("Unable to write ad hoc rule", e).addContext("file", file);
-    }
+    appendDelimitedTo(file, adHocRule, "ad hoc rule");
   }
 
   public void appendComponentMeasure(int componentRef, ScannerReport.Measure measure) {
     File file = fileStructure.fileFor(FileStructure.Domain.MEASURES, componentRef);
+    appendDelimitedTo(file, measure, "measure");
+  }
+
+  private static void appendDelimitedTo(File file, AbstractMessageLite<?, ?> msg, String msgName) {
     try (OutputStream out = new BufferedOutputStream(new FileOutputStream(file, true))) {
-      measure.writeDelimitedTo(out);
+      msg.writeDelimitedTo(out);
     } catch (Exception e) {
-      throw ContextException.of("Unable to write measure", e).addContext("file", file);
+      throw ContextException.of("Unable to write " + msgName, e).addContext("file", file);
     }
   }
 
@@ -163,6 +156,17 @@ public class ScannerReportWriter {
     File file = fileStructure.analysisWarnings();
     Protobuf.writeStream(analysisWarnings, file, false);
     return file;
+  }
+
+  public File writeTelemetry(Iterable<ScannerReport.TelemetryEntry> telemetryEntries) {
+    File file = fileStructure.telemetryEntries();
+    Protobuf.writeStream(telemetryEntries, file, false);
+    return file;
+  }
+
+  public void appendDependency(ScannerReport.Dependency dependency) {
+    File file = fileStructure.dependencies();
+    appendDelimitedTo(file, dependency, "dependency");
   }
 
   public File getSourceFile(int componentRef) {

@@ -17,11 +17,12 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { withTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import classNames from 'classnames';
-import { themeColor } from 'design-system';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
+import { themeColor } from '~design-system';
 
 interface Props {
   children?: ReactNode;
@@ -34,9 +35,9 @@ export function AdminPageHeader({ children, className, description, title }: Rea
   return (
     <div className={classNames('sw-flex sw-justify-between', className)}>
       <header className="sw-flex-1">
-        <AdminPageTitle className="sw-heading-lg">{title}</AdminPageTitle>
+        <AdminPageTitle className="sw-heading-xl">{title}</AdminPageTitle>
         {description && (
-          <AdminPageDescription className="sw-body-sm sw-pt-4 sw-max-w-9/12">
+          <AdminPageDescription className="sw-typo-default sw-pt-4 sw-max-w-9/12">
             {description}
           </AdminPageDescription>
         )}

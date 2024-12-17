@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import * as React from 'react';
 import { withRouter } from '~sonar-aligned/components/hoc/withRouter';
 import { Location } from '~sonar-aligned/types/router';
@@ -24,7 +25,7 @@ import { changePassword } from '../../api/users';
 import withAppStateContext from '../../app/components/app-state/withAppStateContext';
 import { AppState } from '../../types/appstate';
 import ChangeAdminPasswordAppRenderer from './ChangeAdminPasswordAppRenderer';
-import { DEFAULT_ADMIN_LOGIN, DEFAULT_ADMIN_PASSWORD } from './constants';
+import { DEFAULT_ADMIN_LOGIN } from './constants';
 
 interface Props {
   appState: AppState;
@@ -32,9 +33,6 @@ interface Props {
 }
 
 interface State {
-  canSubmit?: boolean;
-  confirmPasswordValue: string;
-  passwordValue: string;
   submitting: boolean;
   success: boolean;
 }
@@ -46,8 +44,6 @@ export class ChangeAdminPasswordApp extends React.PureComponent<Props, State> {
     super(props);
 
     this.state = {
-      passwordValue: '',
-      confirmPasswordValue: '',
       submitting: false,
       success: !props.appState.instanceUsesDefaultAdminCredentials,
     };
@@ -61,35 +57,21 @@ export class ChangeAdminPasswordApp extends React.PureComponent<Props, State> {
     this.mounted = false;
   }
 
-  handlePasswordChange = (passwordValue: string) => {
-    this.setState({ passwordValue }, this.checkCanSubmit);
-  };
-
-  handleConfirmPasswordChange = (confirmPasswordValue: string) => {
-    this.setState({ confirmPasswordValue }, this.checkCanSubmit);
-  };
-
-  handleSubmit = async () => {
-    const { canSubmit, passwordValue } = this.state;
-    if (canSubmit) {
-      this.setState({ submitting: true });
-      const success = await changePassword({
+  handleSubmit = async (password: string) => {
+    this.setState({ submitting: true });
+    let success = true;
+    try {
+      await changePassword({
         login: DEFAULT_ADMIN_LOGIN,
-        password: passwordValue,
-      }).then(
-        () => true,
-        () => false,
-      );
-      if (this.mounted) {
-        this.setState({ submitting: false, success });
-      }
+        password,
+      });
+    } catch (_) {
+      success = false;
     }
-  };
 
-  checkCanSubmit = () => {
-    this.setState(({ passwordValue, confirmPasswordValue }) => ({
-      canSubmit: passwordValue === confirmPasswordValue && passwordValue !== DEFAULT_ADMIN_PASSWORD,
-    }));
+    if (this.mounted) {
+      this.setState({ submitting: false, success });
+    }
   };
 
   render() {
@@ -97,15 +79,10 @@ export class ChangeAdminPasswordApp extends React.PureComponent<Props, State> {
       appState: { canAdmin },
       location,
     } = this.props;
-    const { canSubmit, confirmPasswordValue, passwordValue, submitting, success } = this.state;
+    const { submitting, success } = this.state;
     return (
       <ChangeAdminPasswordAppRenderer
         canAdmin={canAdmin}
-        passwordValue={passwordValue}
-        confirmPasswordValue={confirmPasswordValue}
-        canSubmit={canSubmit}
-        onPasswordChange={this.handlePasswordChange}
-        onConfirmPasswordChange={this.handleConfirmPasswordChange}
         onSubmit={this.handleSubmit}
         submitting={submitting}
         success={success}

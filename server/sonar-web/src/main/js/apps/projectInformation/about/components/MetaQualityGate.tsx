@@ -17,8 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Link, Note, SubHeading } from 'design-system';
-import * as React from 'react';
+
+import { Heading, LinkStandalone, Text } from '@sonarsource/echoes-react';
+import { useIntl } from 'react-intl';
 import { translate } from '../../../../helpers/l10n';
 import { getQualityGateUrl } from '../../../../helpers/urls';
 
@@ -27,16 +28,29 @@ interface Props {
 }
 
 export default function MetaQualityGate({ qualityGate }: Props) {
-  return (
-    <div>
-      <SubHeading id="quality-gate-header">{translate('project.info.quality_gate')}</SubHeading>
+  const intl = useIntl();
 
-      <ul className="sw-flex sw-flex-col sw-gap-2" aria-labelledby="quality-gate-header">
+  return (
+    <section>
+      <Heading as="h3">{translate('project.info.quality_gate')}</Heading>
+      <ul className="sw-mt-2 sw-flex sw-flex-col sw-gap-3">
         <li>
-          {qualityGate.isDefault && <Note className="sw-mr-2">({translate('default')})</Note>}
-          <Link to={getQualityGateUrl(qualityGate.name)}>{qualityGate.name}</Link>
+          {qualityGate.isDefault && (
+            <Text isSubdued className="sw-mr-2">
+              ({translate('default')})
+            </Text>
+          )}
+          <LinkStandalone
+            aria-label={intl.formatMessage(
+              { id: 'project.info.quality_gate.link_label' },
+              { gate: qualityGate.name },
+            )}
+            to={getQualityGateUrl(qualityGate.name)}
+          >
+            {qualityGate.name}
+          </LinkStandalone>
         </li>
       </ul>
-    </div>
+    </section>
   );
 }

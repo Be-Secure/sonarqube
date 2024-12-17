@@ -18,10 +18,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { LargeCenteredLayout, PageContentFontWrapper } from 'design-system';
 import { without } from 'lodash';
 import * as React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { LargeCenteredLayout, PageContentFontWrapper } from '~design-system';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import * as api from '../../../../api/permissions';
 import withAppStateContext, {
@@ -258,7 +258,7 @@ class PermissionsGlobalApp extends React.PureComponent<Props, State> {
     );
     return (
       <LargeCenteredLayout id="project-permissions-page">
-        <PageContentFontWrapper className="sw-my-8 sw-body-sm">
+        <PageContentFontWrapper className="sw-my-8 sw-typo-default">
           <Helmet defer={false} title={translate('global_permissions.permission')} />
           <PageHeader />
           <AllHoldersList

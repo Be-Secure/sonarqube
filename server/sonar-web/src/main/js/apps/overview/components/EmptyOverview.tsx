@@ -18,9 +18,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { FlagMessage, LargeCenteredLayout, PageContentFontWrapper, Spinner } from 'design-system';
+import styled from '@emotion/styled';
+import { Spinner } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { Navigate } from 'react-router-dom';
+import { FlagMessage, LargeCenteredLayout, PageContentFontWrapper } from '~design-system';
 import { isBranch, isMainBranch } from '~sonar-aligned/helpers/branch-like';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import { getScannableProjects } from '../../../api/components';
@@ -29,7 +31,9 @@ import { getBranchLikeDisplayName } from '../../../helpers/branch-like';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { getProjectTutorialLocation } from '../../../helpers/urls';
 import { hasGlobalPermission } from '../../../helpers/users';
+import { useBranchesQuery } from '../../../queries/branch';
 import { useTaskForComponentQuery } from '../../../queries/component';
+import { AlmKeys } from '../../../types/alm-settings';
 import { BranchLike } from '../../../types/branch-like';
 import { Permissions } from '../../../types/permissions';
 import { TaskTypes } from '../../../types/tasks';
@@ -38,13 +42,14 @@ import { CurrentUser, isLoggedIn } from '../../../types/users';
 
 export interface EmptyOverviewProps {
   branchLike?: BranchLike;
-  branchLikes: BranchLike[];
   component: Component;
   currentUser: CurrentUser;
 }
 
 export function EmptyOverview(props: Readonly<EmptyOverviewProps>) {
-  const { branchLike, branchLikes, component, currentUser } = props;
+  const { branchLike, component, currentUser } = props;
+
+  const { data: branchLikes } = useBranchesQuery(component);
 
   const [currentUserCanScanProject, setCurrentUserCanScanProject] = React.useState(
     hasGlobalPermission(currentUser, Permissions.Scan),
@@ -55,10 +60,17 @@ export function EmptyOverview(props: Readonly<EmptyOverviewProps>) {
   const hasQueuedAnalyses =
     data && data.queue.filter((task) => task.type === TaskTypes.Report).length > 0;
 
+  let permissionInSyncFor: AlmKeys.GitHub | AlmKeys.GitLab = AlmKeys.GitHub;
+
   const hasPermissionSyncInProgess =
     data &&
-    data.queue.filter((task) => task.type === TaskTypes.GithubProjectPermissionsProvisioning)
-      .length > 0;
+    data.queue.filter((task) => {
+      if (task.type === TaskTypes.GitlabProjectPermissionsProvisioning) {
+        permissionInSyncFor = AlmKeys.GitLab;
+        return true;
+      }
+      return task.type === TaskTypes.GithubProjectPermissionsProvisioning;
+    }).length > 0;
 
   React.useEffect(() => {
     if (currentUserCanScanProject || !isLoggedIn(currentUser)) {
@@ -73,7 +85,7 @@ export function EmptyOverview(props: Readonly<EmptyOverviewProps>) {
   }, [component.key, currentUser, currentUserCanScanProject]);
 
   if (isLoading) {
-    return <Spinner loading />;
+    return <Spinner />;
   }
 
   if (component.qualifier === ComponentQualifier.Application) {
@@ -98,10 +110,13 @@ export function EmptyOverview(props: Readonly<EmptyOverviewProps>) {
     return (
       <LargeCenteredLayout className="sw-pt-8">
         <PageContentFontWrapper>
-          <FlagMessage variant="warning">
-            {translate('provisioning.permission_synch_in_progress')}
-            <Spinner className="sw-ml-8 sw-hidden" aria-hidden loading />
-          </FlagMessage>
+          <SynchInProgress>
+            <Spinner className="sw-mr-2" />
+            {translateWithParameters(
+              'provisioning.permission_synch_in_progress',
+              translate('alm', permissionInSyncFor),
+            )}
+          </SynchInProgress>
         </PageContentFontWrapper>
       </LargeCenteredLayout>
     );
@@ -141,3 +156,10 @@ export function EmptyOverview(props: Readonly<EmptyOverviewProps>) {
 }
 
 export default withCurrentUserContext(EmptyOverview);
+
+const SynchInProgress = styled.div`
+  height: 50vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+`;

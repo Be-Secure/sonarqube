@@ -17,9 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { ComponentQualifier } from '~sonar-aligned/types/component';
+import { MetricKey } from '~sonar-aligned/types/metrics';
 import { RawQuery } from '~sonar-aligned/types/router';
-import { Dict } from '../../types/types';
+import { propertyToMetricMap, propertyToMetricMapLegacy } from './utils';
 
 type Level = 'ERROR' | 'WARN' | 'OK';
 
@@ -55,16 +57,16 @@ export function parseUrlQuery(urlQuery: RawQuery): Query {
     new_reliability: getAsNumericRating(urlQuery['new_reliability']),
     security: getAsNumericRating(urlQuery['security']),
     new_security: getAsNumericRating(urlQuery['new_security']),
-    security_review_rating: getAsNumericRating(urlQuery['security_review']),
-    new_security_review_rating: getAsNumericRating(urlQuery['new_security_review']),
+    security_review: getAsNumericRating(urlQuery['security_review']),
+    new_security_review: getAsNumericRating(urlQuery['new_security_review']),
     maintainability: getAsNumericRating(urlQuery['maintainability']),
     new_maintainability: getAsNumericRating(urlQuery['new_maintainability']),
-    coverage: getAsNumericRating(urlQuery['coverage']),
-    new_coverage: getAsNumericRating(urlQuery['new_coverage']),
+    coverage: getAsNumericRating(urlQuery[MetricKey.coverage]),
+    new_coverage: getAsNumericRating(urlQuery[MetricKey.new_coverage]),
     duplications: getAsNumericRating(urlQuery['duplications']),
     new_duplications: getAsNumericRating(urlQuery['new_duplications']),
     size: getAsNumericRating(urlQuery['size']),
-    new_lines: getAsNumericRating(urlQuery['new_lines']),
+    new_lines: getAsNumericRating(urlQuery[MetricKey.new_lines]),
     languages: getAsStringArray(urlQuery['languages']),
     tags: getAsStringArray(urlQuery['tags']),
     qualifier: getAsQualifier(urlQuery['qualifier']),
@@ -74,7 +76,11 @@ export function parseUrlQuery(urlQuery: RawQuery): Query {
   };
 }
 
-export function convertToFilter(query: Query, isFavorite: boolean): string {
+export function convertToFilter(
+  query: Query,
+  isFavorite: boolean,
+  isStandardMode: boolean,
+): string {
   const conditions: string[] = [];
 
   if (isFavorite) {
@@ -82,38 +88,40 @@ export function convertToFilter(query: Query, isFavorite: boolean): string {
   }
 
   if (query['gate'] != null) {
-    conditions.push(mapPropertyToMetric('gate') + ' = ' + query['gate']);
+    conditions.push(`${mapPropertyToMetric('gate', isStandardMode)}=${query['gate']}`);
   }
 
-  ['coverage', 'new_coverage'].forEach((property) =>
-    pushMetricToArray(query, property, conditions, convertCoverage),
+  [MetricKey.coverage, MetricKey.new_coverage].forEach((property) =>
+    pushMetricToArray(query, property, conditions, convertCoverage, isStandardMode),
   );
 
   ['duplications', 'new_duplications'].forEach((property) =>
-    pushMetricToArray(query, property, conditions, convertDuplications),
+    pushMetricToArray(query, property, conditions, convertDuplications, isStandardMode),
   );
 
   ['size', 'new_lines'].forEach((property) =>
-    pushMetricToArray(query, property, conditions, convertSize),
+    pushMetricToArray(query, property, conditions, convertSize, isStandardMode),
   );
 
   [
     'reliability',
     'security',
-    'security_review_rating',
+    'security_review',
     'maintainability',
     'new_reliability',
     'new_security',
-    'new_security_review_rating',
+    'new_security_review',
     'new_maintainability',
-  ].forEach((property) => pushMetricToArray(query, property, conditions, convertIssuesRating));
+  ].forEach((property) =>
+    pushMetricToArray(query, property, conditions, convertIssuesRating, isStandardMode),
+  );
 
   ['languages', 'tags', 'qualifier'].forEach((property) =>
-    pushMetricToArray(query, property, conditions, convertArrayMetric),
+    pushMetricToArray(query, property, conditions, convertArrayMetric, isStandardMode),
   );
 
   if (query['search'] != null) {
-    conditions.push(`${mapPropertyToMetric('search')} = "${query['search']}"`);
+    conditions.push(`${mapPropertyToMetric('search', isStandardMode)} = "${query['search']}"`);
   }
 
   return conditions.join(' and ');
@@ -233,30 +241,11 @@ function convertSize(metric: string, size: number): string {
   }
 }
 
-function mapPropertyToMetric(property?: string): string | undefined {
-  const map: Dict<string> = {
-    analysis_date: 'analysisDate',
-    reliability: 'reliability_rating',
-    new_reliability: 'new_reliability_rating',
-    security: 'security_rating',
-    new_security: 'new_security_rating',
-    security_review_rating: 'security_review_rating',
-    new_security_review_rating: 'new_security_review_rating',
-    maintainability: 'sqale_rating',
-    new_maintainability: 'new_maintainability_rating',
-    coverage: 'coverage',
-    new_coverage: 'new_coverage',
-    duplications: 'duplicated_lines_density',
-    new_duplications: 'new_duplicated_lines_density',
-    size: 'ncloc',
-    new_lines: 'new_lines',
-    gate: 'alert_status',
-    languages: 'languages',
-    tags: 'tags',
-    search: 'query',
-    qualifier: 'qualifier',
-  };
-  return property && map[property];
+function mapPropertyToMetric(property?: string, isStandardMode = false): string | undefined {
+  if (property === undefined) {
+    return;
+  }
+  return (isStandardMode ? propertyToMetricMapLegacy : propertyToMetricMap)[property];
 }
 
 function pushMetricToArray(
@@ -264,8 +253,9 @@ function pushMetricToArray(
   property: string,
   conditionsArray: string[],
   convertFunction: (metric: string, value: Query[string]) => string,
+  isStandardMode: boolean,
 ): void {
-  const metric = mapPropertyToMetric(property);
+  const metric = mapPropertyToMetric(property, isStandardMode);
   if (query[property] !== undefined && metric !== undefined) {
     conditionsArray.push(convertFunction(metric, query[property]));
   }

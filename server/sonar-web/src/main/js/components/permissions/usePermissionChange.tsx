@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { without } from 'lodash';
 import React from 'react';
 import { FormattedMessage } from 'react-intl';
@@ -79,6 +80,7 @@ export default function usePermissionChange<T extends PermissionGroup | Permissi
           confirmButtonText={translate('confirm')}
           header={translate('project_permission.remove_only_confirmation_title')}
           isDestructive
+          isOpen
           onClose={() => setConfirmPermission(null)}
           onConfirm={() => handleChangePermission(confirmPermission.key)}
         >

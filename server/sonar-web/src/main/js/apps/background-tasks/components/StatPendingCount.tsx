@@ -17,8 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { DestructiveIcon, TrashIcon } from 'design-system';
-import * as React from 'react';
+
+import { DestructiveIcon, TrashIcon } from '~design-system';
 import withAppStateContext from '../../../app/components/app-state/withAppStateContext';
 import ConfirmButton from '../../../components/controls/ConfirmButton';
 import Tooltip from '../../../components/controls/Tooltip';
@@ -38,7 +38,7 @@ function StatPendingCount({ appState, onCancelAllPending, pendingCount }: Readon
 
   return (
     <div className="sw-flex sw-items-center">
-      <span className="sw-body-md-highlight sw-mr-1">{pendingCount}</span>
+      <span className="sw-typo-lg-semibold sw-mr-1">{pendingCount}</span>
       {translate('background_tasks.pending')}
       {appState.canAdmin && pendingCount > 0 && (
         <ConfirmButton

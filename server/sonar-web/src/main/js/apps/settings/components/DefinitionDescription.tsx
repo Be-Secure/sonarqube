@@ -17,11 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Note, SubHeading } from 'design-system';
-import * as React from 'react';
-import Tooltip from '../../../components/controls/Tooltip';
+
+import { Heading, Text, Tooltip } from '@sonarsource/echoes-react';
+import { SafeHTMLInjection, SanitizeLevel } from '~design-system';
 import { translateWithParameters } from '../../../helpers/l10n';
-import { sanitizeStringRestricted } from '../../../helpers/sanitize';
 import { ExtendedSettingDefinition } from '../../../types/settings';
 import { getPropertyDescription, getPropertyName } from '../utils';
 
@@ -35,20 +34,20 @@ export default function DefinitionDescription({ definition }: Readonly<Props>) {
 
   return (
     <div className="sw-w-abs-300">
-      <SubHeading title={propertyName}>{propertyName}</SubHeading>
+      <Heading as="h4" className="sw-text-ellipsis sw-overflow-hidden">
+        {propertyName}
+      </Heading>
 
       {description && (
-        <div
-          className="markdown sw-mt-1"
-          // eslint-disable-next-line react/no-danger
-          dangerouslySetInnerHTML={{ __html: sanitizeStringRestricted(description) }}
-        />
+        <SafeHTMLInjection htmlAsString={description} sanitizeLevel={SanitizeLevel.RESTRICTED}>
+          <div className="markdown sw-mt-1" />
+        </SafeHTMLInjection>
       )}
 
       <Tooltip content={translateWithParameters('settings.key_x', definition.key)}>
-        <Note as="div" className="sw-mt-4">
+        <Text isSubdued as="div" className="sw-mt-4">
           {translateWithParameters('settings.key_x', definition.key)}
-        </Note>
+        </Text>
       </Tooltip>
     </div>
   );

@@ -17,9 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import classNames from 'classnames';
-import { HotspotRating, LightLabel } from 'design-system';
 import React from 'react';
+import { HotspotRating, LightLabel } from '~design-system';
 import Tooltip from '../../../components/controls/Tooltip';
 import { translate } from '../../../helpers/l10n';
 import { Hotspot, HotspotStatusOption } from '../../../types/security-hotspots';
@@ -38,17 +39,17 @@ export default function HotspotHeaderRightSection(props: Props) {
       <HotspotHeaderInfo title={translate('hotspots.risk_exposure')}>
         <div className="sw-flex sw-items-center">
           <HotspotRating className="sw-mr-1" rating={hotspot.rule.vulnerabilityProbability} />
-          <LightLabel className="sw-body-sm">
+          <LightLabel className="sw-typo-default">
             {translate('risk_exposure', hotspot.rule.vulnerabilityProbability)}
           </LightLabel>
         </div>
       </HotspotHeaderInfo>
       <HotspotHeaderInfo title={translate('category')}>
-        <LightLabel className="sw-body-sm">{categoryStandard}</LightLabel>
+        <LightLabel className="sw-typo-default">{categoryStandard}</LightLabel>
       </HotspotHeaderInfo>
       {hotspot.codeVariants && hotspot.codeVariants.length > 0 && (
         <HotspotHeaderInfo title={translate('issues.facet.codeVariants')} className="sw-truncate">
-          <LightLabel className="sw-body-sm">
+          <LightLabel className="sw-typo-default">
             <Tooltip content={hotspot.codeVariants.join(', ')}>
               <span>{hotspot.codeVariants.join(', ')}</span>
             </Tooltip>
@@ -71,7 +72,7 @@ interface HotspotHeaderInfoProps {
 function HotspotHeaderInfo({ children, title, className }: HotspotHeaderInfoProps) {
   return (
     <div className={classNames('sw-min-w-abs-150 sw-max-w-abs-250', className)}>
-      <div className="sw-body-sm-highlight">{title}:</div>
+      <div className="sw-typo-semibold">{title}:</div>
       {children}
     </div>
   );

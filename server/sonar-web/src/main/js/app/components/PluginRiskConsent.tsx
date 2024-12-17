@@ -17,9 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonPrimary, Card, CenteredLayout, Title } from 'design-system';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { Card, CenteredLayout, Title } from '~design-system';
 import { withRouter } from '~sonar-aligned/components/hoc/withRouter';
 import { Router } from '~sonar-aligned/types/router';
 import { setSimpleSettingValue } from '../../api/settings';
@@ -71,7 +73,7 @@ export function PluginRiskConsent(props: Readonly<PluginRiskConsentProps>) {
       <Helmet defer={false} title={translate('plugin_risk_consent.page')} />
 
       <Card
-        className="sw-body-md sw-min-w-[500px] sw-mx-auto sw-w-[40%] sw-text-center"
+        className="sw-typo-lg sw-min-w-[500px] sw-mx-auto sw-w-[40%] sw-text-center"
         data-testid="plugin-risk-consent-page"
       >
         <Title className="sw-mb-4">{translate('plugin_risk_consent.title')}</Title>
@@ -80,9 +82,9 @@ export function PluginRiskConsent(props: Readonly<PluginRiskConsentProps>) {
 
         <p className="sw-mb-6">{translate('plugin_risk_consent.description2')}</p>
 
-        <ButtonPrimary className="sw-my-4" onClick={acknowledgeRisk}>
+        <Button className="sw-my-4" onClick={acknowledgeRisk} variety={ButtonVariety.Primary}>
           {translate('plugin_risk_consent.action')}
-        </ButtonPrimary>
+        </Button>
       </Card>
     </CenteredLayout>
   );

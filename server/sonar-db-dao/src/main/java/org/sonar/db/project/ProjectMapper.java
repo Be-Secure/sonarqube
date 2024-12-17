@@ -21,7 +21,6 @@ package org.sonar.db.project;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import org.apache.ibatis.annotations.Param;
@@ -59,14 +58,16 @@ public interface ProjectMapper {
 
   void updateVisibility(@Param("uuid") String uuid, @Param("isPrivate") boolean isPrivate, @Param("updatedAt") long updatedAt);
 
+  void updateContainsAiCode(@Param("uuid") String uuid, @Param("containsAiCode") boolean containsAiCode, @Param("updatedAt") long updatedAt);
+
+  void updateAiCodeFixEnablementForAllProjects(@Param("aiCodeFixEnabled") boolean aiCodeFixEnabled, @Param("updatedAt") long updatedAt);
+
   List<ProjectDto> selectAllApplications();
 
   List<ProjectDto> selectApplicationsByKeys(@Param("kees") Collection<String> kees);
 
   @CheckForNull
   ProjectDto selectByBranchUuid(String branchUuid);
-
-  Set<String> selectProjectUuidsAssociatedToDefaultQualityProfileByLanguage(@Param("languageFilters") Set<String> languageFilters);
 
   void updateNcloc(@Param("projectUuid") String projectUuid, @Param("ncloc") long ncloc);
 
@@ -76,4 +77,6 @@ public interface ProjectMapper {
   int countIndexedProjects();
 
   int countProjects();
+
+  int countProjectsByAiCodeFixEnablement(@Param("aiCodeFixEnabled") boolean aiCodeFixEnabled);
 }

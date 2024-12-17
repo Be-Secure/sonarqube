@@ -17,9 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { LinkStandalone } from '@sonarsource/echoes-react';
 import classNames from 'classnames';
-import * as React from 'react';
 import Measure from '~sonar-aligned/components/measure/Measure';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import { MetricKey } from '~sonar-aligned/types/metrics';
@@ -59,11 +59,13 @@ export default function MeasureHeader(props: Readonly<Props>) {
     <div className="sw-mb-4">
       <div className="sw-flex sw-items-center sw-justify-between sw-gap-4">
         <div className="it__measure-details-metric sw-flex sw-items-center sw-gap-1">
-          <strong className="sw-body-md-highlight">{title}</strong>
+          <strong className="sw-typo-lg-semibold">{title}</strong>
 
           <div className="sw-flex sw-items-center sw-ml-2">
             <Measure
-              className={classNames('it__measure-details-value sw-body-md')}
+              branchLike={branchLike}
+              componentKey={component.key}
+              className={classNames('it__measure-details-value sw-typo-lg')}
               metricKey={metric.key}
               metricType={metric.type}
               value={measureValue}

@@ -17,19 +17,20 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 const { dependencies, devDependencies } = require('../package.json');
 
 const dependenciesArray = Object.entries(dependencies);
 const devDependenciesArray = Object.entries(devDependencies);
 
 const violatingDependencies = [...dependenciesArray, ...devDependenciesArray].filter(
-  ([id, version]) => !/^\d+\.\d+\.\d+$/.test(version)
+  ([id, version]) => !/^\d+\.\d+\.\d+(-rc\d+)?$/.test(version),
 );
 
 if (violatingDependencies.length > 0) {
   throw new Error(
     `Following dependencies must be locked to an exact version:
 ${violatingDependencies.map(([id, version]) => ` - "${id}": "${version}"`).join('\n')}
-`
+`,
   );
 }

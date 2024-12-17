@@ -17,23 +17,23 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { CodeSnippet } from 'design-system';
-import * as React from 'react';
+
+import { CodeSnippet } from '~design-system';
 import { CompilationInfo } from '../../components/CompilationInfo';
 import { Arch, AutoConfig, BuildTools, OSs, TutorialConfig } from '../../types';
 import {
   SONAR_SCANNER_CLI_LATEST_VERSION,
-  getBuildWrapperExecutable,
-  getBuildWrapperFolder,
+  getBuildWrapperExecutableLinux,
+  getBuildWrapperFolderLinux,
   getScannerUrlSuffix,
   isCFamily,
+  shouldFetchBuildWrapper,
 } from '../../utils';
 
 export interface PipeCommandProps {
   arch: Arch;
   buildTool: BuildTools;
   config: TutorialConfig;
-  os: OSs;
   projectKey: string;
 }
 
@@ -52,13 +52,11 @@ const BUILD_TOOL_SPECIFIC: {
   [BuildTools.Maven]: {
     image: 'maven:3-eclipse-temurin-17',
     script: () => `
-    - mvn verify sonar:sonar`,
+    - mvn verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar`,
   },
   [BuildTools.DotNet]: {
     image: 'mcr.microsoft.com/dotnet/sdk:7.0',
     script: (projectKey: string) => `
-      - "apt-get update"
-      - "apt-get install --yes --no-install-recommends openjdk-17-jre"
       - "dotnet tool install --global dotnet-sonarscanner"
       - "export PATH=\\"$PATH:$HOME/.dotnet/tools\\""
       - "dotnet sonarscanner begin /k:\\"${projectKey}\\" /d:sonar.token=\\"$SONAR_TOKEN\\" /d:\\"sonar.host.url=$SONAR_HOST_URL\\" "
@@ -67,30 +65,41 @@ const BUILD_TOOL_SPECIFIC: {
   },
   [BuildTools.Cpp]: {
     image: 'gcc',
-    script: (autoConfig?: AutoConfig) =>
-      `sonar-scanner/bin/sonar-scanner --define sonar.host.url="\${SONAR_HOST_URL}" ${autoConfig === AutoConfig.Manual ? `--define sonar.cfamily.compile-commands="\${BUILD_WRAPPER_OUT_DIR}/compile_commands.json"` : ''}`,
+    script: (_, autoConfig?: AutoConfig) =>
+      `sonar-scanner/bin/sonar-scanner -Dsonar.host.url="\${SONAR_HOST_URL}" ` +
+      (autoConfig === AutoConfig.Manual
+        ? `-Dsonar.cfamily.compile-commands="\${BUILD_WRAPPER_OUT_DIR}/compile_commands.json"`
+        : ''),
   },
   [BuildTools.ObjectiveC]: {
     image: 'gcc',
-    script: (autoConfig?: AutoConfig) =>
-      `sonar-scanner/bin/sonar-scanner --define sonar.host.url="\${SONAR_HOST_URL}" ${autoConfig === AutoConfig.Manual ? `--define sonar.cfamily.compile-commands="\${BUILD_WRAPPER_OUT_DIR}/compile_commands.json"` : ''}`,
+    script: (_) =>
+      `sonar-scanner/bin/sonar-scanner -Dsonar.host.url="\${SONAR_HOST_URL}" ` +
+      `-Dsonar.cfamily.compile-commands="\${BUILD_WRAPPER_OUT_DIR}/compile_commands.json"`,
+  },
+  [BuildTools.Dart]: {
+    image: 'ghcr.io/cirruslabs/flutter:stable',
+    script: () => `
+    - <commands to build your project>
+    - sonar-scanner/bin/sonar-scanner --define sonar.host.url="\${SONAR_HOST_URL}"`,
   },
   [BuildTools.Other]: {
     image: `
-    name: sonarsource/sonar-scanner-cli:latest
+    name: sonarsource/sonar-scanner-cli:11
     entrypoint: [""]`,
     script: () => `
-    - sonar-scanner`,
+    - sonar-scanner -Dsonar.host.url="\${SONAR_HOST_URL}"`,
   },
 };
 
 export default function PipeCommand(props: Readonly<PipeCommandProps>) {
-  const { projectKey, buildTool, config, os, arch } = props;
+  const { projectKey, buildTool, config, arch } = props;
   const { autoConfig } = config;
 
   const { image, script } = BUILD_TOOL_SPECIFIC[buildTool];
 
-  const suffix = getScannerUrlSuffix(os, arch);
+  const suffix = getScannerUrlSuffix(OSs.Linux, arch);
+  const buildWrapperFolder = getBuildWrapperFolderLinux(arch);
 
   const getBinaries = `get-binaries:
   stage: get-binaries
@@ -99,61 +108,53 @@ export default function PipeCommand(props: Readonly<PipeCommandProps>) {
     key: "\${CI_COMMIT_SHORT_SHA}"
     paths:
       - sonar-scanner/
-      ${autoConfig === AutoConfig.Manual ? `- build-wrapper/` : ''}
+      ${shouldFetchBuildWrapper(buildTool, autoConfig) ? `- build-wrapper/` : ''}
   script:
     # Download sonar-scanner
     - curl -sSLo ./sonar-scanner.zip 'https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_CLI_LATEST_VERSION}${suffix}.zip'
     - unzip -o sonar-scanner.zip
     - mv sonar-scanner-${SONAR_SCANNER_CLI_LATEST_VERSION}${suffix} sonar-scanner
     ${
-      autoConfig === AutoConfig.Manual
+      shouldFetchBuildWrapper(buildTool, autoConfig)
         ? `# Download build-wrapper
-    - curl -sSLo ./${getBuildWrapperFolder(os, arch)}.zip "$SONAR_HOST_URL/static/cpp/${getBuildWrapperFolder(os, arch)}.zip"
-    - unzip -o ${getBuildWrapperFolder(os, arch)}.zip
-    - mv ${getBuildWrapperFolder(os, arch)} build-wrapper`
+    - curl -sSLo ./${buildWrapperFolder}.zip "$SONAR_HOST_URL/static/cpp/${buildWrapperFolder}.zip"
+    - unzip -o ${buildWrapperFolder}.zip
+    - mv ${buildWrapperFolder} build-wrapper
+`
         : ''
     }
-        
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: $CI_COMMIT_BRANCH == 'master'
     - if: $CI_COMMIT_BRANCH == 'main'
     - if: $CI_COMMIT_BRANCH == 'develop'`;
 
-  const build = `build:
-  stage: build
+  const buildAnalyze = `build:
+  stage: build-analyze
   script:
-    # prepare the build tree
-    - mkdir build
-    ${
-      autoConfig === AutoConfig.Manual
-        ? `- build-wrapper/${getBuildWrapperExecutable(os, arch)} --out-dir "\${BUILD_WRAPPER_OUT_DIR}" <your clean build command>`
-        : ''
-    }
+    - build-wrapper/${getBuildWrapperExecutableLinux(arch)} --out-dir "\${BUILD_WRAPPER_OUT_DIR}" <your clean build command>
+    - ${script(projectKey, autoConfig)}
   cache:
-    policy: pull-push
+    policy: pull
     key: "\${CI_COMMIT_SHORT_SHA}"
     paths:
     - sonar-scanner/
-    ${
-      autoConfig === AutoConfig.Manual
-        ? `- build-wrapper/
-    - "\${BUILD_WRAPPER_OUT_DIR}"`
-        : ''
-    }`;
+    - build-wrapper/`;
 
   const sonarqubeCheck = `sonarqube-check:
   stage: sonarqube-check
-  dependencies:
+  ${
+    isCFamily(buildTool)
+      ? `dependencies:
     - get-binaries
-    - build
   cache:
     policy: pull
     key: "\${CI_COMMIT_SHORT_SHA}"
     paths:
       - sonar-scanner/
-      ${autoConfig === AutoConfig.Manual ? `- "\${BUILD_WRAPPER_OUT_DIR}"` : ''}
-      
+`
+      : ''
+  }
   script: ${script(projectKey, autoConfig)}
   allow_failure: true
   rules:
@@ -178,13 +179,21 @@ export default function PipeCommand(props: Readonly<PipeCommandProps>) {
       sast: gl-sast-sonar-report.json
 `;
 
-  let stageDeclaration = ['sonarqube-check', 'sonarqube-vulnerability-report'];
-  let stages = [sonarqubeCheck, vulnerabilityReport];
+  let stageDeclaration = ['sonarqube-vulnerability-report'];
+  let stages = [vulnerabilityReport];
 
-  if (buildTool === BuildTools.Cpp || buildTool === BuildTools.ObjectiveC) {
+  if (shouldFetchBuildWrapper(buildTool, autoConfig)) {
     // only for c-family languages on manual configuration
-    stages = [getBinaries, build, ...stages];
-    stageDeclaration = ['get-binaries', 'build', ...stageDeclaration];
+    stages = [buildAnalyze, ...stages];
+    stageDeclaration = ['build-analyze', ...stageDeclaration];
+  } else {
+    stages = [sonarqubeCheck, ...stages];
+    stageDeclaration = ['sonarqube-check', ...stageDeclaration];
+  }
+
+  if (isCFamily(buildTool) || buildTool === BuildTools.Dart) {
+    stages = [getBinaries, ...stages];
+    stageDeclaration = ['get-binaries', ...stageDeclaration];
   }
 
   const stageDefinition =

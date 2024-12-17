@@ -30,6 +30,7 @@ import org.sonar.api.measures.CoreMetrics;
 import org.sonar.api.measures.Metric;
 import org.sonar.api.rule.Severity;
 import org.sonar.api.rules.RuleType;
+import org.sonar.core.metric.SoftwareQualitiesMetrics;
 import org.sonar.server.measure.ImpactMeasureBuilder;
 import org.sonar.server.measure.Rating;
 
@@ -41,7 +42,24 @@ import static org.sonar.api.measures.CoreMetrics.NEW_SECURITY_HOTSPOTS_TO_REVIEW
 import static org.sonar.api.measures.CoreMetrics.SECURITY_HOTSPOTS_REVIEWED;
 import static org.sonar.api.measures.CoreMetrics.SECURITY_HOTSPOTS_REVIEWED_STATUS;
 import static org.sonar.api.measures.CoreMetrics.SECURITY_HOTSPOTS_TO_REVIEW_STATUS;
+import static org.sonar.api.measures.CoreMetrics.TECHNICAL_DEBT;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.EFFORT_TO_REACH_SOFTWARE_QUALITY_MAINTAINABILITY_RATING_A;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_MAINTAINABILITY_DEBT_RATIO;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_MAINTAINABILITY_RATING;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_RELIABILITY_RATING;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_RELIABILITY_REMEDIATION_EFFORT;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_SECURITY_RATING;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_SECURITY_REMEDIATION_EFFORT;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.SOFTWARE_QUALITY_MAINTAINABILITY_DEBT_RATIO;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.SOFTWARE_QUALITY_MAINTAINABILITY_RATING;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.SOFTWARE_QUALITY_RELIABILITY_RATING;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.SOFTWARE_QUALITY_RELIABILITY_REMEDIATION_EFFORT;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.SOFTWARE_QUALITY_SECURITY_RATING;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.SOFTWARE_QUALITY_SECURITY_REMEDIATION_EFFORT;
 import static org.sonar.server.measure.Rating.RATING_BY_SEVERITY;
+import static org.sonar.server.measure.Rating.RATING_BY_SOFTWARE_QUALITY_SEVERITY;
 import static org.sonar.server.metric.IssueCountMetrics.PRIORITIZED_RULE_ISSUES;
 import static org.sonar.server.security.SecurityReviewRating.computePercent;
 import static org.sonar.server.security.SecurityReviewRating.computeRating;
@@ -64,22 +82,22 @@ public class MeasureUpdateFormulaFactoryImpl implements MeasureUpdateFormulaFact
       (context, issues) -> context.setValue(issues.countUnresolvedByType(RuleType.SECURITY_HOTSPOT, false))),
 
     new MeasureUpdateFormula(CoreMetrics.RELIABILITY_ISSUES, false, true, new ImpactAddChildren(),
-      (context, issues) -> context.setValue(issues.getBySoftwareQuality(SoftwareQuality.RELIABILITY, false))),
+      (context, issues) -> context.setValue(issues.getImpactJsonBySoftwareQuality(SoftwareQuality.RELIABILITY, false))),
 
     new MeasureUpdateFormula(CoreMetrics.MAINTAINABILITY_ISSUES, false, true, new ImpactAddChildren(),
-      (context, issues) -> context.setValue(issues.getBySoftwareQuality(SoftwareQuality.MAINTAINABILITY, false))),
+      (context, issues) -> context.setValue(issues.getImpactJsonBySoftwareQuality(SoftwareQuality.MAINTAINABILITY, false))),
 
     new MeasureUpdateFormula(CoreMetrics.SECURITY_ISSUES, false, true, new ImpactAddChildren(),
-      (context, issues) -> context.setValue(issues.getBySoftwareQuality(SoftwareQuality.SECURITY, false))),
+      (context, issues) -> context.setValue(issues.getImpactJsonBySoftwareQuality(SoftwareQuality.SECURITY, false))),
 
     new MeasureUpdateFormula(CoreMetrics.NEW_RELIABILITY_ISSUES, true, true, new ImpactAddChildren(),
-      (context, issues) -> context.setValue(issues.getBySoftwareQuality(SoftwareQuality.RELIABILITY, true))),
+      (context, issues) -> context.setValue(issues.getImpactJsonBySoftwareQuality(SoftwareQuality.RELIABILITY, true))),
 
     new MeasureUpdateFormula(CoreMetrics.NEW_MAINTAINABILITY_ISSUES, true, true, new ImpactAddChildren(),
-      (context, issues) -> context.setValue(issues.getBySoftwareQuality(SoftwareQuality.MAINTAINABILITY, true))),
+      (context, issues) -> context.setValue(issues.getImpactJsonBySoftwareQuality(SoftwareQuality.MAINTAINABILITY, true))),
 
     new MeasureUpdateFormula(CoreMetrics.NEW_SECURITY_ISSUES, true, true, new ImpactAddChildren(),
-      (context, issues) -> context.setValue(issues.getBySoftwareQuality(SoftwareQuality.SECURITY, true))),
+      (context, issues) -> context.setValue(issues.getImpactJsonBySoftwareQuality(SoftwareQuality.SECURITY, true))),
 
     new MeasureUpdateFormula(CoreMetrics.VIOLATIONS, false, new AddChildren(),
       (context, issues) -> context.setValue(issues.countUnresolved(false))),
@@ -127,18 +145,19 @@ public class MeasureUpdateFormulaFactoryImpl implements MeasureUpdateFormulaFact
       (context, issues) -> context.setValue(issues.sumEffortOfUnresolved(RuleType.VULNERABILITY, false))),
 
     new MeasureUpdateFormula(CoreMetrics.SQALE_DEBT_RATIO, false, false,
-      (context, formula) -> context.setValue(100.0 * debtDensity(context)),
-      (context, issues) -> context.setValue(100.0 * debtDensity(context)),
+      (context, formula) -> context.setValue(100.0 * debtDensity(TECHNICAL_DEBT, context)),
+      (context, issues) -> context.setValue(100.0 * debtDensity(TECHNICAL_DEBT, context)),
       asList(CoreMetrics.TECHNICAL_DEBT, CoreMetrics.DEVELOPMENT_COST)),
 
     new MeasureUpdateFormula(CoreMetrics.SQALE_RATING, false, false,
-      (context, issues) -> context.setValue(context.getDebtRatingGrid().getRatingForDensity(debtDensity(context))),
-      (context, issues) -> context.setValue(context.getDebtRatingGrid().getRatingForDensity(debtDensity(context))),
+      (context, issues) -> context.setValue(context.getDebtRatingGrid().getRatingForDensity(debtDensity(TECHNICAL_DEBT, context))),
+      (context, issues) -> context.setValue(context.getDebtRatingGrid().getRatingForDensity(debtDensity(TECHNICAL_DEBT, context))),
       asList(CoreMetrics.TECHNICAL_DEBT, CoreMetrics.DEVELOPMENT_COST)),
 
     new MeasureUpdateFormula(CoreMetrics.EFFORT_TO_REACH_MAINTAINABILITY_RATING_A, false, false,
-      (context, formula) -> context.setValue(effortToReachMaintainabilityRatingA(context)),
-      (context, issues) -> context.setValue(effortToReachMaintainabilityRatingA(context)), asList(CoreMetrics.TECHNICAL_DEBT, CoreMetrics.DEVELOPMENT_COST)),
+      (context, formula) -> context.setValue(effortToReachMaintainabilityRatingA(CoreMetrics.TECHNICAL_DEBT, context)),
+      (context, issues) -> context.setValue(effortToReachMaintainabilityRatingA(CoreMetrics.TECHNICAL_DEBT, context)),
+      asList(CoreMetrics.TECHNICAL_DEBT, CoreMetrics.DEVELOPMENT_COST)),
 
     new MeasureUpdateFormula(CoreMetrics.RELIABILITY_RATING, false, new MaxRatingChildren(),
       (context, issues) -> context.setValue(RATING_BY_SEVERITY.get(issues.getHighestSeverityOfUnresolved(RuleType.BUG, false).orElse(Severity.INFO)))),
@@ -251,19 +270,143 @@ public class MeasureUpdateFormulaFactoryImpl implements MeasureUpdateFormulaFact
       }),
 
     new MeasureUpdateFormula(CoreMetrics.NEW_SQALE_DEBT_RATIO, true, false,
-      (context, formula) -> context.setValue(100.0D * newDebtDensity(context)),
-      (context, issues) -> context.setValue(100.0D * newDebtDensity(context)),
+      (context, formula) -> context.setValue(100.0D * newDebtDensity(CoreMetrics.NEW_TECHNICAL_DEBT, context)),
+      (context, issues) -> context.setValue(100.0D * newDebtDensity(CoreMetrics.NEW_TECHNICAL_DEBT, context)),
       asList(CoreMetrics.NEW_TECHNICAL_DEBT, CoreMetrics.NEW_DEVELOPMENT_COST)),
 
     new MeasureUpdateFormula(CoreMetrics.NEW_MAINTAINABILITY_RATING, true, false,
-      (context, formula) -> context.setValue(context.getDebtRatingGrid().getRatingForDensity(newDebtDensity(context))),
-      (context, issues) -> context.setValue(context.getDebtRatingGrid().getRatingForDensity(newDebtDensity(context))),
-      asList(CoreMetrics.NEW_TECHNICAL_DEBT, CoreMetrics.NEW_DEVELOPMENT_COST)));
+      (context, formula) -> context.setValue(context.getDebtRatingGrid().getRatingForDensity(newDebtDensity(CoreMetrics.NEW_TECHNICAL_DEBT, context))),
+      (context, issues) -> context.setValue(context.getDebtRatingGrid().getRatingForDensity(newDebtDensity(CoreMetrics.NEW_TECHNICAL_DEBT, context))),
+      asList(CoreMetrics.NEW_TECHNICAL_DEBT, CoreMetrics.NEW_DEVELOPMENT_COST)),
+
+    // Metrics based on Software Qualities
+    new MeasureUpdateFormula(SoftwareQualitiesMetrics.SOFTWARE_QUALITY_BLOCKER_ISSUES, false, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.countUnresolvedByImpactSeverity(org.sonar.api.issue.impact.Severity.BLOCKER, false))),
+
+    new MeasureUpdateFormula(SoftwareQualitiesMetrics.SOFTWARE_QUALITY_HIGH_ISSUES, false, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.countUnresolvedByImpactSeverity(org.sonar.api.issue.impact.Severity.HIGH, false))),
+
+    new MeasureUpdateFormula(SoftwareQualitiesMetrics.SOFTWARE_QUALITY_MEDIUM_ISSUES, false, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.countUnresolvedByImpactSeverity(org.sonar.api.issue.impact.Severity.MEDIUM, false))),
+
+    new MeasureUpdateFormula(SoftwareQualitiesMetrics.SOFTWARE_QUALITY_LOW_ISSUES, false, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.countUnresolvedByImpactSeverity(org.sonar.api.issue.impact.Severity.LOW, false))),
+
+    new MeasureUpdateFormula(SoftwareQualitiesMetrics.SOFTWARE_QUALITY_INFO_ISSUES, false, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.countUnresolvedByImpactSeverity(org.sonar.api.issue.impact.Severity.INFO, false))),
+
+    new MeasureUpdateFormula(SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_BLOCKER_ISSUES, true, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.countUnresolvedByImpactSeverity(org.sonar.api.issue.impact.Severity.BLOCKER, true))),
+
+    new MeasureUpdateFormula(SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_HIGH_ISSUES, true, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.countUnresolvedByImpactSeverity(org.sonar.api.issue.impact.Severity.HIGH, true))),
+
+    new MeasureUpdateFormula(SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_MEDIUM_ISSUES, true, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.countUnresolvedByImpactSeverity(org.sonar.api.issue.impact.Severity.MEDIUM, true))),
+
+    new MeasureUpdateFormula(SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_LOW_ISSUES, true, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.countUnresolvedByImpactSeverity(org.sonar.api.issue.impact.Severity.LOW, true))),
+
+    new MeasureUpdateFormula(SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_INFO_ISSUES, true, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.countUnresolvedByImpactSeverity(org.sonar.api.issue.impact.Severity.INFO, true))),
+
+    new MeasureUpdateFormula(SoftwareQualitiesMetrics.SOFTWARE_QUALITY_MAINTAINABILITY_ISSUES, false, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.countBySoftwareQuality(SoftwareQuality.MAINTAINABILITY, false))),
+
+    new MeasureUpdateFormula(SoftwareQualitiesMetrics.SOFTWARE_QUALITY_RELIABILITY_ISSUES, false, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.countBySoftwareQuality(SoftwareQuality.RELIABILITY, false))),
+
+    new MeasureUpdateFormula(SoftwareQualitiesMetrics.SOFTWARE_QUALITY_SECURITY_ISSUES, false, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.countBySoftwareQuality(SoftwareQuality.SECURITY, false))),
+
+    new MeasureUpdateFormula(SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_MAINTAINABILITY_ISSUES, true, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.countBySoftwareQuality(SoftwareQuality.MAINTAINABILITY, true))),
+
+    new MeasureUpdateFormula(SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_RELIABILITY_ISSUES, true, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.countBySoftwareQuality(SoftwareQuality.RELIABILITY, true))),
+
+    new MeasureUpdateFormula(SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_SECURITY_ISSUES, true, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.countBySoftwareQuality(SoftwareQuality.SECURITY, true))),
+
+    new MeasureUpdateFormula(SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, false, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.sumEffortOfUnresolvedBySoftwareQuality(SoftwareQuality.MAINTAINABILITY, false))),
+
+    new MeasureUpdateFormula(SOFTWARE_QUALITY_RELIABILITY_REMEDIATION_EFFORT, false, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.sumEffortOfUnresolvedBySoftwareQuality(SoftwareQuality.RELIABILITY, false))),
+
+    new MeasureUpdateFormula(SOFTWARE_QUALITY_SECURITY_REMEDIATION_EFFORT, false, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.sumEffortOfUnresolvedBySoftwareQuality(SoftwareQuality.SECURITY, false))),
+
+    new MeasureUpdateFormula(NEW_SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, true, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.sumEffortOfUnresolvedBySoftwareQuality(SoftwareQuality.MAINTAINABILITY, true))),
+
+    new MeasureUpdateFormula(NEW_SOFTWARE_QUALITY_RELIABILITY_REMEDIATION_EFFORT, true, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.sumEffortOfUnresolvedBySoftwareQuality(SoftwareQuality.RELIABILITY, true))),
+
+    new MeasureUpdateFormula(NEW_SOFTWARE_QUALITY_SECURITY_REMEDIATION_EFFORT, true, true, new AddChildren(),
+      (context, issues) -> context.setValue(issues.sumEffortOfUnresolvedBySoftwareQuality(SoftwareQuality.SECURITY, true))),
+
+    new MeasureUpdateFormula(SOFTWARE_QUALITY_MAINTAINABILITY_DEBT_RATIO, false, true,
+      (context, formula) -> context.setValue(100.0 * debtDensity(SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, context)),
+      (context, issues) -> context.setValue(100.0 * debtDensity(SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, context)),
+      asList(SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, CoreMetrics.DEVELOPMENT_COST)),
+
+    new MeasureUpdateFormula(NEW_SOFTWARE_QUALITY_MAINTAINABILITY_DEBT_RATIO, true, true,
+      (context, formula) -> context.setValue(100.0D * newDebtDensity(NEW_SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, context)),
+      (context, issues) -> context.setValue(100.0D * newDebtDensity(NEW_SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, context)),
+      asList(NEW_SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, CoreMetrics.NEW_DEVELOPMENT_COST)),
+
+    new MeasureUpdateFormula(SOFTWARE_QUALITY_MAINTAINABILITY_RATING, false, true,
+      (context, issues) -> context.setValue(context.getDebtRatingGrid().getRatingForDensity(debtDensity(SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, context))),
+      (context, issues) -> context.setValue(context.getDebtRatingGrid().getRatingForDensity(debtDensity(SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, context))),
+      asList(SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, CoreMetrics.DEVELOPMENT_COST)),
+
+    new MeasureUpdateFormula(NEW_SOFTWARE_QUALITY_MAINTAINABILITY_RATING, true, true,
+      (context, formula) -> context.setValue(context.getDebtRatingGrid().getRatingForDensity(newDebtDensity(NEW_SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, context))),
+      (context, issues) -> context.setValue(context.getDebtRatingGrid().getRatingForDensity(newDebtDensity(NEW_SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, context))),
+      asList(NEW_SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, CoreMetrics.NEW_DEVELOPMENT_COST)),
+
+    new MeasureUpdateFormula(EFFORT_TO_REACH_SOFTWARE_QUALITY_MAINTAINABILITY_RATING_A, false, true,
+      (context, formula) -> context.setValue(effortToReachMaintainabilityRatingA(SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, context)),
+      (context, issues) -> context.setValue(effortToReachMaintainabilityRatingA(SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, context)),
+      asList(SOFTWARE_QUALITY_MAINTAINABILITY_REMEDIATION_EFFORT, CoreMetrics.DEVELOPMENT_COST)),
+
+    new MeasureUpdateFormula(SOFTWARE_QUALITY_RELIABILITY_RATING, false, true, new MaxRatingChildren(),
+      (context, issues) -> {
+        Rating rating = issues.getHighestSeverityOfUnresolved(SoftwareQuality.RELIABILITY, false)
+          .map(RATING_BY_SOFTWARE_QUALITY_SEVERITY::get)
+          .orElse(Rating.A);
+        context.setValue(rating);
+      }),
+
+    new MeasureUpdateFormula(NEW_SOFTWARE_QUALITY_RELIABILITY_RATING, true, true, new MaxRatingChildren(),
+      (context, issues) -> {
+        Rating rating = issues.getHighestSeverityOfUnresolved(SoftwareQuality.RELIABILITY, true)
+          .map(RATING_BY_SOFTWARE_QUALITY_SEVERITY::get)
+          .orElse(Rating.A);
+        context.setValue(rating);
+      }),
+
+    new MeasureUpdateFormula(SOFTWARE_QUALITY_SECURITY_RATING, false, true, new MaxRatingChildren(),
+      (context, issues) -> {
+        Rating rating = issues.getHighestSeverityOfUnresolved(SoftwareQuality.SECURITY, false)
+          .map(RATING_BY_SOFTWARE_QUALITY_SEVERITY::get)
+          .orElse(Rating.A);
+        context.setValue(rating);
+      }),
+
+    new MeasureUpdateFormula(NEW_SOFTWARE_QUALITY_SECURITY_RATING, true, true, new MaxRatingChildren(),
+      (context, issues) -> {
+        Rating rating = issues.getHighestSeverityOfUnresolved(SoftwareQuality.SECURITY, true)
+          .map(RATING_BY_SOFTWARE_QUALITY_SEVERITY::get)
+          .orElse(Rating.A);
+        context.setValue(rating);
+      }));
 
   private static final Set<Metric> FORMULA_METRICS = MeasureUpdateFormulaFactory.extractMetrics(FORMULAS);
 
-  private static double debtDensity(MeasureUpdateFormula.Context context) {
-    double debt = Math.max(context.getValue(CoreMetrics.TECHNICAL_DEBT).orElse(0.0D), 0.0D);
+  private static double debtDensity(Metric<?> maintainabilityRemediationEffortMetric, MeasureUpdateFormula.Context context) {
+    double debt = Math.max(context.getValue(maintainabilityRemediationEffortMetric).orElse(0.0D), 0.0D);
     Optional<Double> devCost = context.getText(CoreMetrics.DEVELOPMENT_COST).map(Double::parseDouble);
     if (devCost.isPresent() && Double.doubleToRawLongBits(devCost.get()) > 0L) {
       return debt / devCost.get();
@@ -271,8 +414,8 @@ public class MeasureUpdateFormulaFactoryImpl implements MeasureUpdateFormulaFact
     return 0.0D;
   }
 
-  private static double newDebtDensity(MeasureUpdateFormula.Context context) {
-    double debt = Math.max(context.getValue(CoreMetrics.NEW_TECHNICAL_DEBT).orElse(0.0D), 0.0D);
+  private static double newDebtDensity(Metric<?> maintainabilityRemediationEffortMetric, MeasureUpdateFormula.Context context) {
+    double debt = Math.max(context.getValue(maintainabilityRemediationEffortMetric).orElse(0.0D), 0.0D);
     Optional<Double> devCost = context.getValue(CoreMetrics.NEW_DEVELOPMENT_COST);
     if (devCost.isPresent() && Double.doubleToRawLongBits(devCost.get()) > 0L) {
       return debt / devCost.get();
@@ -280,9 +423,9 @@ public class MeasureUpdateFormulaFactoryImpl implements MeasureUpdateFormulaFact
     return 0.0D;
   }
 
-  private static double effortToReachMaintainabilityRatingA(MeasureUpdateFormula.Context context) {
+  private static double effortToReachMaintainabilityRatingA(Metric<?> maintainabilityRemediationEffortMetric, MeasureUpdateFormula.Context context) {
     double developmentCost = context.getText(CoreMetrics.DEVELOPMENT_COST).map(Double::parseDouble).orElse(0.0D);
-    double effort = context.getValue(CoreMetrics.TECHNICAL_DEBT).orElse(0.0D);
+    double effort = context.getValue(maintainabilityRemediationEffortMetric).orElse(0.0D);
     double upperGradeCost = context.getDebtRatingGrid().getGradeLowerBound(Rating.B) * developmentCost;
     return upperGradeCost < effort ? (effort - upperGradeCost) : 0.0D;
   }

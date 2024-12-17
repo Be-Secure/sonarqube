@@ -17,10 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import styled from '@emotion/styled';
 import classNames from 'classnames';
-import { Note, themeColor } from 'design-system';
-import React from 'react';
+import { Note, themeColor } from '~design-system';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricType } from '~sonar-aligned/types/metrics';
 import { translate } from '../../helpers/l10n';
@@ -35,7 +35,7 @@ interface Props {
 export default function FilesCounter({ className, current, total }: Props) {
   return (
     <Note className={classNames('sw-whitespace-nowrap', className)}>
-      <Counter className="sw-body-sm-highlight">
+      <Counter className="sw-typo-semibold">
         {isDefined(current) && formatMeasure(current, MetricType.Integer) + '/'}
         {formatMeasure(total, MetricType.Integer)}
       </Counter>{' '}

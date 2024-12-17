@@ -17,10 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { Link, Spinner } from '@sonarsource/echoes-react';
-import { LightPrimary, PageContentFontWrapper, Title } from 'design-system';
 import React from 'react';
 import { FormattedMessage } from 'react-intl';
+import { LightPrimary, PageContentFontWrapper, Title } from '~design-system';
 import { queryToSearchString } from '~sonar-aligned/helpers/urls';
 import { AvailableFeaturesContext } from '../../../../app/components/available-features/AvailableFeaturesContext';
 import { translate } from '../../../../helpers/l10n';
@@ -73,7 +74,7 @@ export default function BitbucketProjectCreateRenderer(
     <PageContentFontWrapper>
       <header className="sw-mb-10">
         <Title className="sw-mb-4">{translate('onboarding.create_project.bitbucket.title')}</Title>
-        <LightPrimary className="sw-body-sm">
+        <LightPrimary className="sw-typo-default">
           {isMonorepoSupported ? (
             <FormattedMessage
               id="onboarding.create_project.bitbucket.subtitle.with_monorepo"

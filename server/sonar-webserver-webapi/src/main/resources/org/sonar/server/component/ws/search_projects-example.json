@@ -14,7 +14,10 @@
         "finance",
         "java"
       ],
-      "visibility": "public"
+      "visibility": "public",
+      "isAiCodeAssured": false,
+      "aiCodeAssurance": "CONTAINS_AI_CODE",
+      "isAiCodeFixEnabled": false
     },
     {
       "key": "another_project",
@@ -22,7 +25,10 @@
       "qualifier": "TRK",
       "isFavorite": false,
       "tags": [],
-      "visibility": "public"
+      "visibility": "public",
+      "isAiCodeAssured": false,
+      "aiCodeAssurance": "CONTAINS_AI_CODE",
+      "isAiCodeFixEnabled": false
     },
     {
       "key": "third_project",
@@ -34,7 +40,10 @@
         "offshore",
         "java"
       ],
-      "visibility": "public"
+      "visibility": "public",
+      "isAiCodeAssured": false,
+      "aiCodeAssurance": "CONTAINS_AI_CODE",
+      "isAiCodeFixEnabled": false
     }
   ],
   "facets": [

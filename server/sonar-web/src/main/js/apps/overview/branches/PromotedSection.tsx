@@ -17,71 +17,32 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import styled from '@emotion/styled';
-import { IconX } from '@sonarsource/echoes-react';
-import {
-  ButtonPrimary,
-  ButtonSecondary,
-  InteractiveIcon,
-  themeBorder,
-  themeColor,
-} from 'design-system';
-import React, { useState } from 'react';
-import { translate } from '../../../helpers/l10n';
+import React from 'react';
+import { themeBorder, themeColor } from '~design-system';
 
 interface Props {
-  content: string;
-  dismissed: boolean;
-  onDismiss: () => void;
-  onPrimaryButtonClick: () => void;
-  primaryButtonLabel: string;
-  secondaryButtonLabel: string;
+  content: React.ReactNode;
+  image?: React.ReactNode;
   title: string;
 }
 
-export default function PromotedSection({
-  content,
-  primaryButtonLabel,
-  secondaryButtonLabel,
-  title,
-  dismissed,
-  onDismiss,
-  onPrimaryButtonClick,
-}: Readonly<Props>) {
-  const [display, setDisplay] = useState(!dismissed);
-
-  const handlePrimaryButtonClick = () => {
-    setDisplay(false);
-    onPrimaryButtonClick();
-  };
-
-  const handleDismiss = () => {
-    setDisplay(false);
-    onDismiss();
-  };
-
-  if (!display) {
-    return null;
-  }
-
-  return (
+export default function PromotedSection({ content, image, title }: Readonly<Props>) {
+  return image ? (
+    <StyledWrapper className="sw-flex sw-items-center sw-p-4 sw-gap-8 sw-pl-6 sw-my-6 sw-rounded-2">
+      {image}
+      <div className="sw-flex-col sw-mb-2">
+        <StyledTitle className="sw-typo-lg-semibold sw-mb-4">{title}</StyledTitle>
+        <div className="sw-typo-default">{content}</div>
+      </div>
+    </StyledWrapper>
+  ) : (
     <StyledWrapper className="sw-p-4 sw-pl-6 sw-my-6 sw-rounded-2">
       <div className="sw-flex sw-justify-between sw-mb-2">
-        <StyledTitle className="sw-body-md-highlight">{title}</StyledTitle>
-        <InteractiveIcon
-          Icon={IconX}
-          aria-label={translate('dismiss')}
-          onClick={handleDismiss}
-          size="small"
-        />
+        <StyledTitle className="sw-typo-lg-semibold">{title}</StyledTitle>
       </div>
-      <p className="sw-body-sm sw-mb-4">{content}</p>
-      <div>
-        <ButtonPrimary className="sw-mr-2" onClick={handlePrimaryButtonClick}>
-          {primaryButtonLabel}
-        </ButtonPrimary>
-        <ButtonSecondary onClick={handleDismiss}>{secondaryButtonLabel}</ButtonSecondary>
-      </div>
+      <div className="sw-typo-default sw-mb-4">{content}</div>
     </StyledWrapper>
   );
 }

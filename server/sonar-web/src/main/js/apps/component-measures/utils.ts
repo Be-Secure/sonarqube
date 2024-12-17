@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { groupBy, memoize, sortBy, toPairs } from 'lodash';
 import { isBranch, isPullRequest } from '~sonar-aligned/helpers/branch-like';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
@@ -28,16 +29,19 @@ import {
   HIDDEN_METRICS,
   LEAK_CCT_SOFTWARE_QUALITY_METRICS,
   LEAK_OLD_TAXONOMY_METRICS,
+  LEAK_OLD_TAXONOMY_RATINGS,
   OLD_TAXONOMY_METRICS,
+  OLD_TAXONOMY_RATINGS,
+  SOFTWARE_QUALITY_RATING_METRICS,
 } from '../../helpers/constants';
 import { getLocalizedMetricName, translate } from '../../helpers/l10n';
 import {
-  MEASURES_REDIRECTION,
   areCCTMeasuresComputed,
   areLeakCCTMeasuresComputed,
-  getCCTMeasureValue,
+  areSoftwareQualityRatingsComputed,
   getDisplayMetrics,
   isDiffMetric,
+  MEASURES_REDIRECTION,
 } from '../../helpers/measures';
 import {
   cleanQuery,
@@ -55,13 +59,13 @@ import {
   MeasureEnhanced,
   Metric,
 } from '../../types/types';
-import { bubbles } from './config/bubbles';
+import { BubblesByDomain } from './config/bubbles';
 import { domains } from './config/domains';
 
 export const BUBBLES_FETCH_LIMIT = 500;
-export const PROJECT_OVERVEW = 'project_overview';
+export const PROJECT_OVERVIEW = 'project_overview';
 export const DEFAULT_VIEW = MeasurePageView.tree;
-export const DEFAULT_METRIC = PROJECT_OVERVEW;
+export const DEFAULT_METRIC = PROJECT_OVERVIEW;
 export const KNOWN_DOMAINS = [
   'Releasability',
   'Security',
@@ -74,7 +78,10 @@ export const KNOWN_DOMAINS = [
   'Complexity',
 ];
 
-const DEPRECATED_METRICS = [
+const DEPRECATED_DOMAINS_METRICS = [MetricKey.high_impact_accepted_issues];
+
+const HIDDEN_DOMAIN_METRICS = [
+  ...DEPRECATED_DOMAINS_METRICS,
   MetricKey.blocker_violations,
   MetricKey.new_blocker_violations,
   MetricKey.critical_violations,
@@ -85,7 +92,16 @@ const DEPRECATED_METRICS = [
   MetricKey.new_info_violations,
   MetricKey.minor_violations,
   MetricKey.new_minor_violations,
-  MetricKey.high_impact_accepted_issues,
+  MetricKey.software_quality_blocker_issues,
+  MetricKey.new_software_quality_blocker_issues,
+  MetricKey.software_quality_high_issues,
+  MetricKey.new_software_quality_high_issues,
+  MetricKey.software_quality_medium_issues,
+  MetricKey.new_software_quality_medium_issues,
+  MetricKey.software_quality_low_issues,
+  MetricKey.new_software_quality_low_issues,
+  MetricKey.software_quality_info_issues,
+  MetricKey.new_software_quality_info_issues,
 ];
 
 const ISSUES_METRICS = [
@@ -97,41 +113,71 @@ const ISSUES_METRICS = [
   MetricKey.new_violations,
 ];
 
-export const populateDomainsFromMeasures = memoize((measures: MeasureEnhanced[]): Domain[] => {
-  let populatedMeasures = measures
-    .filter((measure) => !DEPRECATED_METRICS.includes(measure.metric.key as MetricKey))
-    .map((measure) => {
-      const isDiff = isDiffMetric(measure.metric.key);
-      const calculatedValue = getCCTMeasureValue(
-        measure.metric.key,
-        isDiff ? measure.leak : measure.value,
+export const populateDomainsFromMeasures = memoize(
+  (measures: MeasureEnhanced[], isStandardMode = false): Domain[] => {
+    let populatedMeasures = measures
+      .filter((measure) => !HIDDEN_DOMAIN_METRICS.includes(measure.metric.key as MetricKey))
+      .map((measure) => {
+        const isDiff = isDiffMetric(measure.metric.key);
+        const calculatedValue = isDiff ? measure.leak : measure.value;
+
+        return {
+          ...measure,
+          ...{ [isDiff ? 'leak' : 'value']: calculatedValue },
+        };
+      });
+
+    if (!isStandardMode && areLeakCCTMeasuresComputed(measures)) {
+      populatedMeasures = populatedMeasures.filter(
+        (measure) => !LEAK_OLD_TAXONOMY_METRICS.includes(measure.metric.key as MetricKey),
       );
+    } else {
+      populatedMeasures = populatedMeasures.filter(
+        (measure) => !LEAK_CCT_SOFTWARE_QUALITY_METRICS.includes(measure.metric.key as MetricKey),
+      );
+    }
 
-      return {
-        ...measure,
-        ...{ [isDiff ? 'leak' : 'value']: calculatedValue },
-      };
-    });
+    // Both new and overall code will exist after next analysis
+    if (!isStandardMode && areSoftwareQualityRatingsComputed(measures)) {
+      populatedMeasures = populatedMeasures.filter(
+        (measure) =>
+          !OLD_TAXONOMY_RATINGS.includes(measure.metric.key as MetricKey) &&
+          !LEAK_OLD_TAXONOMY_RATINGS.includes(measure.metric.key as MetricKey),
+      );
+    } else {
+      populatedMeasures = populatedMeasures.filter(
+        (measure) => !SOFTWARE_QUALITY_RATING_METRICS.includes(measure.metric.key as MetricKey),
+      );
+    }
 
-  if (areLeakCCTMeasuresComputed(measures)) {
-    populatedMeasures = populatedMeasures.filter(
-      (measure) => !LEAK_OLD_TAXONOMY_METRICS.includes(measure.metric.key as MetricKey),
-    );
-  }
-  if (areCCTMeasuresComputed(measures)) {
-    populatedMeasures = populatedMeasures.filter(
-      (measure) => !OLD_TAXONOMY_METRICS.includes(measure.metric.key as MetricKey),
-    );
-  }
+    if (!isStandardMode && areCCTMeasuresComputed(measures)) {
+      populatedMeasures = populatedMeasures.filter(
+        (measure) => !OLD_TAXONOMY_METRICS.includes(measure.metric.key as MetricKey),
+      );
+    } else {
+      populatedMeasures = populatedMeasures.filter(
+        (measure) => !CCT_SOFTWARE_QUALITY_METRICS.includes(measure.metric.key as MetricKey),
+      );
+    }
 
-  return groupByDomains(populatedMeasures);
-});
+    return groupByDomains(populatedMeasures);
+  },
+);
 
 export function getMetricSubnavigationName(
   metric: Metric,
   translateFn: (metric: Metric) => string,
   isDiff = false,
+  isStandardMode = false,
 ) {
+  // MQR mode and old taxonomy metrics, we return "Issues" for them anyway
+  if (!isStandardMode && OLD_TAXONOMY_METRICS.includes(metric.key as MetricKey)) {
+    return translate('component_measures.awaiting_analysis.name');
+  }
+  if (!isStandardMode && LEAK_OLD_TAXONOMY_METRICS.includes(metric.key as MetricKey)) {
+    return translate('component_measures.leak_awaiting_analysis.name');
+  }
+
   if (
     [
       ...LEAK_CCT_SOFTWARE_QUALITY_METRICS,
@@ -249,8 +295,8 @@ export function hasTreemap(metric: string, type: string): boolean {
   );
 }
 
-export function hasBubbleChart(domainName: string): boolean {
-  return bubbles[domainName] !== undefined;
+export function hasBubbleChart(bubblesByDomain: BubblesByDomain, domainName: string): boolean {
+  return bubblesByDomain[domainName] !== undefined;
 }
 
 export function hasFacetStat(metric: string): boolean {
@@ -271,8 +317,12 @@ export function getMeasuresPageMetricKeys(metrics: Dict<Metric>, branch?: Branch
   return metricKeys;
 }
 
-export function getBubbleMetrics(domain: string, metrics: Dict<Metric>) {
-  const conf = bubbles[domain];
+export function getBubbleMetrics(
+  bubblesByDomain: BubblesByDomain,
+  domain: string,
+  metrics: Dict<Metric>,
+) {
+  const conf = bubblesByDomain[domain];
   return {
     x: metrics[conf.x],
     y: metrics[conf.y],
@@ -281,12 +331,12 @@ export function getBubbleMetrics(domain: string, metrics: Dict<Metric>) {
   };
 }
 
-export function getBubbleYDomain(domain: string) {
-  return bubbles[domain].yDomain;
+export function getBubbleYDomain(bubblesByDomain: BubblesByDomain, domain: string) {
+  return bubblesByDomain[domain].yDomain;
 }
 
 export function isProjectOverview(metric: string) {
-  return metric === PROJECT_OVERVEW;
+  return metric === PROJECT_OVERVIEW;
 }
 
 function parseView(metric: MetricKey, rawView?: string): MeasurePageView {

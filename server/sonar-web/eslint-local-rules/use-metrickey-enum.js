@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 const { useEnum } = require('./lib/use-enum');
 module.exports = useEnum(
   [
@@ -26,7 +27,6 @@ module.exports = useEnum(
     'bugs',
     'burned_budget',
     'business_value',
-    'class_complexity',
     'classes',
     'code_smells',
     'cognitive_complexity',
@@ -34,8 +34,6 @@ module.exports = useEnum(
     'comment_lines_data',
     'comment_lines_density',
     'complexity',
-    'complexity_in_classes',
-    'complexity_in_functions',
     'conditions_to_cover',
     'confirmed_issues',
     'coverage',
@@ -50,13 +48,9 @@ module.exports = useEnum(
     'effort_to_reach_maintainability_rating_a',
     'executable_lines_data',
     'false_positive_issues',
-    'file_complexity',
-    'file_complexity_distribution',
     'filename_size',
     'filename_size_rating',
     'files',
-    'function_complexity',
-    'function_complexity_distribution',
     'functions',
     'generated_lines',
     'generated_ncloc',
@@ -148,5 +142,5 @@ module.exports = useEnum(
     'wont_fix_issues',
   ],
   'MetricKey',
-  'representing metric keys'
+  'representing metric keys',
 );

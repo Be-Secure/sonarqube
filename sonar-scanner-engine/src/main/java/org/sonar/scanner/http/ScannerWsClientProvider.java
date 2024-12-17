@@ -19,13 +19,26 @@
  */
 package org.sonar.scanner.http;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 import java.time.Duration;
 import java.time.format.DateTimeParseException;
+import javax.annotation.Nullable;
 import nl.altindag.ssl.SSLFactory;
+import nl.altindag.ssl.exception.GenericKeyStoreException;
+import nl.altindag.ssl.util.KeyStoreUtils;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sonar.api.CoreProperties;
 import org.sonar.api.notifications.AnalysisWarnings;
 import org.sonar.api.utils.System2;
@@ -47,6 +60,9 @@ import static org.sonar.core.config.ProxyProperties.HTTP_PROXY_PASSWORD;
 import static org.sonar.core.config.ProxyProperties.HTTP_PROXY_USER;
 
 public class ScannerWsClientProvider {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ScannerWsClientProvider.class);
+
   static final int DEFAULT_CONNECT_TIMEOUT = 5;
   static final int DEFAULT_RESPONSE_TIMEOUT = 0;
   static final String READ_TIMEOUT_SEC_PROPERTY = "sonar.ws.timeout";
@@ -57,6 +73,7 @@ public class ScannerWsClientProvider {
   public static final String SONAR_SCANNER_CONNECT_TIMEOUT = "sonar.scanner.connectTimeout";
   public static final String SONAR_SCANNER_SOCKET_TIMEOUT = "sonar.scanner.socketTimeout";
   public static final String SONAR_SCANNER_RESPONSE_TIMEOUT = "sonar.scanner.responseTimeout";
+  public static final String SKIP_SYSTEM_TRUST_MATERIAL = "sonar.scanner.skipSystemTruststore";
 
   @Bean("DefaultScannerWsClient")
   public DefaultScannerWsClient provide(ScannerProperties scannerProps, EnvironmentInformation env, GlobalAnalysisMode globalMode,
@@ -71,7 +88,8 @@ public class ScannerWsClientProvider {
     String envVarToken = defaultIfBlank(system.envVariable(TOKEN_ENV_VARIABLE), null);
     String token = defaultIfBlank(scannerProps.property(TOKEN_PROPERTY), envVarToken);
     String login = defaultIfBlank(scannerProps.property(CoreProperties.LOGIN), token);
-    var sslContext = configureSsl(parseSslConfig(scannerProps, sonarUserHome), system);
+    boolean skipSystemTrustMaterial = Boolean.parseBoolean(defaultIfBlank(scannerProps.property(SKIP_SYSTEM_TRUST_MATERIAL), "false"));
+    var sslContext = configureSsl(parseSslConfig(scannerProps, sonarUserHome), system, skipSystemTrustMaterial);
     connectorBuilder
       .readTimeoutMilliseconds(parseDurationProperty(socketTimeout, SONAR_SCANNER_SOCKET_TIMEOUT))
       .connectTimeoutMilliseconds(parseDurationProperty(connectTimeout, SONAR_SCANNER_CONNECT_TIMEOUT))
@@ -123,30 +141,80 @@ public class ScannerWsClientProvider {
 
   private static SslConfig parseSslConfig(ScannerProperties scannerProperties, SonarUserHome sonarUserHome) {
     var keyStorePath = defaultIfBlank(scannerProperties.property("sonar.scanner.keystorePath"), sonarUserHome.getPath().resolve("ssl/keystore.p12").toString());
-    var keyStorePassword = defaultIfBlank(scannerProperties.property("sonar.scanner.keystorePassword"), CertificateStore.DEFAULT_PASSWORD);
-    var trustStorePath = defaultIfBlank(scannerProperties.property("sonar.scanner.truststorePath"), sonarUserHome.getPath().resolve("ssl/truststore.p12").toString());
-    var trustStorePassword = defaultIfBlank(scannerProperties.property("sonar.scanner.truststorePassword"), CertificateStore.DEFAULT_PASSWORD);
+    var keyStorePassword = scannerProperties.property("sonar.scanner.keystorePassword");
     var keyStore = new CertificateStore(Path.of(keyStorePath), keyStorePassword);
+    var trustStorePath = defaultIfBlank(scannerProperties.property("sonar.scanner.truststorePath"), sonarUserHome.getPath().resolve("ssl/truststore.p12").toString());
+    var trustStorePassword = scannerProperties.property("sonar.scanner.truststorePassword");
     var trustStore = new CertificateStore(Path.of(trustStorePath), trustStorePassword);
     return new SslConfig(keyStore, trustStore);
   }
 
-  private static SSLFactory configureSsl(SslConfig sslConfig, System2 system2) {
+  private static SSLFactory configureSsl(SslConfig sslConfig, System2 system2, boolean skipSystemTrustMaterial) {
     var sslFactoryBuilder = SSLFactory.builder()
-      .withDefaultTrustMaterial()
-      .withSystemTrustMaterial();
+      .withDefaultTrustMaterial();
+    if (!skipSystemTrustMaterial) {
+      LOG.debug("Loading OS trusted SSL certificates...");
+      LOG.debug("This operation might be slow or even get stuck. You can skip it by passing the scanner property '{}=true'", SKIP_SYSTEM_TRUST_MATERIAL);
+      sslFactoryBuilder.withSystemTrustMaterial();
+    }
     if (system2.properties().containsKey("javax.net.ssl.keyStore")) {
       sslFactoryBuilder.withSystemPropertyDerivedIdentityMaterial();
     }
-    var keyStore = sslConfig.getKeyStore();
-    if (keyStore != null && Files.exists(keyStore.getPath())) {
-      sslFactoryBuilder.withIdentityMaterial(keyStore.getPath(), keyStore.getKeyStorePassword().toCharArray(), keyStore.getKeyStoreType());
+    var keyStoreConfig = sslConfig.getKeyStore();
+    if (keyStoreConfig != null && Files.exists(keyStoreConfig.getPath())) {
+      keyStoreConfig.getKeyStorePassword()
+        .ifPresentOrElse(
+          password -> sslFactoryBuilder.withIdentityMaterial(keyStoreConfig.getPath(), password.toCharArray(), keyStoreConfig.getKeyStoreType()),
+          () -> loadIdentityMaterialWithDefaultPassword(sslFactoryBuilder, keyStoreConfig.getPath()));
     }
-    var trustStore = sslConfig.getTrustStore();
-    if (trustStore != null && Files.exists(trustStore.getPath())) {
-      sslFactoryBuilder.withTrustMaterial(trustStore.getPath(), trustStore.getKeyStorePassword().toCharArray(), trustStore.getKeyStoreType());
+    var trustStoreConfig = sslConfig.getTrustStore();
+    if (trustStoreConfig != null && Files.exists(trustStoreConfig.getPath())) {
+      KeyStore trustStore;
+      try {
+        trustStore = loadTrustStoreWithBouncyCastle(
+          trustStoreConfig.getPath(),
+          trustStoreConfig.getKeyStorePassword().orElse(null),
+          trustStoreConfig.getKeyStoreType());
+        LOG.debug("Loaded truststore from '{}' containing {} certificates", trustStoreConfig.getPath(), trustStore.size());
+      } catch (KeyStoreException | IOException | CertificateException | NoSuchAlgorithmException e) {
+        throw new GenericKeyStoreException("Unable to read truststore from '" + trustStoreConfig.getPath() + "'", e);
+      }
+      sslFactoryBuilder.withTrustMaterial(trustStore);
     }
     return sslFactoryBuilder.build();
+  }
+
+  private static void loadIdentityMaterialWithDefaultPassword(SSLFactory.Builder sslFactoryBuilder, Path path) {
+    try {
+      var keystore = KeyStoreUtils.loadKeyStore(path, CertificateStore.DEFAULT_PASSWORD.toCharArray(), CertificateStore.DEFAULT_STORE_TYPE);
+      sslFactoryBuilder.withIdentityMaterial(keystore, CertificateStore.DEFAULT_PASSWORD.toCharArray());
+    } catch (GenericKeyStoreException e) {
+      var keystore = KeyStoreUtils.loadKeyStore(path, CertificateStore.OLD_DEFAULT_PASSWORD.toCharArray(), CertificateStore.DEFAULT_STORE_TYPE);
+      LOG.warn("Using deprecated default password for keystore '{}'.", path);
+      sslFactoryBuilder.withIdentityMaterial(keystore, CertificateStore.OLD_DEFAULT_PASSWORD.toCharArray());
+    }
+  }
+
+  static KeyStore loadTrustStoreWithBouncyCastle(Path keystorePath, @Nullable String keystorePassword, String keystoreType) throws IOException,
+    KeyStoreException, CertificateException, NoSuchAlgorithmException {
+    KeyStore keystore = KeyStore.getInstance(keystoreType, new BouncyCastleProvider());
+    if (keystorePassword != null) {
+      loadKeyStoreWithPassword(keystorePath, keystore, keystorePassword);
+    } else {
+      try {
+        loadKeyStoreWithPassword(keystorePath, keystore, CertificateStore.DEFAULT_PASSWORD);
+      } catch (Exception e) {
+        loadKeyStoreWithPassword(keystorePath, keystore, CertificateStore.OLD_DEFAULT_PASSWORD);
+        LOG.warn("Using deprecated default password for truststore '{}'.", keystorePath);
+      }
+    }
+    return keystore;
+  }
+
+  private static void loadKeyStoreWithPassword(Path keystorePath, KeyStore keystore, String oldDefaultPassword) throws IOException, NoSuchAlgorithmException, CertificateException {
+    try (InputStream keystoreInputStream = Files.newInputStream(keystorePath, StandardOpenOption.READ)) {
+      keystore.load(keystoreInputStream, oldDefaultPassword.toCharArray());
+    }
   }
 
 }

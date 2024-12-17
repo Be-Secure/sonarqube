@@ -19,9 +19,8 @@
  */
 
 import { IconGitBranch, IconPullrequest } from '@sonarsource/echoes-react';
-import { ToggleButton, getTabId, getTabPanelId } from 'design-system';
-import * as React from 'react';
 import { useState } from 'react';
+import { ToggleButton, getTabId, getTabPanelId } from '~design-system';
 import { isBranch, isMainBranch, isPullRequest } from '~sonar-aligned/helpers/branch-like';
 import { sortBranches, sortPullRequests } from '../../../helpers/branch-like';
 import { translate } from '../../../helpers/l10n';
@@ -92,7 +91,7 @@ export default function BranchLikeTabs(props: Props) {
     }
   };
 
-  const { data: { branchLikes } = { branchLikes: [] } } = useBranchesQuery(component);
+  const { data: branchLikes = [] } = useBranchesQuery(component);
 
   const isBranchMode = currentTab === Tabs.Branch;
   const branchLikesToDisplay: BranchLike[] = isBranchMode

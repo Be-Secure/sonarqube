@@ -17,16 +17,25 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import styled from '@emotion/styled';
+import { Button, ButtonVariety, Spinner } from '@sonarsource/echoes-react';
 import classNames from 'classnames';
-import { FlagMessage, IssueMessageHighlighting, LineFinding, themeColor } from 'design-system';
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
+import { FlagMessage, IssueMessageHighlighting, LineFinding, themeColor } from '~design-system';
 import { getBranchLikeQuery } from '~sonar-aligned/helpers/branch-like';
 import { getSources } from '../../../api/components';
+import { TabKeys } from '../../../components/rules/IssueTabViewer';
+import { TabSelectorContext } from '../../../components/rules/TabSelectorContext';
 import getCoverageStatus from '../../../components/SourceViewer/helpers/getCoverageStatus';
 import { locationsByLine } from '../../../components/SourceViewer/helpers/indexing';
 import { translate } from '../../../helpers/l10n';
+import {
+  useGetFixSuggestionsIssuesQuery,
+  usePrefetchSuggestion,
+  useUnifiedSuggestionsQuery,
+} from '../../../queries/fix-suggestions';
 import { BranchLike } from '../../../types/branch-like';
 import { isFile } from '../../../types/component';
 import { IssueDeprecatedStatus } from '../../../types/issues';
@@ -35,6 +44,7 @@ import {
   Duplication,
   ExpandDirection,
   FlowLocation,
+  Issue,
   IssuesByLine,
   Snippet,
   SnippetGroup,
@@ -243,6 +253,8 @@ export default class ComponentSourceSnippetGroupViewer extends React.PureCompone
               <IssueSourceViewerScrollContext.Consumer key={issueToDisplay.key}>
                 {(ctx) => (
                   <LineFinding
+                    as={isSelectedIssue ? 'div' : undefined}
+                    className="sw-justify-between"
                     issueKey={issueToDisplay.key}
                     message={
                       <IssueMessageHighlighting
@@ -253,6 +265,9 @@ export default class ComponentSourceSnippetGroupViewer extends React.PureCompone
                     selected={isSelectedIssue}
                     ref={isSelectedIssue ? ctx?.registerPrimaryLocationRef : undefined}
                     onIssueSelect={this.props.onIssueSelect}
+                    getFixButton={
+                      isSelectedIssue ? <GetFixButton issue={issueToDisplay} /> : undefined
+                    }
                   />
                 )}
               </IssueSourceViewerScrollContext.Consumer>
@@ -327,7 +342,8 @@ export default class ComponentSourceSnippetGroupViewer extends React.PureCompone
                     selected
                     ref={ctx?.registerPrimaryLocationRef}
                     onIssueSelect={this.props.onIssueSelect}
-                    className="sw-m-0 sw-cursor-default"
+                    className="sw-m-0 sw-cursor-default sw-justify-between"
+                    getFixButton={<GetFixButton issue={issue} />}
                   />
                 )}
               </IssueSourceViewerScrollContext.Consumer>
@@ -394,3 +410,42 @@ function isExpandable(snippets: Snippet[], snippetGroup: SnippetGroup) {
 const FileLevelIssueStyle = styled.div`
   border: 1px solid ${themeColor('codeLineBorder')};
 `;
+
+function GetFixButton({ issue }: Readonly<{ issue: Issue }>) {
+  const handler = React.useContext(TabSelectorContext);
+  const { data: suggestion, isLoading } = useUnifiedSuggestionsQuery(issue, false);
+  const prefetchSuggestion = usePrefetchSuggestion(issue.key);
+
+  const { data } = useGetFixSuggestionsIssuesQuery(issue);
+
+  if (data?.aiSuggestion !== 'AVAILABLE') {
+    return null;
+  }
+
+  return (
+    <Spinner ariaLabel={translate('issues.code_fix.fix_is_being_generated')} isLoading={isLoading}>
+      {suggestion !== undefined && (
+        <Button
+          className="sw-shrink-0"
+          onClick={() => {
+            handler(TabKeys.CodeFix);
+          }}
+        >
+          {translate('issues.code_fix.see_fix_suggestion')}
+        </Button>
+      )}
+      {suggestion === undefined && (
+        <Button
+          className="sw-ml-2 sw-shrink-0"
+          onClick={() => {
+            handler(TabKeys.CodeFix);
+            prefetchSuggestion();
+          }}
+          variety={ButtonVariety.Primary}
+        >
+          {translate('issues.code_fix.get_fix_suggestion')}
+        </Button>
+      )}
+    </Spinner>
+  );
+}

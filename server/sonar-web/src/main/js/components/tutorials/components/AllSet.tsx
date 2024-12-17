@@ -17,10 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import styled from '@emotion/styled';
 import { animated, config, useSpring } from '@react-spring/web';
-import { CheckIcon, FlagVisual, SubTitle } from 'design-system';
 import * as React from 'react';
+import { CheckIcon, FlagVisual, SubTitle } from '~design-system';
 import withAvailableFeatures, {
   WithAvailableFeaturesProps,
 } from '../../../app/components/available-features/withAvailableFeatures';
@@ -58,7 +59,7 @@ export function AllSet(props: AllSetProps) {
         {translate('onboarding.tutorial.ci_outro.done')}
       </SubTitle>
       <MessageContainer>
-        <p className="sw-body-sm sw-mb-4">
+        <p className="sw-typo-default sw-mb-4">
           {translate('onboarding.tutorial.ci_outro.refresh_text')}
         </p>
         <ul className="sw-mb-6">

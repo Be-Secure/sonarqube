@@ -17,11 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { last } from 'lodash';
-import React from 'react';
-import selectEvent from 'react-select-event';
 import { byLabelText, byRole, byText } from '~sonar-aligned/helpers/testSelector';
 import SettingsServiceMock, {
   DEFAULT_DEFINITIONS_MOCK,
@@ -51,15 +50,17 @@ const ui = {
   securedInput: byRole('textbox', { name: 'property.sonar.announcement.message.secured.name' }),
   multiValuesInput: byRole('textbox', { name: 'property.sonar.javascript.globals.name' }),
   urlKindInput: byRole('textbox', { name: /sonar.auth.gitlab.url/ }),
-  fieldsInput: (name: string) => byRole('textbox', { name: `property.${name}.name` }),
+  nameInput: byRole('textbox', { name: /property.name.name/ }),
+  valueInput: byRole('textbox', { name: /property.value.name/ }),
   savedMsg: byText('settings.state.saved'),
   validationMsg: byText(/settings.state.validation_failed/),
   jsonFormatStatus: byText('settings.json.format_error'),
   jsonFormatButton: byRole('button', { name: 'settings.json.format' }),
   toggleButton: byRole('switch'),
-  selectOption: (value: string) => byText(value),
-  saveButton: byRole('button', { name: 'save' }),
-  cancelButton: byRole('button', { name: 'cancel' }),
+  selectOption: (name: string) => byRole('option', { name }),
+  selectInput: byRole('combobox', { name: 'property.test.single.select.list.name' }),
+  saveButton: byRole('button', { name: /save/ }),
+  cancelButton: byRole('button', { name: /cancel/ }),
   changeButton: byRole('button', { name: 'change_verb' }),
   resetButton: (name: string | RegExp = 'reset_verb') => byRole('button', { name }),
   deleteValueButton: byRole('button', {
@@ -176,35 +177,40 @@ it('renders definition for SettingType = BOOLEAN and can do operations', async (
 
 it('renders definition for SettingType = SINGLE_SELECT_LIST and can do operations', async () => {
   const user = userEvent.setup();
-  renderDefinition({
+  const definition = {
+    ...DEFAULT_DEFINITIONS_MOCK[0],
+    key: 'test.single.select.list',
     type: SettingType.SINGLE_SELECT_LIST,
-    options: ['first', 'second'],
-  });
+    defaultValue: 'default',
+    options: ['first', 'second', 'default'],
+  };
+  settingsMock.setDefinition(definition);
+  renderDefinition(definition, { key: definition.key, value: 'default' });
 
-  expect(
-    await ui.nameHeading('property.sonar.announcement.message.name').find(),
-  ).toBeInTheDocument();
+  expect(await ui.nameHeading('property.test.single.select.list.name').find()).toBeInTheDocument();
 
   // Can select option
-  expect(ui.selectOption('Select...').get()).toBeInTheDocument();
-  await selectEvent.select(ui.announcementInput.get(), 'first');
-  expect(ui.selectOption('first').get()).toBeInTheDocument();
+  expect(ui.selectInput.get()).toHaveValue('default');
+  await user.click(ui.selectInput.get());
+  await user.click(ui.selectOption('first').get());
+  expect(ui.selectInput.get()).toHaveValue('first');
 
   // Can cancel action
   await user.click(ui.cancelButton.get());
-  expect(ui.selectOption('Select...').get()).toBeInTheDocument();
+  expect(ui.selectInput.get()).toHaveValue('default');
 
   // Can save
-  await selectEvent.select(ui.announcementInput.get(), 'second');
+  await user.click(ui.selectInput.get());
+  await user.click(ui.selectOption('second').get());
   await user.click(ui.saveButton.get());
   expect(ui.savedMsg.get()).toBeInTheDocument();
 
   // Can reset
   await user.click(
-    ui.resetButton('settings.definition.reset.property.sonar.announcement.message.name').get(),
+    ui.resetButton('settings.definition.reset.property.test.single.select.list.name').get(),
   );
   await user.click(ui.resetButton().get());
-  expect(ui.selectOption('Select...').get()).toBeInTheDocument();
+  expect(ui.selectInput.get()).toHaveValue('default');
 });
 
 it('renders definition for SettingType = FORMATTED_TEXT and can do operations', async () => {
@@ -286,22 +292,22 @@ it('renders definition for SettingType = PROPERTY_SET and can do operations', as
   expect(screen.getByRole('columnheader', { name: 'Value' })).toBeInTheDocument();
 
   // Should type new values
-  await user.type(ui.fieldsInput('name').get(), 'any name');
-  expect(ui.fieldsInput('name').getAll()).toHaveLength(2);
+  await user.type(ui.nameInput.get(), 'any name');
+  expect(ui.nameInput.getAll()).toHaveLength(2);
 
   // Can cancel changes
   await user.click(ui.cancelButton.get());
-  expect(ui.fieldsInput('name').getAll()).toHaveLength(1);
-  expect(ui.fieldsInput('name').get()).toHaveValue('');
+  expect(ui.nameInput.getAll()).toHaveLength(1);
+  expect(ui.nameInput.get()).toHaveValue('');
 
   // Can save new values
-  await user.type(ui.fieldsInput('name').get(), 'any name');
-  await user.type(ui.fieldsInput('value').getAll()[0], 'any value');
+  await user.type(ui.nameInput.get(), 'any name');
+  await user.type(ui.valueInput.getAll()[0], 'any value');
   await user.click(ui.saveButton.get());
 
   expect(ui.savedMsg.get()).toBeInTheDocument();
-  expect(ui.fieldsInput('name').getAll()[0]).toHaveValue('any name');
-  expect(ui.fieldsInput('value').getAll()[0]).toHaveValue('any value');
+  expect(ui.nameInput.getAll()[0]).toHaveValue('any name');
+  expect(ui.valueInput.getAll()[0]).toHaveValue('any value');
 
   // Deleting previous value show validation message
   await user.click(ui.deleteFieldsButton.get());
@@ -312,8 +318,8 @@ it('renders definition for SettingType = PROPERTY_SET and can do operations', as
   await user.click(ui.resetButton().get());
 
   expect(ui.savedMsg.get()).toBeInTheDocument();
-  expect(ui.fieldsInput('name').get()).toHaveValue('');
-  expect(ui.fieldsInput('value').get()).toHaveValue('');
+  expect(ui.nameInput.get()).toHaveValue('');
+  expect(ui.valueInput.get()).toHaveValue('');
 });
 
 it('renders secured definition and can do operations', async () => {

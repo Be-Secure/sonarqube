@@ -17,56 +17,74 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import classNames from 'classnames';
 import React from 'react';
-import { translate } from '../../helpers/l10n';
+import { useStandardExperienceModeQuery } from '../../queries/mode';
 import {
   SoftwareImpact,
   SoftwareImpactSeverity,
   SoftwareQuality,
 } from '../../types/clean-code-taxonomy';
+import { IssueSeverity } from '../../types/issues';
+import IssueTypePill from './IssueTypePill';
 import SoftwareImpactPill from './SoftwareImpactPill';
 
 interface SoftwareImpactPillListProps extends React.HTMLAttributes<HTMLUListElement> {
   className?: string;
+  issueSeverity?: IssueSeverity;
+  issueType?: string;
+  onSetSeverity?: ((severity: IssueSeverity) => Promise<void>) &
+    ((severity: SoftwareImpactSeverity, quality: SoftwareQuality) => Promise<void>);
   softwareImpacts: SoftwareImpact[];
   type?: Parameters<typeof SoftwareImpactPill>[0]['type'];
 }
 
-const severityMap = {
-  [SoftwareImpactSeverity.High]: 2,
-  [SoftwareImpactSeverity.Medium]: 1,
-  [SoftwareImpactSeverity.Low]: 0,
+const sqOrderMap = {
+  [SoftwareQuality.Security]: 3,
+  [SoftwareQuality.Reliability]: 2,
+  [SoftwareQuality.Maintainability]: 1,
 };
 
 export default function SoftwareImpactPillList({
   softwareImpacts,
+  onSetSeverity,
+  issueSeverity,
+  issueType,
   type,
   className,
   ...props
 }: Readonly<SoftwareImpactPillListProps>) {
-  const getQualityLabel = (quality: SoftwareQuality) => translate('software_quality', quality);
-  const sortingFn = (a: SoftwareImpact, b: SoftwareImpact) => {
-    if (a.severity !== b.severity) {
-      return severityMap[b.severity] - severityMap[a.severity];
-    }
-    return getQualityLabel(a.softwareQuality).localeCompare(getQualityLabel(b.softwareQuality));
-  };
+  const { data: isStandardMode } = useStandardExperienceModeQuery();
+  const sortingFn = (a: SoftwareImpact, b: SoftwareImpact) =>
+    sqOrderMap[b.softwareQuality] - sqOrderMap[a.softwareQuality];
 
   return (
     <ul className={classNames('sw-flex sw-gap-2', className)} {...props}>
-      {softwareImpacts
-        .slice()
-        .sort(sortingFn)
-        .map(({ severity, softwareQuality }) => (
-          <li key={softwareQuality}>
-            <SoftwareImpactPill
-              severity={severity}
-              quality={getQualityLabel(softwareQuality)}
-              type={type}
-            />
-          </li>
-        ))}
+      {!isStandardMode &&
+        softwareImpacts
+          .slice()
+          .sort(sortingFn)
+          .map(({ severity, softwareQuality }) => (
+            <li key={softwareQuality}>
+              <SoftwareImpactPill
+                onSetSeverity={onSetSeverity}
+                severity={severity}
+                softwareQuality={softwareQuality}
+                type={type}
+              />
+            </li>
+          ))}
+      {!isStandardMode && softwareImpacts.length === 0 && issueType === 'SECURITY_HOTSPOT' && (
+        <IssueTypePill severity={issueSeverity ?? IssueSeverity.Info} issueType={issueType} />
+      )}
+      {isStandardMode && issueType && issueSeverity && (
+        <IssueTypePill
+          onSetSeverity={onSetSeverity}
+          severity={issueSeverity}
+          issueType={issueType}
+        />
+      )}
     </ul>
   );
 }

@@ -18,9 +18,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { IconCheck, LinkStandalone } from '@sonarsource/echoes-react';
+import { Button, ButtonVariety, IconCheck, LinkStandalone } from '@sonarsource/echoes-react';
+import * as React from 'react';
+import { FormattedMessage } from 'react-intl';
+import { useSearchParams } from 'react-router-dom';
 import {
-  ButtonPrimary,
   Card,
   CardSeparator,
   ClipboardButton,
@@ -29,11 +31,9 @@ import {
   Note,
   OrderedList,
   Title,
-} from 'design-system';
-import * as React from 'react';
-import { FormattedMessage } from 'react-intl';
-import { useSearchParams } from 'react-router-dom';
-import { Image } from '../../components/common/Image';
+} from '~design-system';
+import { Image } from '~sonar-aligned/components/common/Image';
+import { SonarQubeConnectionIllustration } from '../../components/branding/SonarQubeConnectionIllustration';
 import { whenLoggedIn } from '../../components/hoc/whenLoggedIn';
 import { translate, translateWithParameters } from '../../helpers/l10n';
 import { generateSonarLintUserToken, portIsValid, sendUserToken } from '../../helpers/sonarlint';
@@ -89,25 +89,25 @@ export function SonarLintConnection({ currentUser }: Readonly<Props>) {
       {status === Status.request && (
         <>
           <Title>{translate('sonarlint-connection.request.title')}</Title>
-          <Image
-            alt="sonarlint-connection-request"
-            className="sw-my-4"
-            src="/images/SonarLint-connection-request.png"
-          />
+          <SonarQubeConnectionIllustration className="sw-my-4" connected={false} />
           <p className="sw-my-4">
-            {translateWithParameters('sonarlint-connection.request.description', ideName)}
+            <FormattedMessage id="sonarlint-connection.request.description" values={{ ideName }} />
           </p>
           <p className="sw-mb-10">{translate('sonarlint-connection.request.description2')}</p>
 
-          <ButtonPrimary icon={<IconCheck className="sw-mr-1" />} onClick={authorize}>
+          <Button
+            prefix={<IconCheck className="sw-mr-1" />}
+            onClick={authorize}
+            variety={ButtonVariety.Primary}
+          >
             {translate('sonarlint-connection.request.action')}
-          </ButtonPrimary>
+          </Button>
         </>
       )}
 
       {status === Status.tokenError && (
         <>
-          <Image alt="sonarlint-token-error" className="sw-my-4 sw-pt-2" src="/images/cross.svg" />
+          <Image aria-hidden className="sw-my-4 sw-pt-2" src="/images/cross.svg" />
           <Title>{translate('sonarlint-connection.token-error.title')}</Title>
           <p className="sw-my-4">{translate('sonarlint-connection.token-error.description')}</p>
           <p className="sw-mb-4">
@@ -128,11 +128,7 @@ export function SonarLintConnection({ currentUser }: Readonly<Props>) {
 
       {status === Status.tokenCreated && newToken && (
         <>
-          <Image
-            alt="sonarlint-connection-error"
-            className="sw-my-4 sw-pt-2"
-            src="/images/check.svg"
-          />
+          <Image aria-hidden className="sw-my-4 sw-pt-2" src="/images/check.svg" />
           <Title>{translate('sonarlint-connection.connection-error.title')}</Title>
           <p className="sw-my-6">
             {translate('sonarlint-connection.connection-error.description')}
@@ -164,11 +160,7 @@ export function SonarLintConnection({ currentUser }: Readonly<Props>) {
       {status === Status.tokenSent && newToken && (
         <>
           <Title>{translate('sonarlint-connection.success.title')}</Title>
-          <Image
-            alt="sonarlint-connection-success"
-            className="sw-mb-4"
-            src="/images/SonarLint-connection-ok.png"
-          />
+          <SonarQubeConnectionIllustration className="sw-mb-4" connected />
           <p className="sw-my-4">
             {translateWithParameters('sonarlint-connection.success.description', newToken.name)}
           </p>

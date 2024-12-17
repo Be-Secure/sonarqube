@@ -17,9 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import styled from '@emotion/styled';
-import { ButtonSecondary, FlagMessage, SubTitle, themeBorder, themeColor } from 'design-system';
+import { Button } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { FlagMessage, SubTitle, themeBorder, themeColor } from '~design-system';
 import { RuleDescriptionSection } from '../../apps/coding-rules/rule';
 import { translate } from '../../helpers/l10n';
 import { Dict } from '../../types/types';
@@ -64,14 +66,14 @@ export default class MoreInfoRuleDescription extends React.PureComponent<Props> 
           <FlagMessage variant="info">
             <p className="sw-my-1">{translate('coding_rules.more_info.notification_message')}</p>
 
-            <ButtonSecondary
+            <Button
               className="sw-whitespace-nowrap"
               onClick={() => {
                 this.handleNotificationScroll();
               }}
             >
               {translate('coding_rules.more_info.scroll_message')}
-            </ButtonSecondary>
+            </Button>
           </FlagMessage>
         )}
 

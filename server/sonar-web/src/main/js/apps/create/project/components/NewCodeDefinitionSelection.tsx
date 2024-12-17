@@ -18,23 +18,22 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import {
-  ButtonPrimary,
-  ButtonSecondary,
-  CloseIcon,
-  FlagMessage,
-  InteractiveIcon,
-  Link,
-  Spinner,
-  Title,
-  addGlobalErrorMessage,
-  addGlobalSuccessMessage,
-} from 'design-system';
+import { ButtonIcon, ButtonSize, ButtonVariety, IconX } from '@sonarsource/echoes-react';
 import { omit } from 'lodash';
 import * as React from 'react';
 import { useEffect } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { useNavigate, unstable_usePrompt as usePrompt } from 'react-router-dom';
+import {
+  ButtonPrimary,
+  ButtonSecondary,
+  FlagMessage,
+  Link,
+  Spinner,
+  Title,
+  addGlobalErrorMessage,
+  addGlobalSuccessMessage,
+} from '~design-system';
 import { useLocation } from '~sonar-aligned/components/hoc/withRouter';
 import { queryToSearchString } from '~sonar-aligned/helpers/urls';
 import NewCodeDefinitionSelector from '../../../../components/new-code-definition/NewCodeDefinitionSelector';
@@ -186,19 +185,19 @@ export default function NewCodeDefinitionSelection(props: Props) {
     <section
       aria-label={translate('onboarding.create_project.new_code_definition.title')}
       id="project-ncd-selection"
-      className="sw-body-sm"
+      className="sw-typo-default"
     >
       <div className="sw-flex sw-justify-between">
         <FormattedMessage
           id="onboarding.create_project.manual.step2"
           defaultMessage={translate('onboarding.create_project.manual.step2')}
         />
-        <InteractiveIcon
-          Icon={CloseIcon}
-          aria-label={intl.formatMessage({ id: 'clear' })}
-          currentColor
+        <ButtonIcon
+          Icon={IconX}
+          ariaLabel={intl.formatMessage({ id: 'clear' })}
           onClick={onClose}
-          size="small"
+          size={ButtonSize.Medium}
+          variety={ButtonVariety.DefaultGhost}
         />
       </div>
       <Title>

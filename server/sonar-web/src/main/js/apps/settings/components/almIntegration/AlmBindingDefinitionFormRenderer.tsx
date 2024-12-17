@@ -17,8 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonPrimary, FlagMessage, Modal, PageContentFontWrapper, Spinner } from 'design-system';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { FlagMessage, Modal, PageContentFontWrapper, Spinner } from '~design-system';
 import { translate } from '../../../../helpers/l10n';
 import {
   AlmBindingDefinition,
@@ -106,7 +108,7 @@ export default class AlmBindingDefinitionFormRenderer extends React.PureComponen
 
     const formBody = (
       <form id={FORM_ID} onSubmit={handleSubmit}>
-        <PageContentFontWrapper className="sw-body-sm" ref={errorListElementRef}>
+        <PageContentFontWrapper className="sw-typo-default" ref={errorListElementRef}>
           {validationError && !canSubmit && (
             <FlagMessage variant="error" className="sw-w-full sw-mb-2">
               <div>
@@ -131,14 +133,15 @@ export default class AlmBindingDefinitionFormRenderer extends React.PureComponen
         primaryButton={
           <>
             <Spinner loading={submitting} />
-            <ButtonPrimary
+            <Button
               form={FORM_ID}
               type="submit"
-              autoFocus
-              disabled={!canSubmit || submitting}
+              hasAutoFocus
+              isDisabled={!canSubmit || submitting}
+              variety={ButtonVariety.Primary}
             >
               {translate('settings.almintegration.form.save')}
-            </ButtonPrimary>
+            </Button>
           </>
         }
         secondaryButtonLabel={translate('cancel')}

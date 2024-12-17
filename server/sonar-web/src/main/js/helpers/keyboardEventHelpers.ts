@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 export function isShortcut(event: KeyboardEvent): boolean {
   return event.ctrlKey || event.metaKey;
 }
@@ -35,4 +36,10 @@ export function isInput(
     event.target instanceof HTMLSelectElement ||
     event.target instanceof HTMLTextAreaElement
   );
+}
+
+export function isDropdown(event: KeyboardEvent) {
+  const role = (event.target as HTMLElement | null)?.role ?? '';
+
+  return ['menu', 'menuitem'].includes(role);
 }

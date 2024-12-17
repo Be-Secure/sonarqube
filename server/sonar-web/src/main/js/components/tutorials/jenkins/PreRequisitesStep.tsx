@@ -18,9 +18,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { FlagMessage, Link, ListItem, TutorialStep, UnorderedList } from 'design-system';
-import * as React from 'react';
+import { Text } from '@sonarsource/echoes-react';
 import { FormattedMessage } from 'react-intl';
+import { FlagMessage, Link, TutorialStep } from '~design-system';
 import { DocLink } from '../../../helpers/doc-links';
 import { useDocUrl } from '../../../helpers/docs';
 import { translate } from '../../../helpers/l10n';
@@ -47,37 +47,37 @@ export default function PreRequisitesStep(props: PreRequisitesStepProps) {
           />
         </span>
       </FlagMessage>
-      <UnorderedList ticks className="sw-ml-8 sw-mb-4">
-        {branchesEnabled && (
-          <ListItem>
-            {translate('onboarding.tutorial.with.jenkins.prereqs.plugins.branch_source', alm)}
-          </ListItem>
-        )}
-        {!branchesEnabled && alm === AlmKeys.GitLab && (
-          <ListItem>
-            {translate('onboarding.tutorial.with.jenkins.prereqs.plugins.gitlab_plugin')}
-          </ListItem>
-        )}
-        <ListItem>
-          {translate('onboarding.tutorial.with.jenkins.prereqs.plugins.sonar_scanner')}
-        </ListItem>
-      </UnorderedList>
-      <p className="sw-mb-4">
-        <FormattedMessage
-          defaultMessage={translate('onboarding.tutorial.with.jenkins.prereqs.step_by_step_guide')}
-          id="onboarding.tutorial.with.jenkins.prereqs.step_by_step_guide"
-          values={{
-            link: (
-              <Link to={docUrl}>
-                {translate('onboarding.tutorial.with.jenkins.prereqs.step_by_step_guide.link')}
-              </Link>
-            ),
-          }}
-        />
-      </p>
-      <p className="sw-mb-4">
-        {translate('onboarding.tutorial.with.jenkins.prereqs.following_are_recommendations')}
-      </p>
+      <Text as="div">
+        <ul className="sw-mb-4">
+          {branchesEnabled && (
+            <li>
+              {translate('onboarding.tutorial.with.jenkins.prereqs.plugins.branch_source', alm)}
+            </li>
+          )}
+          {!branchesEnabled && alm === AlmKeys.GitLab && (
+            <li>{translate('onboarding.tutorial.with.jenkins.prereqs.plugins.gitlab_plugin')}</li>
+          )}
+          <li>{translate('onboarding.tutorial.with.jenkins.prereqs.plugins.sonar_scanner')}</li>
+        </ul>
+        <p className="sw-mb-4">
+          <FormattedMessage
+            defaultMessage={translate(
+              'onboarding.tutorial.with.jenkins.prereqs.step_by_step_guide',
+            )}
+            id="onboarding.tutorial.with.jenkins.prereqs.step_by_step_guide"
+            values={{
+              link: (
+                <Link to={docUrl}>
+                  {translate('onboarding.tutorial.with.jenkins.prereqs.step_by_step_guide.link')}
+                </Link>
+              ),
+            }}
+          />
+        </p>
+        <p className="sw-mb-4">
+          {translate('onboarding.tutorial.with.jenkins.prereqs.following_are_recommendations')}
+        </p>
+      </Text>
     </TutorialStep>
   );
 }

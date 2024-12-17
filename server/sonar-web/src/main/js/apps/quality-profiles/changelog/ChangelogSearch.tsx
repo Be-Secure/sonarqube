@@ -17,9 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonSecondary, DateRangePicker } from 'design-system';
-import * as React from 'react';
+
+import { Button } from '@sonarsource/echoes-react';
 import { useIntl } from 'react-intl';
+import { DateRangePicker } from '~design-system';
 
 interface ChangelogSearchProps {
   dateRange: { from?: Date; to?: Date } | undefined;
@@ -35,7 +36,8 @@ export default function ChangelogSearch(props: ChangelogSearchProps) {
   return (
     <div className="sw-flex sw-gap-2">
       <DateRangePicker
-        clearButtonLabel={intl.formatMessage({ id: 'clear' })}
+        startClearButtonLabel={intl.formatMessage({ id: 'clear.start' })}
+        endClearButtonLabel={intl.formatMessage({ id: 'clear.end' })}
         fromLabel={intl.formatMessage({ id: 'start_date' })}
         inputSize="small"
         separatorText={intl.formatMessage({ id: 'to_' })}
@@ -43,9 +45,9 @@ export default function ChangelogSearch(props: ChangelogSearchProps) {
         onChange={props.onDateRangeChange}
         value={dateRange}
       />
-      <ButtonSecondary className="sw-ml-2 sw-align-top" onClick={props.onReset}>
+      <Button className="sw-ml-2 sw-align-top" onClick={props.onReset}>
         {intl.formatMessage({ id: 'reset_verb' })}
-      </ButtonSecondary>
+      </Button>
     </div>
   );
 }

@@ -28,11 +28,10 @@ import {
   LightPrimary,
   TextMuted,
   Title,
-} from 'design-system';
-import * as React from 'react';
+} from '~design-system';
+import { Image } from '~sonar-aligned/components/common/Image';
 import HelpTooltip from '~sonar-aligned/components/controls/HelpTooltip';
 import withAppStateContext from '../../../app/components/app-state/withAppStateContext';
-import { Image } from '../../../components/common/Image';
 import { translate } from '../../../helpers/l10n';
 import { getCreateProjectModeLocation } from '../../../helpers/urls';
 import { AlmKeys } from '../../../types/alm-settings';
@@ -140,11 +139,11 @@ export function CreateProjectModeSelection(props: CreateProjectModeSelectionProp
     appState: { canAdmin },
     almCounts,
   } = props;
-  const almTotalCount = Object.values(almCounts).reduce((prev, cur) => prev + cur);
+  const almTotalCount = Object.values(almCounts).reduce((prev, cur) => prev + cur, 0);
   const filteredAlm = separateAvailableOptions(almCounts);
 
   return (
-    <div className="sw-body-sm">
+    <div className="sw-typo-default">
       <div className="sw-flex sw-flex-col">
         <Title className="sw-mb-10">{translate('onboarding.create_project.select_method')}</Title>
         <LightPrimary>

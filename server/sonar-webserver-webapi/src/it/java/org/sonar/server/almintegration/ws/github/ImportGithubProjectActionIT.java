@@ -27,10 +27,10 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.sonar.alm.client.github.GithubApplicationClientImpl;
 import org.sonar.alm.client.github.GithubPermissionConverter;
-import org.sonar.api.resources.Qualifiers;
+import org.sonar.db.component.ComponentQualifiers;
 import org.sonar.api.server.ws.WebService;
 import org.sonar.api.utils.System2;
-import org.sonar.auth.github.AppInstallationToken;
+import org.sonar.auth.github.ExpiringAppInstallationToken;
 import org.sonar.auth.github.GitHubSettings;
 import org.sonar.auth.github.GsonRepositoryCollaborator;
 import org.sonar.auth.github.GsonRepositoryPermissions;
@@ -43,7 +43,7 @@ import org.sonar.db.DbSession;
 import org.sonar.db.DbTester;
 import org.sonar.db.alm.setting.AlmSettingDto;
 import org.sonar.db.component.BranchDto;
-import org.sonar.db.component.ResourceTypesRule;
+import org.sonar.server.component.ComponentTypesRule;
 import org.sonar.db.entity.EntityDto;
 import org.sonar.db.newcodeperiod.NewCodePeriodDto;
 import org.sonar.db.permission.GlobalPermission;
@@ -52,6 +52,7 @@ import org.sonar.db.project.ProjectDto;
 import org.sonar.db.user.UserDto;
 import org.sonar.server.almintegration.ws.ImportHelper;
 import org.sonar.server.common.almintegration.ProjectKeyGenerator;
+import org.sonar.server.common.almsettings.github.GithubDevOpsProjectCreationContextService;
 import org.sonar.server.common.almsettings.github.GithubProjectCreatorFactory;
 import org.sonar.server.common.component.ComponentUpdater;
 import org.sonar.server.common.newcodeperiod.NewCodeDefinitionResolver;
@@ -123,7 +124,7 @@ public class ImportGithubProjectActionIT {
     new IndexersImpl(new PermissionIndexer(db.getDbClient(), es.client())),
     Set.of(new UserPermissionChanger(db.getDbClient(), new SequenceUuidFactory()),
       new GroupPermissionChanger(db.getDbClient(), new SequenceUuidFactory())));
-  private final PermissionService permissionService = new PermissionServiceImpl(new ResourceTypesRule().setRootQualifiers(Qualifiers.PROJECT));
+  private final PermissionService permissionService = new PermissionServiceImpl(new ComponentTypesRule().setRootQualifiers(ComponentQualifiers.PROJECT));
   private final ComponentUpdater componentUpdater = new ComponentUpdater(db.getDbClient(), mock(I18n.class), System2.INSTANCE,
     permissionTemplateService, new FavoriteUpdater(db.getDbClient()), new TestIndexers(), new SequenceUuidFactory(),
     defaultBranchNameResolver, userPermissionUpdater, permissionService);
@@ -140,11 +141,13 @@ public class ImportGithubProjectActionIT {
 
   private final GithubPermissionConverter githubPermissionConverter = mock();
 
+  private final GithubDevOpsProjectCreationContextService githubDevOpsProjectService = new GithubDevOpsProjectCreationContextService(db.getDbClient(), userSession, appClient);
+
   private final ProjectCreator projectCreator = new ProjectCreator(userSession, projectDefaultVisibility, componentUpdater);
 
   private final GithubProjectCreatorFactory gitHubProjectCreatorFactory = new GithubProjectCreatorFactory(db.getDbClient(),
-    null, appClient, projectKeyGenerator, userSession, projectCreator, gitHubSettings, githubPermissionConverter, userPermissionUpdater, permissionService,
-    managedProjectService);
+    null, appClient, projectKeyGenerator, projectCreator, gitHubSettings, githubPermissionConverter, userPermissionUpdater, permissionService,
+    managedProjectService, githubDevOpsProjectService);
 
   private final ImportProjectService importProjectService = new ImportProjectService(db.getDbClient(), gitHubProjectCreatorFactory, userSession, componentUpdater,
     newCodeDefinitionResolver);
@@ -352,7 +355,7 @@ public class ImportGithubProjectActionIT {
     when(gitHubSettings.privateKey()).thenReturn("private key");
     when(gitHubSettings.apiURL()).thenReturn("http://www.url.com");
 
-    AppInstallationToken appInstallationToken = mock();
+    ExpiringAppInstallationToken appInstallationToken = mock();
 
     when(appClient.getInstallationId(any(), any())).thenReturn(Optional.of(321L));
     when(appClient.createAppInstallationToken(any(), eq(321L))).thenReturn(Optional.of(appInstallationToken));

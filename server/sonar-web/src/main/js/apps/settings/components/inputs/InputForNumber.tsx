@@ -17,10 +17,16 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import * as React from 'react';
 import { DefaultSpecializedInputProps } from '../../utils';
 import SimpleInput from './SimpleInput';
 
-export default function InputForNumber(props: DefaultSpecializedInputProps) {
-  return <SimpleInput size="small" type="text" {...props} />;
+function InputForNumber(
+  props: DefaultSpecializedInputProps,
+  ref: React.ForwardedRef<HTMLInputElement>,
+) {
+  return <SimpleInput ref={ref} size="small" type="text" {...props} />;
 }
+
+export default React.forwardRef(InputForNumber);

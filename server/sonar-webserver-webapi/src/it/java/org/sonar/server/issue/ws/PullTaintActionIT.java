@@ -28,12 +28,16 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.sonar.api.issue.Issue;
-import org.sonar.api.resources.Qualifiers;
+import org.sonar.api.issue.impact.Severity;
+import org.sonar.api.issue.impact.SoftwareQuality;
+import org.sonar.db.component.ComponentQualifiers;
 import org.sonar.api.utils.System2;
+import org.sonar.core.rule.ImpactFormatter;
 import org.sonar.db.DbTester;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.component.ProjectData;
-import org.sonar.db.component.ResourceTypesRule;
+import org.sonar.server.component.ComponentTypesRule;
+import org.sonar.db.issue.ImpactDto;
 import org.sonar.db.issue.IssueDbTester;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.db.project.ProjectDto;
@@ -57,7 +61,7 @@ import org.sonarqube.ws.Issues;
 
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
-import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
+import static org.apache.commons.lang3.RandomStringUtils.secure;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.groups.Tuple.tuple;
@@ -83,7 +87,7 @@ public class PullTaintActionIT {
 
   private final System2 system2 = mock(System2.class);
   private final TaintChecker taintChecker = mock(TaintChecker.class);
-  private final ResourceTypesRule resourceTypes = new ResourceTypesRule().setRootQualifiers(Qualifiers.PROJECT);
+  private final ComponentTypesRule resourceTypes = new ComponentTypesRule().setRootQualifiers(ComponentQualifiers.PROJECT);
   private final ComponentFinder componentFinder = new ComponentFinder(db.getDbClient(), resourceTypes);
   private final IssueDbTester issueDbTester = new IssueDbTester(db);
 
@@ -233,6 +237,8 @@ public class PullTaintActionIT {
       .setManualSeverity(true)
       .setMessage("message")
       .setMessageFormattings(DbIssues.MessageFormattings.newBuilder().addMessageFormatting(MESSAGE_FORMATTING).build())
+      .replaceAllImpacts(List.of(new ImpactDto().setSoftwareQuality(SoftwareQuality.MAINTAINABILITY).setSeverity(Severity.BLOCKER),
+        new ImpactDto().setSoftwareQuality(SoftwareQuality.RELIABILITY).setSeverity(Severity.HIGH)))
       .setIssueCreationTime(NOW)
       .setStatus(Issue.STATUS_OPEN)
       .setLocations(mainLocation.build())
@@ -265,7 +271,7 @@ public class PullTaintActionIT {
       .containsExactlyInAnyOrderElementsOf(issueDto.getEffectiveImpacts()
         .entrySet()
         .stream()
-        .map(entry -> tuple(Common.SoftwareQuality.valueOf(entry.getKey().name()), Common.ImpactSeverity.valueOf(entry.getValue().name())))
+        .map(entry -> tuple(Common.SoftwareQuality.valueOf(entry.getKey().name()), ImpactFormatter.mapImpactSeverity(entry.getValue())))
         .collect(toList()));
 
     Issues.Location location = taintLite.getMainLocation();
@@ -403,7 +409,7 @@ public class PullTaintActionIT {
     RuleDto javaRule = db.rules().insert(r -> r.setRepositoryKey("javasecurity"));
     RuleDto javaScriptRule = db.rules().insert(r -> r.setRepositoryKey("javascript"));
 
-    String ruledescriptionContextKey = randomAlphabetic(6);
+    String ruledescriptionContextKey = secure().nextAlphabetic(6);
     IssueDto issueDto = issueDbTester.insertIssue(p -> p.setSeverity("MINOR")
       .setManualSeverity(true)
       .setMessage("openIssue")

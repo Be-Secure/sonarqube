@@ -17,6 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+import * as React from 'react';
+import { FormattedMessage } from 'react-intl';
 import {
   DangerButtonPrimary,
   DestructiveIcon,
@@ -24,9 +27,7 @@ import {
   Modal,
   TrashIcon,
   UserGroupIcon,
-} from 'design-system';
-import * as React from 'react';
-import { FormattedMessage } from 'react-intl';
+} from '~design-system';
 import { removeGroup } from '../../../api/quality-profiles';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { Group } from './ProfilePermissions';
@@ -61,7 +62,7 @@ export default function ProfilePermissionsGroup(props: Readonly<Props>) {
           name={group.name}
           size="xs"
         />
-        <strong className="sw-body-sm-highlight sw-truncate fs-mask">{group.name}</strong>
+        <strong className="sw-typo-semibold sw-truncate fs-mask">{group.name}</strong>
       </div>
       <DestructiveIcon
         Icon={TrashIcon}

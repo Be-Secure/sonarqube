@@ -17,11 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { screen, waitFor, within } from '@testing-library/react';
 
 import userEvent from '@testing-library/user-event';
-import * as React from 'react';
-import selectEvent from 'react-select-event';
 import { byLabelText, byRole, byText } from '~sonar-aligned/helpers/testSelector';
 import { searchForBitbucketCloudRepositories } from '../../../../api/alm-integrations';
 import AlmIntegrationsServiceMock from '../../../../api/mocks/AlmIntegrationsServiceMock';
@@ -69,10 +68,6 @@ const ui = {
 const original = window.location;
 
 beforeAll(() => {
-  Object.defineProperty(window, 'location', {
-    configurable: true,
-    value: { replace: jest.fn() },
-  });
   almIntegrationHandler = new AlmIntegrationsServiceMock();
   dopTranslationHandler = new DopTranslationServiceMock();
   newCodePeriodHandler = new NewCodeDefinitionServiceMock();
@@ -96,7 +91,8 @@ it('should ask for PAT when it is not set yet and show the import project featur
   expect(screen.getByText('onboarding.create_project.bitbucketcloud.title')).toBeInTheDocument();
   expect(await ui.instanceSelector.find()).toBeInTheDocument();
 
-  await selectEvent.select(ui.instanceSelector.get(), [/conf-bitbucketcloud-1/]);
+  await user.click(ui.instanceSelector.get());
+  await user.click(byRole('option', { name: /conf-bitbucketcloud-1/ }).get());
 
   expect(
     await screen.findByText('onboarding.create_project.bitbucket_cloud.enter_password'),
@@ -126,7 +122,7 @@ it('should ask for PAT when it is not set yet and show the import project featur
   expect(screen.getByRole('button', { name: 'save' })).toBeEnabled();
   await user.click(screen.getByRole('button', { name: 'save' }));
 
-  expect(screen.getByText('BitbucketCloud Repo 1')).toBeInTheDocument();
+  expect(await screen.findByText('BitbucketCloud Repo 1')).toBeInTheDocument();
   expect(screen.getByText('BitbucketCloud Repo 2')).toBeInTheDocument();
 });
 
@@ -138,7 +134,8 @@ it('should show import project feature when PAT is already set', async () => {
   expect(screen.getByText('onboarding.create_project.bitbucketcloud.title')).toBeInTheDocument();
   expect(await ui.instanceSelector.find()).toBeInTheDocument();
 
-  await selectEvent.select(ui.instanceSelector.get(), [/conf-bitbucketcloud-2/]);
+  await user.click(ui.instanceSelector.get());
+  await user.click(byRole('option', { name: /conf-bitbucketcloud-2/ }).get());
 
   expect(await screen.findByText('BitbucketCloud Repo 1')).toBeInTheDocument();
   expect(screen.getByText('BitbucketCloud Repo 2')).toBeInTheDocument();
@@ -184,7 +181,8 @@ it('should show search filter when PAT is already set', async () => {
   expect(screen.getByText('onboarding.create_project.bitbucketcloud.title')).toBeInTheDocument();
   expect(await ui.instanceSelector.find()).toBeInTheDocument();
 
-  await selectEvent.select(ui.instanceSelector.get(), [/conf-bitbucketcloud-2/]);
+  await user.click(ui.instanceSelector.get());
+  await user.click(byRole('option', { name: /conf-bitbucketcloud-2/ }).get());
 
   await waitFor(() =>
     expect(searchForBitbucketCloudRepositories).toHaveBeenLastCalledWith(
@@ -212,13 +210,15 @@ it('should show search filter when PAT is already set', async () => {
 });
 
 it('should show no result message when there are no projects', async () => {
+  const user = userEvent.setup();
   almIntegrationHandler.setBitbucketCloudRepositories([]);
   renderCreateProject();
 
   expect(screen.getByText('onboarding.create_project.bitbucketcloud.title')).toBeInTheDocument();
   expect(await ui.instanceSelector.find()).toBeInTheDocument();
 
-  await selectEvent.select(ui.instanceSelector.get(), [/conf-bitbucketcloud-2/]);
+  await user.click(ui.instanceSelector.get());
+  await user.click(byRole('option', { name: /conf-bitbucketcloud-2/ }).get());
 
   expect(
     await screen.findByText('onboarding.create_project.bitbucketcloud.no_projects'),
@@ -236,7 +236,8 @@ it('should have load more', async () => {
   expect(screen.getByText('onboarding.create_project.bitbucketcloud.title')).toBeInTheDocument();
   expect(await ui.instanceSelector.find()).toBeInTheDocument();
 
-  await selectEvent.select(ui.instanceSelector.get(), [/conf-bitbucketcloud-2/]);
+  await user.click(ui.instanceSelector.get());
+  await user.click(byRole('option', { name: /conf-bitbucketcloud-2/ }).get());
 
   expect(await screen.findByRole('button', { name: 'show_more' })).toBeInTheDocument();
 

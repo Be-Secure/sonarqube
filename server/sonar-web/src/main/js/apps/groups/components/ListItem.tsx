@@ -18,23 +18,18 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import { ButtonIcon, DropdownMenu, IconMoreVertical } from '@sonarsource/echoes-react';
+import { useState } from 'react';
 import {
-  ActionsDropdown,
   Badge,
   ContentCell,
   DestructiveIcon,
-  ItemButton,
-  ItemDangerButton,
-  ItemDivider,
   NumericalCell,
-  PopupZLevel,
   Spinner,
   TableRow,
   TrashIcon,
-} from 'design-system';
-import * as React from 'react';
-import { useState } from 'react';
-import { Image } from '../../../components/common/Image';
+} from '~design-system';
+import { Image } from '~sonar-aligned/components/common/Image';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { useGroupMembersCountQuery } from '../../../queries/group-memberships';
 import { Group, Provider } from '../../../types/types';
@@ -82,7 +77,7 @@ export default function ListItem(props: Readonly<ListItemProps>) {
   return (
     <TableRow data-id={name}>
       <ContentCell>
-        <div className="sw-body-sm-highlight">{name}</div>
+        <div className="sw-typo-semibold">{name}</div>
         {group.default && <span className="sw-ml-1">({translate('default')})</span>}
         {managed && renderIdentityProviderIcon(manageProvider)}
         {isGroupLocal() && <Badge className="sw-ml-1">{translate('local')}</Badge>}
@@ -108,23 +103,28 @@ export default function ListItem(props: Readonly<ListItemProps>) {
               />
             )}
             {!isManaged() && (
-              <ActionsDropdown
-                allowResizing
+              <DropdownMenu.Root
                 id={`group-actions-${group.name}`}
-                ariaLabel={translateWithParameters('groups.edit', group.name)}
-                zLevel={PopupZLevel.Global}
+                items={
+                  <>
+                    <DropdownMenu.ItemButton onClick={() => setGroupToEdit(group)}>
+                      {translate('update_details')}
+                    </DropdownMenu.ItemButton>
+                    <DropdownMenu.Separator />
+                    <DropdownMenu.ItemButtonDestructive
+                      className="it__quality-profiles__delete"
+                      onClick={() => setGroupToDelete(group)}
+                    >
+                      {translate('delete')}
+                    </DropdownMenu.ItemButtonDestructive>
+                  </>
+                }
               >
-                <ItemButton onClick={() => setGroupToEdit(group)}>
-                  {translate('update_details')}
-                </ItemButton>
-                <ItemDivider />
-                <ItemDangerButton
-                  className="it__quality-profiles__delete"
-                  onClick={() => setGroupToDelete(group)}
-                >
-                  {translate('delete')}
-                </ItemDangerButton>
-              </ActionsDropdown>
+                <ButtonIcon
+                  Icon={IconMoreVertical}
+                  ariaLabel={translateWithParameters('groups.edit', group.name)}
+                />
+              </DropdownMenu.Root>
             )}
           </>
         )}

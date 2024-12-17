@@ -17,19 +17,69 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { UseQueryOptions, useQuery } from '@tanstack/react-query';
-import { getSystemUpgrades } from '../api/system';
 
-export function useSystemUpgrades<T = Awaited<ReturnType<typeof getSystemUpgrades>>>(
-  options?: Omit<
-    UseQueryOptions<Awaited<ReturnType<typeof getSystemUpgrades>>, Error, T>,
-    'queryKey' | 'queryFn'
-  >,
-) {
-  return useQuery({
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { addGlobalSuccessMessage } from '~design-system';
+import {
+  getEmailConfigurations,
+  getSystemUpgrades,
+  patchEmailConfiguration,
+  postEmailConfiguration,
+} from '../api/system';
+import { translate } from '../helpers/l10n';
+import { EmailConfiguration } from '../types/system';
+import { createQueryHook } from './common';
+
+export const useSystemUpgrades = createQueryHook(() => {
+  return queryOptions({
     queryKey: ['system', 'upgrades'],
     queryFn: () => getSystemUpgrades(),
     staleTime: Infinity,
-    ...options,
+  });
+});
+
+export function useGetEmailConfiguration() {
+  return useQuery({
+    queryKey: ['email_configuration'] as const,
+    queryFn: async () => {
+      const { emailConfigurations } = await getEmailConfigurations();
+      return emailConfigurations && emailConfigurations.length > 0 ? emailConfigurations[0] : null;
+    },
+  });
+}
+
+export function useSaveEmailConfigurationMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: EmailConfiguration) => {
+      return postEmailConfiguration(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email_configuration'] });
+      addGlobalSuccessMessage(
+        translate('email_notification.form.save_configuration.create_success'),
+      );
+    },
+  });
+}
+
+export function useUpdateEmailConfigurationMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      emailConfiguration,
+      id,
+    }: {
+      emailConfiguration: EmailConfiguration;
+      id: string;
+    }) => {
+      return patchEmailConfiguration(id, emailConfiguration);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email_configuration'] });
+      addGlobalSuccessMessage(
+        translate('email_notification.form.save_configuration.update_success'),
+      );
+    },
   });
 }

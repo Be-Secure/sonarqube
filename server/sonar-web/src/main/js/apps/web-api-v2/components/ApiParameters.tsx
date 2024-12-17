@@ -17,11 +17,12 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Accordion, Badge, SubHeading, SubTitle, TextMuted } from 'design-system';
+
 import { groupBy } from 'lodash';
 import { OpenAPIV3 } from 'openapi-types';
 import React, { useContext } from 'react';
 import { FormattedMessage } from 'react-intl';
+import { Accordion, Badge, SubHeading, SubTitle, TextMuted } from '~design-system';
 import { translate } from '../../../helpers/l10n';
 import { ExcludeReferences, InternalExtension } from '../types';
 import { mapOpenAPISchema } from '../utils';
@@ -108,7 +109,7 @@ export default function ApiParameters({ data }: Readonly<Props>) {
                             id="api_documentation.v2.enum_description"
                             values={{
                               values: (
-                                <div className="sw-body-sm-highlight">
+                                <div className="sw-typo-semibold">
                                   {parameter.schema.enum.join(', ')}
                                 </div>
                               ),

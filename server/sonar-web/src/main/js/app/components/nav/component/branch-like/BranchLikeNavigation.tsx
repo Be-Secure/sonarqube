@@ -17,14 +17,16 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import styled from '@emotion/styled';
-import { ButtonSecondary, Popup, PopupPlacement, PopupZLevel } from 'design-system';
+import { Button } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { Popup, PopupPlacement, PopupZLevel } from '~design-system';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import EscKeydownHandler from '../../../../../components/controls/EscKeydownHandler';
 import FocusOutHandler from '../../../../../components/controls/FocusOutHandler';
 import OutsideClickHandler from '../../../../../components/controls/OutsideClickHandler';
-import { useBranchesQuery } from '../../../../../queries/branch';
+import { useBranchesQuery, useCurrentBranchQuery } from '../../../../../queries/branch';
 import { Feature } from '../../../../../types/features';
 import { Component } from '../../../../../types/types';
 import withAvailableFeatures, {
@@ -45,8 +47,9 @@ export function BranchLikeNavigation(props: BranchLikeNavigationProps) {
     component: { configuration },
   } = props;
 
-  const { data: { branchLikes, branchLike: currentBranchLike } = { branchLikes: [] } } =
-    useBranchesQuery(component);
+  const { data: branchLikes } = useBranchesQuery(component);
+  const { data: currentBranchLike } = useCurrentBranchQuery(component);
+
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
   if (currentBranchLike === undefined) {
@@ -97,17 +100,17 @@ export function BranchLikeNavigation(props: BranchLikeNavigationProps) {
           placement={PopupPlacement.BottomLeft}
           zLevel={PopupZLevel.Global}
         >
-          <ButtonSecondary
+          <Button
             className="sw-max-w-abs-800 sw-px-3"
             onClick={() => {
               setIsMenuOpen(!isMenuOpen);
             }}
-            disabled={!isMenuEnabled}
+            isDisabled={!isMenuEnabled}
             aria-expanded={isMenuOpen}
             aria-haspopup="menu"
           >
             {currentBranchLikeElement}
-          </ButtonSecondary>
+          </Button>
         </Popup>
 
         <div className="sw-ml-2">

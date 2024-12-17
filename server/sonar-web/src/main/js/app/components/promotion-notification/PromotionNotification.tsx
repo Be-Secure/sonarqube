@@ -19,10 +19,11 @@
  */
 
 import styled from '@emotion/styled';
-import { ButtonPrimary, ButtonSecondary, themeBorder, themeColor } from 'design-system';
+import { Button, Theme, ThemeProvider } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { ButtonPrimary, themeBorder, themeColor } from '~design-system';
 import { dismissNotice } from '../../../api/users';
-import { Image } from '../../../components/common/Image';
+import { SonarQubeIDEPromotionIllustration } from '../../../components/branding/SonarQubeIDEPromotionIllustration';
 import { translate } from '../../../helpers/l10n';
 import { NoticeType, isLoggedIn } from '../../../types/users';
 import { CurrentUserContextInterface } from '../current-user/CurrentUserContext';
@@ -47,11 +48,13 @@ export function PromotionNotification(props: CurrentUserContextInterface) {
 
   return (
     <PromotionNotificationWrapper className="it__promotion_notification sw-z-global-popup sw-rounded-1 sw-flex sw-items-center sw-px-4">
-      <div className="sw-mr-2">
-        <Image alt="SonarQube + SonarLint" height={80} src="/images/sq-sl.svg" />
-      </div>
+      <ThemeProvider theme={Theme.dark}>
+        <div className="sw-mr-2">
+          <SonarQubeIDEPromotionIllustration />
+        </div>
+      </ThemeProvider>
       <PromotionNotificationContent className="sw-flex-1 sw-px-2 sw-py-4">
-        <span className="sw-body-sm-highlight">{translate('promotion.sonarlint.title')}</span>
+        <span className="sw-typo-semibold">{translate('promotion.sonarlint.title')}</span>
         <p className="sw-mt-2">{translate('promotion.sonarlint.content')}</p>
       </PromotionNotificationContent>
       <div className="sw-ml-2 sw-pl-2 sw-flex sw-flex-col sw-items-stretch">
@@ -62,9 +65,9 @@ export function PromotionNotification(props: CurrentUserContextInterface) {
         >
           {translate('learn_more')}
         </ButtonPrimary>
-        <ButtonSecondary className="sw-justify-center" onClick={onClick}>
+        <Button className="sw-justify-center" onClick={onClick}>
           {translate('dismiss')}
-        </ButtonSecondary>
+        </Button>
       </div>
     </PromotionNotificationWrapper>
   );

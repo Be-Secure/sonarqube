@@ -17,15 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import {
-  ButtonSecondary,
-  CheckIcon,
-  Checkbox,
-  DangerButtonSecondary,
-  Link,
-  Spinner,
-} from 'design-system';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { ButtonSecondary, CheckIcon, Checkbox, Link, Spinner } from '~design-system';
 import { installPlugin, uninstallPlugin, updatePlugin } from '../../../api/plugins';
 import Tooltip from '../../../components/controls/Tooltip';
 import { translate } from '../../../helpers/l10n';
@@ -150,9 +145,13 @@ export default class PluginActions extends React.PureComponent<Props, State> {
               </div>
             ))}
             <Tooltip content={translate('marketplace.requires_restart')}>
-              <DangerButtonSecondary disabled={loading} onClick={this.handleUninstall}>
+              <Button
+                isDisabled={loading}
+                onClick={this.handleUninstall}
+                variety={ButtonVariety.DangerOutline}
+              >
                 {translate('marketplace.uninstall')}
-              </DangerButtonSecondary>
+              </Button>
             </Tooltip>
           </>
         )}

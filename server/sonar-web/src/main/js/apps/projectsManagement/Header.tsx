@@ -17,10 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonPrimary, InteractiveIcon, PencilIcon, Title } from 'design-system';
-import * as React from 'react';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { InteractiveIcon, PencilIcon, Title } from '~design-system';
 import { Visibility } from '~sonar-aligned/types/component';
 import { translate } from '../../helpers/l10n';
 import ChangeDefaultVisibilityForm from './ChangeDefaultVisibilityForm';
@@ -46,7 +47,7 @@ export default function Header(props: Readonly<Props>) {
           <div className="sw-mr-2">
             <span className="sw-mr-1">
               {translate('settings.projects.default_visibility_of_new_projects')}{' '}
-              <strong className="sw-body-sm-highlight">
+              <strong className="sw-typo-semibold">
                 {defaultProjectVisibility ? translate('visibility', defaultProjectVisibility) : '—'}
               </strong>
             </span>
@@ -59,16 +60,17 @@ export default function Header(props: Readonly<Props>) {
           </div>
 
           {hasProvisionPermission && (
-            <ButtonPrimary
+            <Button
               id="create-project"
               onClick={() =>
                 navigate('/projects/create?mode=manual', {
                   state: { from: location.pathname },
                 })
               }
+              variety={ButtonVariety.Primary}
             >
               {translate('qualifiers.create.TRK')}
-            </ButtonPrimary>
+            </Button>
           )}
         </div>
       </div>

@@ -17,9 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import userEvent from '@testing-library/user-event';
-import { addGlobalSuccessMessage } from 'design-system';
-import selectEvent from 'react-select-event';
+import { addGlobalSuccessMessage } from '~design-system';
 import { byLabelText, byRole, byText } from '~sonar-aligned/helpers/testSelector';
 import {
   ProfileProject,
@@ -99,8 +99,8 @@ jest.mock('../../../api/quality-profiles', () => {
   };
 });
 
-jest.mock('design-system', () => ({
-  ...jest.requireActual('design-system'),
+jest.mock('~design-system', () => ({
+  ...jest.requireActual('~design-system'),
   addGlobalSuccessMessage: jest.fn(),
 }));
 
@@ -126,7 +126,6 @@ const ui = {
     name: 'project_quality_profile.always_use_specific',
   }),
   buttonSave: byRole('button', { name: 'save' }),
-  buttonChangeProfile: byRole('button', { name: 'project_quality_profile.change_profile' }),
   htmlLanguage: byText('HTML'),
   htmlProfile: byText('html profile'),
   cssLanguage: byText('CSS'),
@@ -153,7 +152,7 @@ it('should be able to add and change profile for languages', async () => {
     },
   });
 
-  expect(ui.pageTitle.get()).toBeInTheDocument();
+  expect(await ui.pageTitle.find()).toBeInTheDocument();
   expect(ui.pageDescription.get()).toBeInTheDocument();
   expect(await ui.addLanguageButton.find()).toBeInTheDocument();
   await expect(ui.helpTooltip.get()).toHaveATooltipWithContent(
@@ -171,9 +170,14 @@ it('should be able to add and change profile for languages', async () => {
   expect(ui.selectProfile.get()).toBeDisabled();
   expect(ui.buttonSave.get()).toBeInTheDocument();
 
-  await selectEvent.select(ui.selectLanguage.get(), 'HTML');
+  await user.click(ui.selectLanguage.get());
+  await user.click(byRole('option', { name: 'HTML' }).get());
+
   expect(ui.selectProfile.get()).toBeEnabled();
-  await selectEvent.select(ui.selectProfile.get(), 'html profile');
+
+  await user.click(ui.selectProfile.get());
+  await user.click(byRole('option', { name: 'html profile' }).get());
+
   await user.click(ui.buttonSave.get());
   expect(associateProject).toHaveBeenLastCalledWith(
     expect.objectContaining({ key: 'html', name: 'html profile' }),
@@ -199,7 +203,7 @@ it('should be able to add and change profile for languages', async () => {
   expect(ui.builtInTag.query()).not.toBeInTheDocument();
 
   await user.click(
-    htmlRow.byRole('button', { name: 'project_quality_profile.change_profile' }).get(),
+    htmlRow.byRole('button', { name: 'project_quality_profile.change_profile_x.HTML' }).get(),
   );
 
   //Opens modal to change profile
@@ -208,7 +212,9 @@ it('should be able to add and change profile for languages', async () => {
   expect(ui.newAnalysisWarningMessage.get()).toBeInTheDocument();
   expect(ui.selectUseSpecificProfile.get()).toBeInTheDocument();
 
-  await selectEvent.select(ui.selectUseSpecificProfile.get(), 'html default profile');
+  await user.click(ui.selectUseSpecificProfile.get());
+  await user.click(byRole('option', { name: 'html default profile' }).get());
+
   await user.click(ui.buttonSave.get());
 
   expect(addGlobalSuccessMessage).toHaveBeenCalledWith(

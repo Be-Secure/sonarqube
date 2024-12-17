@@ -5,7 +5,7 @@ import org.sonar.build.LicenseReader
 
 plugins {
   id "com.github.hierynomus.license-report"
-  id "com.github.johnrengelman.shadow"
+  id "com.gradleup.shadow"
   id "de.undercouch.download"
   id "org.cyclonedx.bom"
 }
@@ -66,7 +66,7 @@ dependencies {
     api project(':sonar-core')
     api project(':sonar-plugin-api-impl')
 
-    compileOnlyApi 'com.google.code.findbugs:jsr305'
+    compileOnlyApi 'com.github.spotbugs:spotbugs-annotations'
 
     scanner project(path: ':sonar-scanner-engine-shaded', configuration: 'shadow')
     cyclonedx project(path: ':sonar-scanner-engine-shaded')
@@ -80,7 +80,7 @@ dependencies {
     def artifactoryUsername = System.env.'ARTIFACTORY_PRIVATE_USERNAME' ?: (project.hasProperty('artifactoryUsername') ? project.getProperty('artifactoryUsername') : '')
     def artifactoryPassword = System.env.'ARTIFACTORY_PRIVATE_PASSWORD' ?: (project.hasProperty('artifactoryPassword') ? project.getProperty('artifactoryPassword') : '')
     if (artifactoryUsername && artifactoryPassword) {
-      zipDist "sonarqube:elasticsearch:${elasticSearchServerVersion}-no-jdk-linux-x86_64@tar.gz"
+      zipDist "sonarqube:elasticsearch:${elasticSearchServerVersion}-no-jdk@tar.gz"
     } else {
       zipDist "elasticsearch:elasticsearch:${elasticSearchServerVersion}-linux-x86_64@tar.gz"
     }
@@ -336,15 +336,24 @@ task zip(type: Zip, dependsOn: [configurations.compileClasspath]) {
 }
 
 // Check the size of the archive
-zip.doLast {
-  def minLength = 340000000
-  def maxLength = 732000000
+zip {
+  mustRunAfter cyclonedxBom
+  doLast {
+    //When the archive size increases due to dependencies, the expected size should be updated as well.
+    //Bump the expected size by at least 10 more megabytes than what is strictly needed, this in conjunction with the
+    //tolerance will allow for some growth in the archive size.
+    def expectedSize = 810_000_000
+    //We set a tolerance of 15MB to avoid failing the build for small differences in the archive size.
+    def tolerance = 15000000
+    def minArchiveSize = expectedSize - tolerance
+    def maxArchiveSize = expectedSize + tolerance
 
-  def length = archiveFile.get().asFile.length()
-  if (length < minLength)
-    throw new GradleException("${archiveFileName.get()} size ($length) too small. Min is $minLength")
-  if (length > maxLength)
-    throw new GradleException("${destinationDirectory.get()}/${archiveFileName.get()} size ($length) too large. Max is $maxLength")
+    def archiveSize = archiveFile.get().asFile.length()
+    if (archiveSize < minArchiveSize)
+      throw new GradleException("${archiveFileName.get()} size ($archiveSize) too small. Min is $minArchiveSize")
+    if (archiveSize > maxArchiveSize)
+      throw new GradleException("${destinationDirectory.get()}/${archiveFileName.get()} size ($archiveSize) too large. Max is $maxArchiveSize")
+  }
 }
 assemble.dependsOn zip
 
@@ -364,7 +373,7 @@ assemble.dependsOn cleanLocalUnzippedDir
 
 artifacts { zip zip }
 
-artifactoryPublish.skip = false
+artifactoryPublish.skip = !deployCommunity
 
 def bomFile = layout.buildDirectory.file('reports/bom.json')
 cyclonedxBom {
@@ -414,7 +423,7 @@ tasks.register('updateJresMetadata') {
 
     def metadataContent = []
 
-    def supportedOsAndArch = [[os:'linux', arch:'x64'], [os:'linux', arch:'aarch64'], [os:ext.ALPINE_ADOPTIUM, arch:'x64'], [os: ext.WINDOWS, arch:'x64'], [os:ext.MAC, arch:'x64'], [os:'mac', arch:'aarch64']]
+    def supportedOsAndArch = [[os:'linux', arch:'x64'], [os:'linux', arch:'aarch64'], [os:project.ext.ALPINE_ADOPTIUM, arch:'x64'], [os: project.ext.WINDOWS, arch:'x64'], [os:project.ext.MAC, arch:'x64'], [os:'mac', arch:'aarch64']]
 
     for (jreFlavor in supportedOsAndArch) {
       var candidates = response.binaries.findAll {
@@ -426,8 +435,8 @@ tasks.register('updateJresMetadata') {
           'id': UUID.randomUUID(),
           'filename': jre.package.name,
           'sha256': jre.package.checksum,
-          'javaPath': "${jre_release_name}-jre" + (jreFlavor.os == ext.MAC ? '/Contents/Home' : '') + '/bin/java' + (jreFlavor.os == ext.WINDOWS ? '.exe' : ''),
-          'os': jreFlavor.os.replace(ext.ALPINE_ADOPTIUM, ext.ALPINE),
+          'javaPath': "${jre_release_name}-jre" + (jreFlavor.os == project.ext.MAC ? '/Contents/Home' : '') + '/bin/java' + (jreFlavor.os == project.ext.WINDOWS ? '.exe' : ''),
+          'os': jreFlavor.os.replace(project.ext.ALPINE_ADOPTIUM, project.ext.ALPINE),
           'arch': jreFlavor.arch
         ]
     }

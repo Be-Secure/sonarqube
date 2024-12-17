@@ -38,6 +38,10 @@ import org.sonar.db.component.ComponentDao;
 import org.sonar.db.component.ComponentKeyUpdaterDao;
 import org.sonar.db.component.ProjectLinkDao;
 import org.sonar.db.component.SnapshotDao;
+import org.sonar.db.dependency.CveCweDao;
+import org.sonar.db.dependency.CveDao;
+import org.sonar.db.dependency.IssuesDependencyDao;
+import org.sonar.db.dependency.ProjectDependenciesDao;
 import org.sonar.db.duplication.DuplicationDao;
 import org.sonar.db.entity.EntityDao;
 import org.sonar.db.es.EsQueueDao;
@@ -47,8 +51,8 @@ import org.sonar.db.issue.AnticipatedTransitionDao;
 import org.sonar.db.issue.IssueChangeDao;
 import org.sonar.db.issue.IssueDao;
 import org.sonar.db.issue.IssueFixedDao;
-import org.sonar.db.measure.LiveMeasureDao;
 import org.sonar.db.measure.MeasureDao;
+import org.sonar.db.measure.ProjectMeasureDao;
 import org.sonar.db.metric.MetricDao;
 import org.sonar.db.newcodeperiod.NewCodePeriodDao;
 import org.sonar.db.notification.NotificationQueueDao;
@@ -65,8 +69,8 @@ import org.sonar.db.project.ProjectExportDao;
 import org.sonar.db.property.InternalComponentPropertiesDao;
 import org.sonar.db.property.InternalPropertiesDao;
 import org.sonar.db.property.PropertiesDao;
+import org.sonar.db.provisioning.DevOpsPermissionsMappingDao;
 import org.sonar.db.provisioning.GithubOrganizationGroupDao;
-import org.sonar.db.provisioning.GithubPermissionsMappingDao;
 import org.sonar.db.purge.PurgeDao;
 import org.sonar.db.pushevent.PushEventDao;
 import org.sonar.db.qualitygate.ProjectQgateAssociationDao;
@@ -92,6 +96,7 @@ import org.sonar.db.schemamigration.SchemaMigrationDao;
 import org.sonar.db.scim.ScimGroupDao;
 import org.sonar.db.scim.ScimUserDao;
 import org.sonar.db.source.FileSourceDao;
+import org.sonar.db.telemetry.TelemetryMetricsSentDao;
 import org.sonar.db.user.ExternalGroupDao;
 import org.sonar.db.user.GroupDao;
 import org.sonar.db.user.GroupMembershipDao;
@@ -126,6 +131,7 @@ public class DbClient {
   private final ComponentDao componentDao;
   private final ComponentKeyUpdaterDao componentKeyUpdaterDao;
   private final MeasureDao measureDao;
+  private final ProjectMeasureDao projectMeasureDao;
   private final UserDao userDao;
   private final UserGroupDao userGroupDao;
   private final UserTokenDao userTokenDao;
@@ -171,7 +177,6 @@ public class DbClient {
   private final AnalysisPropertiesDao analysisPropertiesDao;
   private final QProfileEditUsersDao qProfileEditUsersDao;
   private final QProfileEditGroupsDao qProfileEditGroupsDao;
-  private final LiveMeasureDao liveMeasureDao;
   private final WebhookDao webhookDao;
   private final WebhookDeliveryDao webhookDeliveryDao;
   private final NewCodePeriodDao newCodePeriodDao;
@@ -187,14 +192,18 @@ public class DbClient {
   private final ScimGroupDao scimGroupDao;
   private final EntityDao entityDao;
   private final AnticipatedTransitionDao anticipatedTransitionDao;
-
   private final ReportScheduleDao reportScheduleDao;
   private final ReportSubscriptionDao reportSubscriptionDao;
   private final GithubOrganizationGroupDao githubOrganizationGroupDao;
-  private final GithubPermissionsMappingDao githubPermissionsMappingDao;
+  private final DevOpsPermissionsMappingDao devopsPermissionsMappingDao;
   private final RuleChangeDao ruleChangeDao;
   private final ProjectExportDao projectExportDao;
   private final IssueFixedDao issueFixedDao;
+  private final TelemetryMetricsSentDao telemetryMetricsSentDao;
+  private final CveDao cveDao;
+  private final CveCweDao cveCweDao;
+  private final IssuesDependencyDao issuesDependencyDao;
+  private final ProjectDependenciesDao projectDependenciesDao;
 
   public DbClient(Database database, MyBatis myBatis, DBSessions dbSessions, Dao... daos) {
     this.database = database;
@@ -219,6 +228,7 @@ public class DbClient {
     componentDao = getDao(map, ComponentDao.class);
     componentKeyUpdaterDao = getDao(map, ComponentKeyUpdaterDao.class);
     measureDao = getDao(map, MeasureDao.class);
+    projectMeasureDao = getDao(map, ProjectMeasureDao.class);
     userDao = getDao(map, UserDao.class);
     userGroupDao = getDao(map, UserGroupDao.class);
     userTokenDao = getDao(map, UserTokenDao.class);
@@ -252,7 +262,7 @@ public class DbClient {
     metricDao = getDao(map, MetricDao.class);
     groupDao = getDao(map, GroupDao.class);
     githubOrganizationGroupDao = getDao(map, GithubOrganizationGroupDao.class);
-    githubPermissionsMappingDao = getDao(map, GithubPermissionsMappingDao.class);
+    devopsPermissionsMappingDao = getDao(map, DevOpsPermissionsMappingDao.class);
     externalGroupDao = getDao(map, ExternalGroupDao.class);
     ruleDao = getDao(map, RuleDao.class);
     ruleRepositoryDao = getDao(map, RuleRepositoryDao.class);
@@ -266,7 +276,6 @@ public class DbClient {
     analysisPropertiesDao = getDao(map, AnalysisPropertiesDao.class);
     qProfileEditUsersDao = getDao(map, QProfileEditUsersDao.class);
     qProfileEditGroupsDao = getDao(map, QProfileEditGroupsDao.class);
-    liveMeasureDao = getDao(map, LiveMeasureDao.class);
     webhookDao = getDao(map, WebhookDao.class);
     webhookDeliveryDao = getDao(map, WebhookDeliveryDao.class);
     internalComponentPropertiesDao = getDao(map, InternalComponentPropertiesDao.class);
@@ -288,6 +297,11 @@ public class DbClient {
     ruleChangeDao = getDao(map, RuleChangeDao.class);
     projectExportDao = getDao(map, ProjectExportDao.class);
     issueFixedDao = getDao(map, IssueFixedDao.class);
+    telemetryMetricsSentDao = getDao(map, TelemetryMetricsSentDao.class);
+    cveDao = getDao(map, CveDao.class);
+    cveCweDao = getDao(map, CveCweDao.class);
+    issuesDependencyDao = getDao(map, IssuesDependencyDao.class);
+    projectDependenciesDao = getDao(map, ProjectDependenciesDao.class);
   }
 
   public DbSession openSession(boolean batch) {
@@ -342,6 +356,10 @@ public class DbClient {
     return issueFixedDao;
   }
 
+  public TelemetryMetricsSentDao telemetryMetricsSentDao() {
+    return telemetryMetricsSentDao;
+  }
+
   public QualityProfileDao qualityProfileDao() {
     return qualityProfileDao;
   }
@@ -384,6 +402,10 @@ public class DbClient {
 
   public MeasureDao measureDao() {
     return measureDao;
+  }
+
+  public ProjectMeasureDao projectMeasureDao() {
+    return projectMeasureDao;
   }
 
   public UserDao userDao() {
@@ -506,8 +528,8 @@ public class DbClient {
     return githubOrganizationGroupDao;
   }
 
-  public GithubPermissionsMappingDao githubPermissionsMappingDao() {
-    return githubPermissionsMappingDao;
+  public DevOpsPermissionsMappingDao githubPermissionsMappingDao() {
+    return devopsPermissionsMappingDao;
   }
 
   public ExternalGroupDao externalGroupDao() {
@@ -556,10 +578,6 @@ public class DbClient {
 
   public QProfileEditGroupsDao qProfileEditGroupsDao() {
     return qProfileEditGroupsDao;
-  }
-
-  public LiveMeasureDao liveMeasureDao() {
-    return liveMeasureDao;
   }
 
   protected <K extends Dao> K getDao(Map<Class, Dao> map, Class<K> clazz) {
@@ -639,5 +657,20 @@ public class DbClient {
   public ProjectExportDao projectExportDao() {
     return projectExportDao;
   }
-}
 
+  public CveDao cveDao() {
+    return cveDao;
+  }
+
+  public CveCweDao cveCweDao() {
+    return cveCweDao;
+  }
+
+  public IssuesDependencyDao issuesDependencyDao() {
+    return issuesDependencyDao;
+  }
+
+  public ProjectDependenciesDao projectDependenciesDao() {
+    return projectDependenciesDao;
+  }
+}

@@ -19,9 +19,9 @@
  */
 
 import { Spinner } from '@sonarsource/echoes-react';
-import { FlagMessage } from 'design-system';
 import { findLastIndex, keyBy } from 'lodash';
 import * as React from 'react';
+import { FlagMessage } from '~design-system';
 import { getBranchLikeQuery } from '~sonar-aligned/helpers/branch-like';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { getComponentForSourceViewer, getDuplications, getSources } from '../../../api/components';
@@ -224,7 +224,7 @@ export default class CrossComponentSourceViewer extends React.PureComponent<Prop
         {locationsByComponent.map((snippetGroup, i) => {
           return (
             <SourceViewerContext.Provider
-              key={`${issue.key}-${this.props.selectedFlowIndex}-${snippetGroup.component.key}`}
+              key={`${issue.key}-${this.props.selectedFlowIndex}-${snippetGroup.component.key}-${i}`}
               value={{ branchLike: this.props.branchLike, file: snippetGroup.component }}
             >
               <ComponentSourceSnippetGroupViewer

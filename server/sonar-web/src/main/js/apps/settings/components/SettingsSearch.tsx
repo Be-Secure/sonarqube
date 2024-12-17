@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { debounce, keyBy } from 'lodash';
 import lunr, { LunrIndex } from 'lunr';
 import * as React from 'react';
@@ -28,8 +29,8 @@ import { Component, Dict } from '../../../types/types';
 import {
   ADDITIONAL_PROJECT_SETTING_DEFINITIONS,
   ADDITIONAL_SETTING_DEFINITIONS,
-  buildSettingLink,
-} from '../utils';
+} from '../constants';
+import { buildSettingLink } from '../utils';
 import SettingsSearchRenderer from './SettingsSearchRenderer';
 
 interface Props {

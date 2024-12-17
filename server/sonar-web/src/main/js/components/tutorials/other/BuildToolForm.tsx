@@ -17,14 +17,18 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import * as React from 'react';
+
 import { translate } from '../../../helpers/l10n';
 import { withCLanguageFeature } from '../../hoc/withCLanguageFeature';
 import BuildConfigSelection from '../components/BuildConfigSelection';
 import GithubCFamilyExampleRepositories from '../components/GithubCFamilyExampleRepositories';
 import RenderOptions from '../components/RenderOptions';
-import { Arch, BuildTools, OSs, TutorialConfig, TutorialModes } from '../types';
-import { shouldShowArchSelector, shouldShowGithubCFamilyExampleRepositories } from '../utils';
+import { Arch, OSs, TutorialConfig, TutorialModes } from '../types';
+import {
+  shouldShowArchSelector,
+  shouldShowGithubCFamilyExampleRepositories,
+  shouldShowOsSelector,
+} from '../utils';
 
 interface Props {
   arch?: Arch;
@@ -41,16 +45,9 @@ export function BuildToolForm(props: Readonly<Props>) {
   const { config, setConfig, os, setOs, arch, setArch, isLocal, hasCLanguageFeature } = props;
 
   function handleConfigChange(newConfig: TutorialConfig) {
-    const selectOsByDefault = (newConfig.buildTool === BuildTools.Cpp ||
-      newConfig.buildTool === BuildTools.ObjectiveC ||
-      newConfig.buildTool === BuildTools.Other) && {
-      os: OSs.Linux,
-    };
-
     setConfig({
       ...config,
       ...newConfig,
-      ...selectOsByDefault,
     });
   }
 
@@ -64,9 +61,7 @@ export function BuildToolForm(props: Readonly<Props>) {
           onSetConfig={handleConfigChange}
         />
       )}
-      {(config.buildTool === BuildTools.Other ||
-        config.buildTool === BuildTools.Cpp ||
-        config.buildTool === BuildTools.ObjectiveC) && (
+      {shouldShowOsSelector(config) && (
         <RenderOptions
           label={translate('onboarding.build.other.os')}
           checked={os}

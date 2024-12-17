@@ -17,11 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { keyBy } from 'lodash';
 import { MetricKey, MetricType } from '~sonar-aligned/types/metrics';
 import { isDiffMetric } from '../../../helpers/measures';
 import { mockMeasure } from '../../../helpers/testMocks';
-import { SoftwareImpactSeverity } from '../../../types/clean-code-taxonomy';
 import { IssueDeprecatedStatus, IssueType, RawIssue } from '../../../types/issues';
 import { Measure } from '../../../types/types';
 import { ComponentTree } from './components';
@@ -58,80 +58,50 @@ function mockComponentMeasure(tree: ComponentTree, issueList: IssueData[], metri
         value: 'java=10000;javascript=5000;css=1000',
       });
 
-    case MetricKey.security_issues:
+    case MetricKey.software_quality_security_issues:
       return mockMeasure({
         metric: metricKey,
-        value: JSON.stringify({
-          total: 1,
-          [SoftwareImpactSeverity.High]: 0,
-          [SoftwareImpactSeverity.Medium]: 1,
-          [SoftwareImpactSeverity.Low]: 0,
-        }),
+        value: '1',
       });
 
-    case MetricKey.new_security_issues:
+    case MetricKey.new_software_quality_security_issues:
       return mockMeasure({
         metric: metricKey,
         period: {
           index: 1,
-          value: JSON.stringify({
-            total: 3,
-            [SoftwareImpactSeverity.High]: 2,
-            [SoftwareImpactSeverity.Medium]: 0,
-            [SoftwareImpactSeverity.Low]: 1,
-          }),
+          value: '3',
         },
         value: undefined,
       });
 
-    case MetricKey.reliability_issues:
+    case MetricKey.software_quality_reliability_issues:
       return mockMeasure({
         metric: metricKey,
-        value: JSON.stringify({
-          total: 3,
-          [SoftwareImpactSeverity.High]: 0,
-          [SoftwareImpactSeverity.Medium]: 2,
-          [SoftwareImpactSeverity.Low]: 1,
-        }),
+        value: '3',
       });
 
-    case MetricKey.new_reliability_issues:
+    case MetricKey.new_software_quality_reliability_issues:
       return mockMeasure({
         metric: metricKey,
         period: {
           index: 1,
-          value: JSON.stringify({
-            total: 2,
-            [SoftwareImpactSeverity.High]: 0,
-            [SoftwareImpactSeverity.Medium]: 1,
-            [SoftwareImpactSeverity.Low]: 1,
-          }),
+          value: '2',
         },
         value: undefined,
       });
 
-    case MetricKey.maintainability_issues:
+    case MetricKey.software_quality_maintainability_issues:
       return mockMeasure({
         metric: metricKey,
-        value: JSON.stringify({
-          total: 2,
-          [SoftwareImpactSeverity.High]: 0,
-          [SoftwareImpactSeverity.Medium]: 0,
-          [SoftwareImpactSeverity.Low]: 1,
-        }),
+        value: '2',
       });
 
-    case MetricKey.new_maintainability_issues:
+    case MetricKey.new_software_quality_maintainability_issues:
       return mockMeasure({
         metric: metricKey,
         period: {
           index: 1,
-          value: JSON.stringify({
-            total: 5,
-            [SoftwareImpactSeverity.High]: 2,
-            [SoftwareImpactSeverity.Medium]: 2,
-            [SoftwareImpactSeverity.Low]: 1,
-          }),
+          value: '5',
         },
         value: undefined,
       });
@@ -218,6 +188,18 @@ function mockComponentMeasure(tree: ComponentTree, issueList: IssueData[], metri
           ...computeRating(issues, IssueType.Bug),
         });
 
+      case MetricKey.software_quality_reliability_rating: {
+        const rating = computeRating(issues, IssueType.Bug);
+        if (rating.value === '5.0') {
+          rating.value = '4.0';
+        }
+        return mockMeasure({
+          metric: metricKey,
+          period: undefined,
+          ...computeRating(issues, IssueType.Bug),
+        });
+      }
+
       case MetricKey.new_reliability_rating:
         return mockMeasure({
           metric: metricKey,
@@ -228,12 +210,39 @@ function mockComponentMeasure(tree: ComponentTree, issueList: IssueData[], metri
           value: undefined,
         });
 
+      case MetricKey.new_software_quality_reliability_rating: {
+        const rating = computeRating(issues, IssueType.Bug);
+        if (rating.value === '5.0') {
+          rating.value = '4.0';
+        }
+        return mockMeasure({
+          metric: metricKey,
+          period: {
+            index: 0,
+            ...rating,
+          },
+          value: undefined,
+        });
+      }
+
       case MetricKey.sqale_rating:
         return mockMeasure({
           metric: metricKey,
           period: undefined,
           ...computeRating(issues, IssueType.CodeSmell),
         });
+
+      case MetricKey.software_quality_maintainability_rating: {
+        const rating = computeRating(issues, IssueType.CodeSmell);
+        if (rating.value === '5.0') {
+          rating.value = '4.0';
+        }
+        return mockMeasure({
+          metric: metricKey,
+          period: undefined,
+          ...rating,
+        });
+      }
 
       case MetricKey.new_maintainability_rating:
         return mockMeasure({
@@ -245,12 +254,39 @@ function mockComponentMeasure(tree: ComponentTree, issueList: IssueData[], metri
           value: undefined,
         });
 
+      case MetricKey.new_software_quality_maintainability_rating: {
+        const rating = computeRating(issues, IssueType.CodeSmell);
+        if (rating.value === '5.0') {
+          rating.value = '4.0';
+        }
+        return mockMeasure({
+          metric: metricKey,
+          period: {
+            index: 0,
+            ...rating,
+          },
+          value: undefined,
+        });
+      }
+
       case MetricKey.security_rating:
         return mockMeasure({
           metric: metricKey,
           period: undefined,
           ...computeRating(issues, IssueType.Vulnerability),
         });
+
+      case MetricKey.software_quality_security_rating: {
+        const rating = computeRating(issues, IssueType.Vulnerability);
+        if (rating.value === '5.0') {
+          rating.value = '4.0';
+        }
+        return mockMeasure({
+          metric: metricKey,
+          period: undefined,
+          ...rating,
+        });
+      }
 
       case MetricKey.new_security_rating:
         return mockMeasure({
@@ -261,6 +297,21 @@ function mockComponentMeasure(tree: ComponentTree, issueList: IssueData[], metri
           },
           value: undefined,
         });
+
+      case MetricKey.new_software_quality_security_rating: {
+        const rating = computeRating(issues, IssueType.Vulnerability);
+        if (rating.value === '5.0') {
+          rating.value = '4.0';
+        }
+        return mockMeasure({
+          metric: metricKey,
+          period: {
+            index: 0,
+            ...rating,
+          },
+          value: undefined,
+        });
+      }
     }
   }
 
@@ -282,17 +333,6 @@ export function getMetricTypeFromKey(metricKey: string) {
     return MetricType.Percent;
   } else if (metricKey.includes('_rating')) {
     return MetricType.Rating;
-  } else if (
-    [
-      MetricKey.reliability_issues,
-      MetricKey.new_reliability_issues,
-      MetricKey.security_issues,
-      MetricKey.new_security_issues,
-      MetricKey.maintainability_issues,
-      MetricKey.new_maintainability_issues,
-    ].includes(metricKey as MetricKey)
-  ) {
-    return MetricType.Data;
   }
   return MetricType.Integer;
 }
@@ -312,11 +352,17 @@ function isIssueType(metricKey: MetricKey) {
 function isIssueRelatedRating(metricKey: MetricKey) {
   return [
     MetricKey.reliability_rating,
+    MetricKey.software_quality_reliability_rating,
     MetricKey.new_reliability_rating,
+    MetricKey.new_software_quality_reliability_rating,
     MetricKey.sqale_rating,
+    MetricKey.software_quality_maintainability_rating,
     MetricKey.new_maintainability_rating,
+    MetricKey.new_software_quality_maintainability_rating,
     MetricKey.security_rating,
+    MetricKey.software_quality_security_rating,
     MetricKey.new_security_rating,
+    MetricKey.new_software_quality_security_rating,
   ].includes(metricKey);
 }
 

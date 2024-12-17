@@ -17,8 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Badge, CellComponent } from 'design-system';
-import * as React from 'react';
+
+import { Badge, CellComponent } from '~design-system';
 import { Plugin } from '../../../types/plugins';
 
 interface Props {
@@ -28,7 +28,7 @@ interface Props {
 export default function PluginDescription(props: Readonly<Props>) {
   return (
     <CellComponent>
-      <strong className="sw-body-sm-highlight">{props.plugin.name}</strong>
+      <strong className="sw-typo-semibold">{props.plugin.name}</strong>
       {props.plugin.category && <Badge className="sw-ml-2">{props.plugin.category}</Badge>}
       {props.plugin.description && <div className="sw-mt-2">{props.plugin.description}</div>}
     </CellComponent>

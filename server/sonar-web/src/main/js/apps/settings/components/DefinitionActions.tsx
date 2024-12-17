@@ -17,14 +17,17 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonPrimary, ButtonSecondary, DangerButtonPrimary, Modal, Note } from 'design-system';
+
+import { Button, ButtonGroup, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { Modal, Note } from '~design-system';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
-import { Setting } from '../../../types/settings';
+import { ExtendedSettingDefinition, Setting } from '../../../types/settings';
 import { getDefaultValue, getPropertyName, isEmptyValue } from '../utils';
 
 type Props = {
   changedValue?: string | string[] | boolean;
+  definition: ExtendedSettingDefinition;
   hasError: boolean;
   hasValueChanged: boolean;
   isDefault: boolean;
@@ -68,9 +71,9 @@ export default class DefinitionActions extends React.PureComponent<Props, State>
           </form>
         }
         primaryButton={
-          <DangerButtonPrimary type="submit" form={MODAL_FORM_ID}>
+          <Button type="submit" form={MODAL_FORM_ID} variety={ButtonVariety.Danger}>
             {translate('reset_verb')}
-          </DangerButtonPrimary>
+          </Button>
         }
         secondaryButtonLabel={translate('cancel')}
       />
@@ -78,38 +81,48 @@ export default class DefinitionActions extends React.PureComponent<Props, State>
   }
 
   render() {
-    const { setting, changedValue, isDefault, isEditing, hasValueChanged, hasError } = this.props;
+    const { definition, setting, changedValue, isDefault, isEditing, hasValueChanged, hasError } =
+      this.props;
     const hasBeenChangedToEmptyValue =
       changedValue !== undefined && isEmptyValue(setting.definition, changedValue);
     const showReset = hasBeenChangedToEmptyValue || (!isDefault && setting.hasValue);
     const showCancel = hasValueChanged || isEditing;
+    const propertyName = getPropertyName(definition);
+    const saveButtonLabel = `${translate('save')} ${propertyName}`;
+    const cancelButtonLabel = `${translate('cancel')} ${propertyName}`;
 
     return (
       <div className="sw-mt-8">
-        {hasValueChanged && (
-          <ButtonPrimary className="sw-mr-3" disabled={hasError} onClick={this.props.onSave}>
-            {translate('save')}
-          </ButtonPrimary>
-        )}
+        <ButtonGroup className="sw-mr-3">
+          {hasValueChanged && (
+            <Button
+              aria-label={saveButtonLabel}
+              isDisabled={hasError}
+              onClick={this.props.onSave}
+              variety={ButtonVariety.Primary}
+            >
+              {translate('save')}
+            </Button>
+          )}
 
-        {showReset && (
-          <ButtonSecondary
-            className="sw-mr-3"
-            aria-label={translateWithParameters(
-              'settings.definition.reset',
-              getPropertyName(setting.definition),
-            )}
-            onClick={this.handleReset}
-          >
-            {translate('reset_verb')}
-          </ButtonSecondary>
-        )}
+          {showReset && (
+            <Button
+              aria-label={translateWithParameters(
+                'settings.definition.reset',
+                getPropertyName(setting.definition),
+              )}
+              onClick={this.handleReset}
+            >
+              {translate('reset_verb')}
+            </Button>
+          )}
 
-        {showCancel && (
-          <ButtonSecondary className="sw-mr-3" onClick={this.props.onCancel}>
-            {translate('cancel')}
-          </ButtonSecondary>
-        )}
+          {showCancel && (
+            <Button aria-label={cancelButtonLabel} onClick={this.props.onCancel}>
+              {translate('cancel')}
+            </Button>
+          )}
+        </ButtonGroup>
 
         {showReset && (
           <Note>

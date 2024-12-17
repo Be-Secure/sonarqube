@@ -18,9 +18,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { FlagMessage } from 'design-system';
-import React from 'react';
 import { FormattedMessage } from 'react-intl';
+import { FlagMessage } from '~design-system';
 import DocumentationLink from '../../../../components/common/DocumentationLink';
 import { DocLink } from '../../../../helpers/doc-links';
 import { translate } from '../../../../helpers/l10n';
@@ -37,10 +36,10 @@ interface Props {
 export default function BitbucketAuthenticationTab(props: Readonly<Props>) {
   const { definitions } = props;
 
-  const { data: allowToSignUpEnabled } = useGetValueQuery(
-    'sonar.auth.bitbucket.allowUsersToSignUp',
-  );
-  const { data: workspaces } = useGetValueQuery('sonar.auth.bitbucket.workspaces');
+  const { data: allowToSignUpEnabled } = useGetValueQuery({
+    key: 'sonar.auth.bitbucket.allowUsersToSignUp',
+  });
+  const { data: workspaces } = useGetValueQuery({ key: 'sonar.auth.bitbucket.workspaces' });
 
   const isConfigurationUnsafe =
     allowToSignUpEnabled?.value === 'true' &&

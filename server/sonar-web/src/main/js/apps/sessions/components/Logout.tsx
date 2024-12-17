@@ -18,8 +18,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { CenteredLayout, PageContentFontWrapper, addGlobalErrorMessage } from 'design-system';
 import * as React from 'react';
+import { CenteredLayout, PageContentFontWrapper, addGlobalErrorMessage } from '~design-system';
 import { logOut } from '../../../api/auth';
 import RecentHistory from '../../../app/components/RecentHistory';
 import { translate } from '../../../helpers/l10n';
@@ -39,7 +39,7 @@ export default function Logout() {
 
   return (
     <CenteredLayout>
-      <PageContentFontWrapper className="sw-body-md sw-mt-14 sw-text-center">
+      <PageContentFontWrapper className="sw-typo-lg sw-mt-14 sw-text-center">
         {translate('logging_out')}
       </PageContentFontWrapper>
     </CenteredLayout>

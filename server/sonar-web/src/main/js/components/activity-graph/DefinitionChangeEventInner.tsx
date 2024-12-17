@@ -17,9 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { BareButton, BranchIcon, ChevronDownIcon, Note, StandoutLink } from 'design-system';
+
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
+import { BareButton, BranchIcon, ChevronDownIcon, Note, StandoutLink } from '~design-system';
 import { isMainBranch } from '~sonar-aligned/helpers/branch-like';
 import { translate } from '../../helpers/l10n';
 import { getProjectUrl } from '../../helpers/urls';
@@ -139,9 +140,9 @@ export class DefinitionChangeEventInner extends React.PureComponent<Props, State
     const { event, readonly } = this.props;
     const { expanded } = this.state;
     return (
-      <div className="sw-w-full sw-body-sm sw-py-1/2">
+      <div className="sw-w-full sw-typo-default sw-py-1/2">
         <div className="sw-flex sw-justify-between">
-          <Note className="sw-mr-1 sw-body-sm-highlight">
+          <Note className="sw-mr-1 sw-typo-semibold">
             {translate('event.category', event.category)}
           </Note>
 

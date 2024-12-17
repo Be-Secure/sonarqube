@@ -19,10 +19,9 @@
  */
 
 import { Link } from '@sonarsource/echoes-react';
-import { FlagMessage, SubTitle, ToggleButton } from 'design-system';
-import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
-import { Image } from '../../../../components/common/Image';
+import { FlagMessage, SubTitle, ToggleButton } from '~design-system';
+import { Image } from '~sonar-aligned/components/common/Image';
 import { translate } from '../../../../helpers/l10n';
 import { isDefined } from '../../../../helpers/types';
 import { useGetValuesQuery } from '../../../../queries/settings';
@@ -94,7 +93,7 @@ const tabs = [
   },
 ];
 
-export default function AlmIntegrationRenderer(props: AlmIntegrationRendererProps) {
+export default function AlmIntegrationRenderer(props: Readonly<AlmIntegrationRendererProps>) {
   const {
     definitionKeyForDeletion,
     definitions,
@@ -115,7 +114,7 @@ export default function AlmIntegrationRenderer(props: AlmIntegrationRendererProp
   };
 
   const { data, isLoading } = useGetValuesQuery([SettingsKey.ServerBaseUrl]);
-  const hasServerBaseUrl = data?.length === 1 && data[0].value !== undefined;
+  const hasServerBaseUrl = data?.length === 1 && data[0]?.value !== undefined;
 
   return (
     <>
@@ -165,14 +164,13 @@ export default function AlmIntegrationRenderer(props: AlmIntegrationRendererProp
         onUpdateDefinitions={props.onUpdateDefinitions}
       />
 
-      {isDefined(definitionKeyForDeletion) && (
-        <DeleteModal
-          id={definitionKeyForDeletion}
-          onCancel={props.onCancelDelete}
-          onDelete={props.onConfirmDelete}
-          projectCount={projectCount}
-        />
-      )}
+      <DeleteModal
+        id={definitionKeyForDeletion}
+        isOpen={isDefined(definitionKeyForDeletion)}
+        onCancel={props.onCancelDelete}
+        onDelete={props.onConfirmDelete}
+        projectCount={projectCount}
+      />
     </>
   );
 }

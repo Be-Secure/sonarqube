@@ -17,8 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonPrimary, Card, DarkLabel } from 'design-system';
-import * as React from 'react';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
+import { Card, DarkLabel } from '~design-system';
 import { translate } from '../../../helpers/l10n';
 import { EditionKey } from '../../../types/editions';
 import { RiskConsent } from '../../../types/plugins';
@@ -44,9 +45,9 @@ export default function PluginRiskConsentBox(props: Readonly<PluginRiskConsentBo
       {currentEdition === EditionKey.community && (
         <p className="sw-mt-2">{translate('marketplace.risk_consent.installation')}</p>
       )}
-      <ButtonPrimary className="sw-mt-4" onClick={props.acknowledgeRisk}>
+      <Button className="sw-mt-4" onClick={props.acknowledgeRisk} variety={ButtonVariety.Primary}>
         {translate('marketplace.risk_consent.action')}
-      </ButtonPrimary>
+      </Button>
     </Card>
   );
 }

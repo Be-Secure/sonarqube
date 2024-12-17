@@ -19,7 +19,7 @@ dependencies {
   api project(':server:sonar-db-migration')
   api project(':sonar-core')
 
-  compileOnlyApi 'com.google.code.findbugs:jsr305'
+  compileOnlyApi 'com.github.spotbugs:spotbugs-annotations'
 
   testImplementation 'commons-dbutils:commons-dbutils'
   testImplementation 'org.assertj:assertj-core'
@@ -32,7 +32,7 @@ dependencies {
   testImplementation project(':sonar-testing-harness')
   testImplementation project(':sonar-plugin-api-impl')
 
-  testCompileOnly 'com.google.code.findbugs:jsr305'
+  testCompileOnly 'com.github.spotbugs:spotbugs-annotations'
 
   testRuntimeOnly 'com.h2database:h2'
   testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
@@ -44,11 +44,11 @@ dependencies {
 
   testFixturesApi 'org.junit.jupiter:junit-jupiter-api'
   testFixturesApi testFixtures(project(':server:sonar-db-core'))
-    testFixturesApi testFixtures(project(':server:sonar-db-migration'))
+  testFixturesApi testFixtures(project(':server:sonar-db-migration'))
 
   testFixturesImplementation 'com.h2database:h2'
 
-  testFixturesCompileOnly 'com.google.code.findbugs:jsr305'
+  testFixturesCompileOnly 'com.github.spotbugs:spotbugs-annotations'
 }
 
 test {
@@ -68,9 +68,15 @@ task createDB(type:JavaExec) {
     mainClass = 'org.sonar.db.createdb.CreateDb'
     classpath = sourceSets.test.runtimeClasspath
     systemProperty 'orchestrator.configUrl', System.getProperty('orchestrator.configUrl')
-    if (!project.version.endsWith("-SNAPSHOT")) {
-        systemProperty 'sonar.runtimeVersion', project.version
-    }
+  if (!project.version.endsWith("-SNAPSHOT")) {
+    systemProperty 'sonar.runtimeVersion', project.version
+    systemProperty 'sonar.communityRuntimeVersion', project.version
+  }
+}
+
+task populateDB(type: JavaExec) {
+  mainClass = 'org.sonar.db.createdb.PopulateDb'
+  classpath = sourceSets.test.runtimeClasspath
 }
 
 task testJar(type: Jar) {

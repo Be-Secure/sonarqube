@@ -17,8 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { HelperHintIcon } from 'design-system';
-import * as React from 'react';
+
+import { HelperHintIcon } from '~design-system';
 import HelpTooltip from '~sonar-aligned/components/controls/HelpTooltip';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { translate } from '../../../helpers/l10n';
@@ -37,7 +37,7 @@ export default function StatPendingTime({ pendingCount, pendingTime }: Readonly<
   }
   return (
     <div className="sw-flex sw-items-center">
-      <span className="sw-body-md-highlight sw-mr-1">{formatMeasure(pendingTime, 'MILLISEC')}</span>
+      <span className="sw-typo-lg-semibold sw-mr-1">{formatMeasure(pendingTime, 'MILLISEC')}</span>
       {translate('background_tasks.pending_time')}
       <HelpTooltip
         className="sw-ml-1"

@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import {
   CleanCodeAttributeCategory,
   SoftwareImpactSeverity,
@@ -53,6 +54,8 @@ describe('serialize/deserialize', () => {
         createdInLast: 'a',
         cwe: ['18', '19'],
         directories: ['a', 'b'],
+        casa: ['a', 'b'],
+        'stig-ASD_V5R3': ['a', 'b'],
         files: ['a', 'b'],
         issues: ['a', 'b'],
         languages: ['a', 'b'],
@@ -92,6 +95,8 @@ describe('serialize/deserialize', () => {
       issues: 'a,b',
       languages: 'a,b',
       owaspTop10: 'a,b',
+      casa: 'a,b',
+      'stig-ASD_V5R3': 'a,b',
       'owaspTop10-2021': 'a,b',
       'pciDss-3.2': 'a,b',
       'pciDss-4.0': 'a,b',
@@ -134,6 +139,8 @@ describe('serialize/deserialize', () => {
       createdBefore: undefined,
       createdInLast: '',
       cwe: [],
+      'stig-ASD_V5R3': [],
+      casa: [],
       directories: [],
       files: [],
       impactSeverities: [SoftwareImpactSeverity.Low],

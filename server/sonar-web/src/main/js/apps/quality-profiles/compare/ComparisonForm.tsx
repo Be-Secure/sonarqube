@@ -17,10 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Badge, SearchSelectDropdown } from 'design-system';
+
 import * as React from 'react';
 import { useIntl } from 'react-intl';
 import { OptionProps, Options, components } from 'react-select';
+import { Badge, SearchSelectDropdown } from '~design-system';
 import Tooltip from '../../../components/controls/Tooltip';
 import { Profile } from '../types';
 
@@ -76,6 +77,10 @@ export default function ComparisonForm(props: Readonly<Props>) {
 function OptionRenderer(props: Readonly<OptionProps<Option, false>>) {
   const { isDefault, label } = props.data;
   const intl = useIntl();
+
+  // For tests and a11y
+  props.innerProps.role = 'option';
+  props.innerProps['aria-selected'] = props.isSelected;
 
   return (
     <components.Option {...props}>

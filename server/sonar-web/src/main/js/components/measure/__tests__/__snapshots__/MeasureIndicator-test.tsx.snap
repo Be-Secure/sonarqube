@@ -1,46 +1,53 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`renders correctly for coverage 1`] = `
-<svg
-  class="donut-chart"
-  height="24"
-  role="img"
-  width="24"
->
-  <g
-    transform="translate(0, 0)"
-  >
-    <g
-      transform="translate(12, 12)"
-    >
-      <path
-        d="M0.75,-11.977A12,12,0,1,1,-11.672,2.785L-8.709,2.271A9,9,0,1,0,0.75,-8.969Z"
-        style="fill: rgb(18,183,106);"
-      />
-      <path
-        d="M-11.929,1.307A12,12,0,0,1,-0.75,-11.977L-0.75,-8.969A9,9,0,0,0,-8.965,0.793Z"
-        style="fill: rgb(180,35,24);"
-      />
-    </g>
-  </g>
-</svg>
+<body>
+  <div>
+    <div>
+      <svg
+        class="donut-chart"
+        height="24"
+        width="24"
+      >
+        <g
+          transform="translate(0, 0)"
+        >
+          <g
+            transform="translate(12, 12)"
+          >
+            <path
+              d="M0.75,-11.977A12,12,0,1,1,-11.672,2.785L-8.709,2.271A9,9,0,1,0,0.75,-8.969Z"
+              style="fill: rgb(18,183,106);"
+            />
+            <path
+              d="M-11.929,1.307A12,12,0,0,1,-0.75,-11.977L-0.75,-8.969A9,9,0,0,0,-8.965,0.793Z"
+              style="fill: rgb(180,35,24);"
+            />
+          </g>
+        </g>
+      </svg>
+    </div>
+  </div>
+</body>
 `;
 
 exports[`renders correctly for failed quality gate 1`] = `
 <body>
   <div>
     <div
-      aria-label="overview.quality_gate_x.ERROR"
       class="sw-flex sw-justify-center sw-items-center"
     >
       <svg
         class="sw-mr-2"
         fill="none"
         height="1rem"
-        role="status"
+        role="img"
         width="1rem"
         xmlns="http://www.w3.org/2000/svg"
       >
+        <title>
+          overview.quality_gate_x.metric.level.ERROR
+        </title>
         <rect
           fill="rgb(254,205,202)"
           height="1rem"
@@ -70,17 +77,19 @@ exports[`renders correctly for passed quality gate 1`] = `
 <body>
   <div>
     <div
-      aria-label="overview.quality_gate_x.OK"
       class="sw-flex sw-justify-center sw-items-center"
     >
       <svg
         class="sw-mr-2"
         fill="none"
         height="1.5rem"
-        role="status"
+        role="img"
         width="1.5rem"
         xmlns="http://www.w3.org/2000/svg"
       >
+        <title>
+          overview.quality_gate_x.metric.level.OK
+        </title>
         <rect
           fill="rgb(209,250,223)"
           height="1.5rem"
@@ -98,7 +107,7 @@ exports[`renders correctly for passed quality gate 1`] = `
       </svg>
     </div>
     <span
-      class="sw-body-md"
+      class="sw-typo-lg"
     >
       OK
     </span>

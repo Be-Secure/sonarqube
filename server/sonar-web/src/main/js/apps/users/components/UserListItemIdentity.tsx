@@ -18,10 +18,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { Badge, Note, getTextColor } from 'design-system';
-import * as React from 'react';
-import { colors } from '../../../app/theme';
-import { Image } from '../../../components/common/Image';
+import { Badge, Note, getTextColor } from '~design-system';
+import { Image } from '~sonar-aligned/components/common/Image';
 import { translate } from '../../../helpers/l10n';
 import { isDefined } from '../../../helpers/types';
 import { IdentityProvider, Provider } from '../../../types/types';
@@ -37,7 +35,7 @@ export default function UserListItemIdentity({ identityProvider, user, managePro
   return (
     <div>
       <div className="sw-flex sw-flex-col">
-        <strong className="it__user-name sw-body-sm-highlight">{user.name}</strong>
+        <strong className="it__user-name sw-typo-semibold">{user.name}</strong>
         <Note className="it__user-login">{user.login}</Note>
       </div>
       {isDefined(user.email) && user.email !== '' && (
@@ -68,7 +66,7 @@ export function ExternalProvider({ identityProvider, user }: Omit<Props, 'manage
         className="sw-inline-flex sw-items-center sw-px-1"
         style={{
           backgroundColor: identityProvider.backgroundColor,
-          color: getTextColor(identityProvider.backgroundColor, colors.secondFontColor),
+          color: getTextColor(identityProvider.backgroundColor, '#656565'),
         }}
       >
         <Image

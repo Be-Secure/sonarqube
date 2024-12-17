@@ -1,3 +1,7 @@
+plugins {
+  id 'java-test-fixtures'
+}
+
 sonar {
   properties {
     property 'sonar.projectName', "${projectTitle} :: Scanner Engine"
@@ -28,6 +32,7 @@ dependencies {
   api 'com.squareup.okhttp3:okhttp'
   api 'com.fasterxml.staxmate:staxmate'
   implementation 'io.github.hakky54:sslcontext-kickstart'
+  implementation 'org.bouncycastle:bcprov-jdk18on'
   api 'javax.annotation:javax.annotation-api'
   api 'org.eclipse.jgit:org.eclipse.jgit'
   api 'org.tmatesoft.svnkit:svnkit'
@@ -42,16 +47,18 @@ dependencies {
 
 
   api project(':sonar-core')
+  api project(':sonar-sarif')
   api project(':sonar-scanner-protocol')
   api project(':sonar-ws')
   api project(':sonar-duplications')
   api project(':sonar-plugin-api-impl')
 
-  compileOnlyApi 'com.google.code.findbugs:jsr305'
+  compileOnlyApi 'com.github.spotbugs:spotbugs-annotations'
+
+  testFixturesImplementation 'org.junit.jupiter:junit-jupiter-api'
 
   testImplementation 'com.squareup.okhttp3:mockwebserver'
   testImplementation 'com.squareup.okhttp3:okhttp'
-  testImplementation 'com.squareup.okio:okio'
   testImplementation 'com.tngtech.java:junit-dataprovider'
   testImplementation 'commons-io:commons-io'
   testImplementation 'junit:junit'
@@ -59,13 +66,14 @@ dependencies {
   testImplementation 'org.junit.jupiter:junit-jupiter-params'
   testImplementation 'org.assertj:assertj-core'
   testImplementation 'com.fasterxml.staxmate:staxmate'
-  testImplementation 'org.hamcrest:hamcrest-core'
+  testImplementation 'org.hamcrest:hamcrest'
   testImplementation 'org.mockito:mockito-core'
   testImplementation 'org.mockito:mockito-junit-jupiter'
   testImplementation 'org.sonarsource.api.plugin:sonar-plugin-api-test-fixtures'
   testImplementation project(':plugins:sonar-xoo-plugin')
   testImplementation 'org.wiremock:wiremock-standalone'
   testImplementation 'org.junit-pioneer:junit-pioneer'
+  testImplementation 'org.awaitility:awaitility'
 
   testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
   testRuntimeOnly 'org.junit.vintage:junit-vintage-engine'
@@ -75,7 +83,7 @@ license {
   excludes(["**/Fake.java", "**/Fake.groovy", "org/sonar/scanner/cpd/ManyStatements.java", "org/sonar/scm/git/expected-blame/**/*"])
 }
 
-artifactoryPublish.skip = false
+artifactoryPublish.skip = !deployCommunity
 
 // Used by core plugins
 publishing {

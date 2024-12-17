@@ -17,10 +17,19 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonPrimary, FormField, Highlight, Modal, Note } from 'design-system';
+
+import {
+  Button,
+  ButtonIcon,
+  ButtonSize,
+  ButtonVariety,
+  IconEdit,
+  Modal,
+} from '@sonarsource/echoes-react';
 import { isArray } from 'lodash';
 import * as React from 'react';
-import { getLocalizedMetricName, translate } from '../../../helpers/l10n';
+import { FormField, Highlight, Note } from '~design-system';
+import { getLocalizedMetricName, translate, translateWithParameters } from '../../../helpers/l10n';
 import { useUpdateConditionMutation } from '../../../queries/quality-gates';
 import { Condition, Metric, QualityGate } from '../../../types/types';
 import { getPossibleOperators } from '../utils';
@@ -31,18 +40,15 @@ interface Props {
   condition: Condition;
   header: string;
   metric: Metric;
-  onClose: () => void;
   qualityGate: QualityGate;
 }
 
 const EDIT_CONDITION_MODAL_ID = 'edit-condition-modal';
 
-export default function EditConditionModal({
-  condition,
-  metric,
-  onClose,
-  qualityGate,
-}: Readonly<Props>) {
+export default function EditConditionModal({ condition, metric, qualityGate }: Readonly<Props>) {
+  const [open, setOpen] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+
   const [errorThreshold, setErrorThreshold] = React.useState(condition ? condition.error : '');
 
   const [selectedOperator, setSelectedOperator] = React.useState<string | undefined>(
@@ -58,13 +64,21 @@ export default function EditConditionModal({
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    setSubmitting(true);
+
     const newCondition: Omit<Condition, 'id'> = {
       metric: metric.key,
       op: getSinglePossibleOperator(metric),
       error: errorThreshold,
     };
-    await updateCondition({ id: condition.id, ...newCondition });
-    onClose();
+    try {
+      await updateCondition({ id: condition.id, ...newCondition });
+      setOpen(false);
+    } catch (_) {
+      /* Error already handled */
+    }
+
+    setSubmitting(false);
   };
 
   const handleErrorChange = (error: string) => {
@@ -115,17 +129,34 @@ export default function EditConditionModal({
 
   return (
     <Modal
-      isScrollable={false}
-      isOverflowVisible
-      headerTitle={translate('quality_gates.update_condition')}
-      onClose={onClose}
-      body={renderBody()}
+      title={translate('quality_gates.update_condition')}
+      content={renderBody()}
       primaryButton={
-        <ButtonPrimary form={EDIT_CONDITION_MODAL_ID} type="submit">
+        <Button
+          form={EDIT_CONDITION_MODAL_ID}
+          isLoading={submitting}
+          type="submit"
+          variety={ButtonVariety.Primary}
+        >
           {translate('quality_gates.update_condition')}
-        </ButtonPrimary>
+        </Button>
       }
-      secondaryButtonLabel={translate('close')}
-    />
+      secondaryButton={
+        <Button variety={ButtonVariety.Default} onClick={() => setOpen(false)}>
+          {translate('close')}
+        </Button>
+      }
+      isOpen={open}
+      onOpenChange={setOpen}
+    >
+      <ButtonIcon
+        Icon={IconEdit}
+        ariaLabel={translateWithParameters('quality_gates.condition.edit', metric.name)}
+        data-test="quality-gates__condition-update"
+        className="sw-mr-4"
+        size={ButtonSize.Medium}
+        variety={ButtonVariety.PrimaryGhost}
+      />
+    </Modal>
   );
 }

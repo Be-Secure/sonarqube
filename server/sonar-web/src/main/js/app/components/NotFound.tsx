@@ -17,16 +17,16 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Card, CenteredLayout, Link, PageContentFontWrapper, Title } from 'design-system';
-import * as React from 'react';
+
 import { Helmet } from 'react-helmet-async';
+import { Card, CenteredLayout, Link, PageContentFontWrapper, Title } from '~design-system';
 import { translate } from '../../helpers/l10n';
 
 export default function NotFound() {
   return (
     <>
       <Helmet defaultTitle={translate('404_not_found')} defer={false} />
-      <PageContentFontWrapper className="sw-body-md">
+      <PageContentFontWrapper className="sw-typo-lg">
         <CenteredLayout className="sw-flex sw-flex-col sw-items-center">
           <Card className="sw-m-14 sw-w-abs-600">
             <Title>{translate('page_not_found')}</Title>

@@ -17,29 +17,31 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Spinner } from '@sonarsource/echoes-react';
-import {
-  Card,
-  FlagMessage,
-  HelperHintIcon,
-  KeyboardHint,
-  LargeCenteredLayout,
-  LightLabel,
-} from 'design-system';
+
+import { IconQuestionMark, Spinner, Text } from '@sonarsource/echoes-react';
 import { difference, intersection } from 'lodash';
-import * as React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { Card, FlagMessage, KeyboardHint, LargeCenteredLayout } from '~design-system';
 import A11ySkipTarget from '~sonar-aligned/components/a11y/A11ySkipTarget';
 import HelpTooltip from '~sonar-aligned/components/controls/HelpTooltip';
 import { isPortfolioLike } from '~sonar-aligned/helpers/component';
 import { Breadcrumb } from '~sonar-aligned/types/component';
 import { Location } from '~sonar-aligned/types/router';
 import ListFooter from '../../../components/controls/ListFooter';
-import AnalysisMissingInfoMessage from '../../../components/shared/AnalysisMissingInfoMessage';
-import { CCT_SOFTWARE_QUALITY_METRICS, OLD_TAXONOMY_METRICS } from '../../../helpers/constants';
+import {
+  CCT_SOFTWARE_QUALITY_METRICS,
+  LEAK_OLD_TAXONOMY_RATINGS,
+  OLD_TAXONOMY_METRICS,
+  OLD_TAXONOMY_RATINGS,
+  SOFTWARE_QUALITY_RATING_METRICS,
+} from '../../../helpers/constants';
 import { KeyboardKeys } from '../../../helpers/keycodes';
 import { translate } from '../../../helpers/l10n';
-import { areCCTMeasuresComputed } from '../../../helpers/measures';
+import {
+  areCCTMeasuresComputed,
+  areSoftwareQualityRatingsComputed,
+} from '../../../helpers/measures';
+import { useStandardExperienceModeQuery } from '../../../queries/mode';
 import { BranchLike } from '../../../types/branch-like';
 import { isApplication } from '../../../types/component';
 import { Component, ComponentMeasure, Dict, Metric } from '../../../types/types';
@@ -99,6 +101,9 @@ export default function CodeAppRenderer(props: Readonly<Props>) {
 
   const showComponentList = sourceViewer === undefined && components.length > 0 && !showSearch;
 
+  const { data: isStandardMode, isLoading: isLoadingStandardMode } =
+    useStandardExperienceModeQuery();
+
   const metricKeys = intersection(
     getCodeMetrics(component.qualifier, branchLike, { newCode: newCodeSelected }),
     Object.keys(metrics),
@@ -107,11 +112,18 @@ export default function CodeAppRenderer(props: Readonly<Props>) {
   const allComponentsHaveSoftwareQualityMeasures = components.every((component) =>
     areCCTMeasuresComputed(component.measures),
   );
+  const allComponentsHaveRatings = components.every((component) =>
+    areSoftwareQualityRatingsComputed(component.measures),
+  );
 
-  const filteredMetrics = difference(
-    metricKeys,
-    allComponentsHaveSoftwareQualityMeasures ? OLD_TAXONOMY_METRICS : CCT_SOFTWARE_QUALITY_METRICS,
-  ).map((key) => metrics[key]);
+  const filteredMetrics = difference(metricKeys, [
+    ...(allComponentsHaveSoftwareQualityMeasures && !isStandardMode
+      ? OLD_TAXONOMY_METRICS
+      : CCT_SOFTWARE_QUALITY_METRICS),
+    ...(allComponentsHaveRatings && !isStandardMode
+      ? [...OLD_TAXONOMY_RATINGS, ...LEAK_OLD_TAXONOMY_RATINGS]
+      : SOFTWARE_QUALITY_RATING_METRICS),
+  ]).map((key) => metrics[key]);
 
   let defaultTitle = translate('code.page');
   if (isApplication(baseComponent?.qualifier)) {
@@ -123,11 +135,9 @@ export default function CodeAppRenderer(props: Readonly<Props>) {
   const isPortfolio = isPortfolioLike(qualifier);
 
   return (
-    <LargeCenteredLayout className="sw-py-8 sw-body-md" id="code-page">
+    <LargeCenteredLayout className="sw-py-8 sw-typo-lg" id="code-page">
       <Helmet defer={false} title={sourceViewer !== undefined ? sourceViewer.name : defaultTitle} />
-
       <A11ySkipTarget anchor="code_main" />
-
       {!canBrowseAllChildProjects && isPortfolio && (
         <FlagMessage variant="warning" className="it__portfolio_warning sw-mb-4">
           {translate('code_viewer.not_all_measures_are_shown')}
@@ -135,72 +145,64 @@ export default function CodeAppRenderer(props: Readonly<Props>) {
             className="sw-ml-2"
             overlay={translate('code_viewer.not_all_measures_are_shown.help')}
           >
-            <HelperHintIcon />
+            <IconQuestionMark />
           </HelpTooltip>
         </FlagMessage>
       )}
 
-      {!allComponentsHaveSoftwareQualityMeasures && (
-        <AnalysisMissingInfoMessage
-          qualifier={component.qualifier}
-          hide={isPortfolio}
-          className="sw-mb-4"
-        />
-      )}
+      <Spinner isLoading={loading || isLoadingStandardMode}>
+        <div className="sw-flex sw-justify-between">
+          <div>
+            {hasComponents && (
+              <Search
+                branchLike={branchLike}
+                className="sw-mb-4"
+                component={component}
+                newCodeSelected={newCodeSelected}
+                onNewCodeToggle={props.handleSelectNewCode}
+                onSearchClear={props.handleSearchClear}
+                onSearchResults={props.handleSearchResults}
+              />
+            )}
 
-      <div className="sw-flex sw-justify-between">
-        <div>
-          {hasComponents && (
-            <Search
-              branchLike={branchLike}
-              className="sw-mb-4"
-              component={component}
-              newCodeSelected={newCodeSelected}
-              onNewCodeToggle={props.handleSelectNewCode}
-              onSearchClear={props.handleSearchClear}
-              onSearchResults={props.handleSearchResults}
-            />
-          )}
+            {!hasComponents && sourceViewer === undefined && (
+              <div className="sw-flex sw-align-center sw-flex-col sw-fixed sw-top-1/2">
+                <Text isSubdued>
+                  {translate(
+                    'code_viewer.no_source_code_displayed_due_to_empty_analysis',
+                    component.qualifier,
+                  )}
+                </Text>
+              </div>
+            )}
 
-          {!hasComponents && sourceViewer === undefined && (
-            <div className="sw-flex sw-align-center sw-flex-col sw-fixed sw-top-1/2">
-              <LightLabel>
-                {translate(
-                  'code_viewer.no_source_code_displayed_due_to_empty_analysis',
-                  component.qualifier,
-                )}
-              </LightLabel>
+            {showBreadcrumbs && (
+              <CodeBreadcrumbs
+                branchLike={branchLike}
+                breadcrumbs={breadcrumbs}
+                rootComponent={component}
+              />
+            )}
+          </div>
+
+          {(showComponentList || showSearch) && (
+            <div className="sw-flex sw-items-end sw-typo-default">
+              <KeyboardHint
+                className="sw-mr-4 sw-ml-6"
+                command={`${KeyboardKeys.DownArrow} ${KeyboardKeys.UpArrow}`}
+                title={translate('component_measures.select_files')}
+              />
+
+              <KeyboardHint
+                command={`${KeyboardKeys.LeftArrow} ${KeyboardKeys.RightArrow}`}
+                title={translate('component_measures.navigate')}
+              />
             </div>
-          )}
-
-          {showBreadcrumbs && (
-            <CodeBreadcrumbs
-              branchLike={branchLike}
-              breadcrumbs={breadcrumbs}
-              rootComponent={component}
-            />
           )}
         </div>
 
         {(showComponentList || showSearch) && (
-          <div className="sw-flex sw-items-end sw-body-sm">
-            <KeyboardHint
-              className="sw-mr-4 sw-ml-6"
-              command={`${KeyboardKeys.DownArrow} ${KeyboardKeys.UpArrow}`}
-              title={translate('component_measures.select_files')}
-            />
-
-            <KeyboardHint
-              command={`${KeyboardKeys.LeftArrow} ${KeyboardKeys.RightArrow}`}
-              title={translate('component_measures.navigate')}
-            />
-          </div>
-        )}
-      </div>
-
-      {(showComponentList || showSearch) && (
-        <Card className="sw-mt-2 sw-overflow-auto">
-          <Spinner isLoading={loading}>
+          <Card className="sw-mt-2 sw-overflow-auto">
             {showComponentList && (
               <Components
                 baseComponent={baseComponent}
@@ -230,26 +232,26 @@ export default function CodeAppRenderer(props: Readonly<Props>) {
                 selected={highlighted}
               />
             )}
-          </Spinner>
-        </Card>
-      )}
+          </Card>
+        )}
 
-      {showComponentList && (
-        <ListFooter count={components.length} loadMore={props.handleLoadMore} total={total} />
-      )}
+        {showComponentList && (
+          <ListFooter count={components.length} loadMore={props.handleLoadMore} total={total} />
+        )}
 
-      {sourceViewer !== undefined && !showSearch && (
-        <div className="sw-mt-2">
-          <SourceViewerWrapper
-            branchLike={branchLike}
-            component={sourceViewer.key}
-            componentMeasures={sourceViewer.measures}
-            isFile
-            location={location}
-            onGoToParent={props.handleGoToParent}
-          />
-        </div>
-      )}
+        {sourceViewer !== undefined && !showSearch && (
+          <div className="sw-mt-2">
+            <SourceViewerWrapper
+              branchLike={branchLike}
+              component={sourceViewer.key}
+              componentMeasures={sourceViewer.measures}
+              isFile
+              location={location}
+              onGoToParent={props.handleGoToParent}
+            />
+          </div>
+        )}
+      </Spinner>
     </LargeCenteredLayout>
   );
 }

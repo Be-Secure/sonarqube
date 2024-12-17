@@ -441,6 +441,12 @@ public class SensorContextTester implements SensorContext {
     return cacheEnabled;
   }
 
+  @Override
+  public void addTelemetryProperty(String key, String value) {
+    //No Need to check the source of the plugin in the tester
+    sensorStorage.storeTelemetry(key, value);
+  }
+
   public void setCacheEnabled(boolean enabled) {
     this.cacheEnabled = enabled;
   }

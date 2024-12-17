@@ -18,11 +18,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { Spinner } from '@sonarsource/echoes-react';
-import { ButtonPrimary, FlagMessage, Modal } from 'design-system';
+import { Button, ButtonVariety, Spinner } from '@sonarsource/echoes-react';
 import { keyBy } from 'lodash';
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
+import { FlagMessage, Modal } from '~design-system';
 import DocumentationLink from '../../../../components/common/DocumentationLink';
 import { AlmAuthDocLinkKeys } from '../../../../helpers/doc-links';
 import { translate } from '../../../../helpers/l10n';
@@ -133,11 +133,17 @@ export default function ConfigurationForm(props: Readonly<Props>) {
       isScrollable
       onClose={props.onClose}
       primaryButton={
-        <ButtonPrimary form={FORM_ID} type="submit" autoFocus disabled={!canBeSave}>
+        <Button
+          form={FORM_ID}
+          type="submit"
+          hasAutoFocus
+          isDisabled={!canBeSave}
+          variety={ButtonVariety.Primary}
+        >
           {translate('settings.almintegration.form.save')}
 
           <Spinner className="sw-ml-2" isLoading={loading} />
-        </ButtonPrimary>
+        </Button>
       }
     />
   );

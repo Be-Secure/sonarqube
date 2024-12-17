@@ -17,8 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { StandoutLink } from 'design-system';
-import * as React from 'react';
+
+import { StandoutLink } from '~design-system';
 import { translate } from '../../helpers/l10n';
 import { getActivityUrl, getMeasureHistoryUrl } from '../../helpers/urls';
 import { BranchLike } from '../../types/branch-like';
@@ -37,7 +37,7 @@ export default function ActivityLink(props: ActivityLinkProps) {
   const { branchLike, component, graph, label, metric } = props;
   return (
     <StandoutLink
-      className="sw-body-sm-highlight"
+      className="sw-typo-semibold"
       to={
         metric !== undefined && graph !== undefined && isCustomGraph(graph)
           ? getMeasureHistoryUrl(component, metric, branchLike)

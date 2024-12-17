@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { isPortfolioLike } from '~sonar-aligned/helpers/component';
 import { ComponentQualifier, LightComponent, Visibility } from '~sonar-aligned/types/component';
 import { Task } from './tasks';
@@ -41,6 +42,12 @@ export interface TreeComponent extends LightComponent {
 
 export interface TreeComponentWithPath extends TreeComponent {
   path: string;
+}
+
+export function isApplicationOrPortfolio(
+  componentQualifier?: string | ComponentQualifier,
+): componentQualifier is ComponentQualifier.Application | ComponentQualifier.Portfolio {
+  return isPortfolioLike(componentQualifier) || isApplication(componentQualifier);
 }
 
 export function isApplication(

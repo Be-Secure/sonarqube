@@ -17,15 +17,19 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { CoverageIndicator, DuplicationsIndicator } from 'design-system';
-import * as React from 'react';
+
+import { CoverageIndicator, DuplicationsIndicator } from '~design-system';
 import Measure from '~sonar-aligned/components/measure/Measure';
 import { MetricKey, MetricType } from '~sonar-aligned/types/metrics';
+import { BranchLike } from '../../types/branch-like';
 import { duplicationRatingConverter } from './utils';
 
 interface Props {
+  branchLike?: BranchLike;
   className?: string;
+  componentKey: string;
   decimals?: number;
+  forceRatingMetric?: boolean;
   metricKey: string;
   metricType: string;
   small?: boolean;

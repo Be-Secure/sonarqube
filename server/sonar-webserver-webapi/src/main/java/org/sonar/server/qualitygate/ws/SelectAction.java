@@ -56,6 +56,8 @@ public class SelectAction implements QualityGatesWsAction {
       .setSince("4.3")
       .setHandler(this)
       .setChangelog(
+        new Change("10.8", "Allow to change the Quality Gate of a project flagged as containing AI code."),
+        new Change("10.7", "It is not possible anymore to change the Quality Gate of a project flagged as containing AI code."),
         new Change("10.0", "Parameter 'gateId' is removed. Use 'gateName' instead."),
         new Change("8.4", "Parameter 'gateName' added"),
         new Change("8.4", "Parameter 'gateId' is deprecated. Format changes from integer to string. Use 'gateName' instead."),

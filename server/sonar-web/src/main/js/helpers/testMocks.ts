@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { omit } from 'lodash';
 import { To } from 'react-router-dom';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
@@ -35,6 +36,7 @@ import {
   SoftwareQuality,
 } from '../types/clean-code-taxonomy';
 import { RuleRepository } from '../types/coding-rules';
+import { Cve } from '../types/cves';
 import { EditionKey } from '../types/editions';
 import {
   IssueDeprecatedStatus,
@@ -409,6 +411,20 @@ export function mockIssue(withLocations = false, overrides: Partial<Issue> = {})
   };
 }
 
+export function mockCve(overrides: Partial<Cve> = {}): Cve {
+  return {
+    id: 'CVE-2021-12345',
+    epssPercentile: 0.56051,
+    cvssScore: 0.31051,
+    description: 'description',
+    cwes: ['CWE-79', 'CWE-89'],
+    epssScore: 0.2,
+    lastModifiedAt: '2021-10-04T14:00:00Z',
+    publishedAt: '2021-10-04T14:00:00Z',
+    ...overrides,
+  };
+}
+
 export function mockLocation(overrides: Partial<Location> = {}): Location {
   return {
     hash: '',
@@ -536,8 +552,26 @@ export function mockCompareResult(overrides: Partial<CompareResponse> = {}): Com
         impacts: [],
         key: 'java:S1698',
         name: '== and != should not be used when equals is overridden',
-        left: { params: {}, severity: 'MINOR' },
-        right: { params: {}, severity: 'CRITICAL' },
+        left: {
+          params: {},
+          severity: 'MINOR',
+          impacts: [
+            {
+              softwareQuality: SoftwareQuality.Security,
+              severity: SoftwareImpactSeverity.Blocker,
+            },
+          ],
+        },
+        right: {
+          params: {},
+          severity: 'CRITICAL',
+          impacts: [
+            {
+              softwareQuality: SoftwareQuality.Security,
+              severity: SoftwareImpactSeverity.Low,
+            },
+          ],
+        },
       },
     ],
     ...overrides,
@@ -626,6 +660,9 @@ export function mockRuleActivation(overrides: Partial<RuleActivation> = {}): Rul
     qProfile: 'baz',
     severity: 'MAJOR',
     prioritizedRule: false,
+    impacts: [
+      { softwareQuality: SoftwareQuality.Maintainability, severity: SoftwareImpactSeverity.Medium },
+    ],
     ...overrides,
   };
 }

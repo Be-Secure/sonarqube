@@ -17,9 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Badge, FlagMessage, MultiSelectMenu } from 'design-system';
-import * as React from 'react';
+
+import { ReactNode } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
+import { Badge, FlagMessage, MultiSelectMenu } from '~design-system';
 import { MetricKey } from '~sonar-aligned/types/metrics';
 import { DEPRECATED_ACTIVITY_METRICS } from '../../helpers/constants';
 import { getLocalizedMetricName, translate, translateWithParameters } from '../../helpers/l10n';
@@ -40,9 +41,9 @@ export default function AddGraphMetricPopup({
   elements,
   metricsTypeFilter,
   ...props
-}: AddGraphMetricPopupProps) {
+}: Readonly<AddGraphMetricPopupProps>) {
   const intl = useIntl();
-  let footerNode: React.ReactNode = '';
+  let footerNode: ReactNode = '';
 
   if (props.selectedElements.length >= 6) {
     footerNode = (
@@ -63,6 +64,15 @@ export default function AddGraphMetricPopup({
       </FlagMessage>
     );
   }
+
+  const renderAriaLabel = (key: MetricKey) => {
+    const metricName = getLocalizedMetricName({ key });
+    const isDeprecated = DEPRECATED_ACTIVITY_METRICS.includes(key);
+
+    return isDeprecated
+      ? `${metricName} (${intl.formatMessage({ id: 'deprecated' })})`
+      : metricName;
+  };
 
   const renderLabel = (key: MetricKey) => {
     const metricName = getLocalizedMetricName({ key });
@@ -86,7 +96,6 @@ export default function AddGraphMetricPopup({
 
     return null;
   };
-
   return (
     <MultiSelectMenu
       createElementLabel=""
@@ -101,8 +110,9 @@ export default function AddGraphMetricPopup({
       onSelect={(item: string) => elements.includes(item) && props.onSelect(item)}
       onUnselect={props.onUnselect}
       placeholder={translate('search.search_for_metrics')}
-      renderLabel={renderLabel}
+      renderAriaLabel={renderAriaLabel}
       renderTooltip={renderTooltip}
+      renderLabel={renderLabel}
       selectedElements={props.selectedElements}
       listSize={0}
     />

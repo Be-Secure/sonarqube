@@ -17,10 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { times } from 'lodash';
-import selectEvent from 'react-select-event';
 import { byLabelText, byRole, byTestId, byText } from '~sonar-aligned/helpers/testSelector';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import { MetricKey } from '~sonar-aligned/types/metrics';
@@ -28,11 +28,13 @@ import BranchesServiceMock from '../../../api/mocks/BranchesServiceMock';
 import ComponentsServiceMock from '../../../api/mocks/ComponentsServiceMock';
 import IssuesServiceMock from '../../../api/mocks/IssuesServiceMock';
 import { MeasuresServiceMock } from '../../../api/mocks/MeasuresServiceMock';
+import { ModeServiceMock } from '../../../api/mocks/ModeServiceMock';
 import { mockComponent } from '../../../helpers/mocks/component';
 import { mockMeasure, mockMetric } from '../../../helpers/testMocks';
 import { renderAppWithComponentContext } from '../../../helpers/testReactTestingUtils';
 import { ComponentContextShape } from '../../../types/component';
 import { Feature } from '../../../types/features';
+import { Mode } from '../../../types/mode';
 import routes from '../routes';
 
 jest.mock('lodash', () => ({
@@ -42,8 +44,9 @@ jest.mock('lodash', () => ({
 
 jest.mock('../../../api/metrics', () => {
   const { DEFAULT_METRICS } = jest.requireActual('../../../helpers/mocks/metrics');
+  const { MetricKey } = jest.requireActual('~sonar-aligned/types/metrics');
   const metrics = Object.values(MetricKey).map(
-    (key) => DEFAULT_METRICS[key] ?? mockMetric({ key }),
+    (key: MetricKey) => DEFAULT_METRICS[key] ?? mockMetric({ key }),
   );
   return {
     getAllMetrics: jest.fn().mockResolvedValue(metrics),
@@ -54,23 +57,24 @@ const componentsHandler = new ComponentsServiceMock();
 const measuresHandler = new MeasuresServiceMock();
 const issuesHandler = new IssuesServiceMock();
 const branchHandler = new BranchesServiceMock();
+const modeHandler = new ModeServiceMock();
 
 afterEach(() => {
   componentsHandler.reset();
   measuresHandler.reset();
   issuesHandler.reset();
   branchHandler.reset();
+  modeHandler.reset();
 });
 
 describe('rendering', () => {
   it('should correctly render the default overview and navigation', async () => {
     const { ui, user } = getPageObject();
     renderMeasuresApp();
-    await ui.appLoaded();
 
     // Overview.
-    expect(ui.seeDataAsListLink.get()).toBeInTheDocument();
-    expect(ui.overviewDomainBtn.get()).toHaveAttribute('aria-current', 'true');
+    expect(await ui.seeDataAsListLink.find()).toBeInTheDocument();
+    expect(ui.overviewDomainLink.get()).toHaveAttribute('aria-current', 'true');
     expect(ui.bubbleChart.get()).toBeInTheDocument();
     expect(within(ui.bubbleChart.get()).getAllByRole('link')).toHaveLength(8);
     expect(ui.newCodePeriodTxt.get()).toBeInTheDocument();
@@ -89,23 +93,140 @@ describe('rendering', () => {
     // Check one of the domains.
     await user.click(ui.maintainabilityDomainBtn.get());
     [
-      'component_measures.metric.new_maintainability_issues.name 5',
+      'component_measures.metric.new_software_quality_maintainability_issues.name 5',
       'Added Technical Debt work_duration.x_minutes.1',
       'Technical Debt Ratio on New Code 1.0%',
-      'Maintainability Rating on New Code metric.has_rating_X.E',
-      'component_measures.metric.maintainability_issues.name 2',
+      'Maintainability Rating on New Code metric.has_rating_X.D metric.software_quality_maintainability_rating.tooltip.D.0.0%',
+      'component_measures.metric.software_quality_maintainability_issues.name 2',
       'Technical Debt work_duration.x_minutes.1',
       'Technical Debt Ratio 1.0%',
-      'Maintainability Rating metric.has_rating_X.E',
+      'Maintainability Rating metric.has_rating_X.D metric.software_quality_maintainability_rating.tooltip.D.0.0%',
       'Effort to Reach Maintainability Rating A work_duration.x_minutes.1',
     ].forEach((measure) => {
-      expect(ui.measureBtn(measure).get()).toBeInTheDocument();
+      expect(ui.measureLink(measure).get()).toBeInTheDocument();
+    });
+  });
+
+  it('should correctly render the default overview and navigation in legacy mode', async () => {
+    modeHandler.setMode(Mode.Standard);
+    const { ui, user } = getPageObject();
+    renderMeasuresApp();
+
+    // Overview.
+    expect(await ui.seeDataAsListLink.find()).toBeInTheDocument();
+    expect(ui.overviewDomainLink.get()).toHaveAttribute('aria-current', 'true');
+    expect(ui.bubbleChart.get()).toBeInTheDocument();
+    expect(within(ui.bubbleChart.get()).getAllByRole('link')).toHaveLength(8);
+    expect(ui.newCodePeriodTxt.get()).toBeInTheDocument();
+
+    // Sidebar.
+    expect(ui.reliabilityDomainBtn.get()).toBeInTheDocument();
+    expect(ui.securityDomainBtn.get()).toBeInTheDocument();
+    expect(ui.securityReviewDomainBtn.get()).toBeInTheDocument();
+    expect(ui.maintainabilityDomainBtn.get()).toBeInTheDocument();
+    expect(ui.coverageDomainBtn.get()).toBeInTheDocument();
+    expect(ui.duplicationsDomainBtn.get()).toBeInTheDocument();
+    expect(ui.sizeDomainBtn.get()).toBeInTheDocument();
+    expect(ui.complexityDomainBtn.get()).toBeInTheDocument();
+    expect(ui.issuesDomainBtn.get()).toBeInTheDocument();
+
+    // Check one of the domains.
+    await user.click(ui.maintainabilityDomainBtn.get());
+    [
+      'component_measures.metric.new_code_smells.name 9',
+      'Added Technical Debt work_duration.x_minutes.1',
+      'Technical Debt Ratio on New Code 1.0%',
+      'Maintainability Rating on New Code metric.has_rating_X.E metric.sqale_rating.tooltip.E.0.0%',
+      'component_measures.metric.code_smells.name 9',
+      'Technical Debt work_duration.x_minutes.1',
+      'Technical Debt Ratio 1.0%',
+      'Maintainability Rating metric.has_rating_X.E metric.sqale_rating.tooltip.E.0.0%',
+      'Effort to Reach Maintainability Rating A work_duration.x_minutes.1',
+    ].forEach((measure) => {
+      expect(ui.measureLink(measure).get()).toBeInTheDocument();
     });
   });
 
   it('should correctly revert to old measures when analysis is missing', async () => {
-    measuresHandler.deleteComponentMeasure('foo', MetricKey.maintainability_issues);
-    measuresHandler.deleteComponentMeasure('foo', MetricKey.new_maintainability_issues);
+    measuresHandler.deleteComponentMeasure(
+      'foo',
+      MetricKey.software_quality_maintainability_issues,
+    );
+    measuresHandler.deleteComponentMeasure(
+      'foo',
+      MetricKey.new_software_quality_maintainability_issues,
+    );
+    measuresHandler.deleteComponentMeasure(
+      'foo',
+      MetricKey.software_quality_maintainability_rating,
+    );
+    measuresHandler.deleteComponentMeasure(
+      'foo',
+      MetricKey.new_software_quality_maintainability_rating,
+    );
+
+    const { ui, user } = getPageObject();
+    renderMeasuresApp();
+    await ui.appLoaded();
+
+    // Check one of the domains.
+    await user.click(ui.maintainabilityDomainBtn.get());
+    [
+      'component_measures.leak_awaiting_analysis.name 9',
+      'Added Technical Debt work_duration.x_minutes.1',
+      'Technical Debt Ratio on New Code 1.0%',
+      'Maintainability Rating on New Code metric.has_rating_X.E metric.sqale_rating.tooltip.E.0.0%',
+      'component_measures.awaiting_analysis.name 9',
+      'Technical Debt work_duration.x_minutes.1',
+      'Technical Debt Ratio 1.0%',
+      'Maintainability Rating metric.has_rating_X.E metric.sqale_rating.tooltip.E.0.0%',
+      'Effort to Reach Maintainability Rating A work_duration.x_minutes.1',
+    ].forEach((measure) => {
+      expect(ui.measureLink(measure).get()).toBeInTheDocument();
+    });
+  });
+
+  it('should show new counts but not ratings if no rating measures', async () => {
+    measuresHandler.deleteComponentMeasure(
+      'foo',
+      MetricKey.software_quality_maintainability_rating,
+    );
+    measuresHandler.deleteComponentMeasure(
+      'foo',
+      MetricKey.new_software_quality_maintainability_rating,
+    );
+
+    const { ui, user } = getPageObject();
+    renderMeasuresApp();
+    await ui.appLoaded();
+
+    // Check one of the domains.
+    await user.click(ui.maintainabilityDomainBtn.get());
+    [
+      'component_measures.metric.new_software_quality_maintainability_issues.name 5',
+      'Added Technical Debt work_duration.x_minutes.1',
+      'Technical Debt Ratio on New Code 1.0%',
+      'Maintainability Rating on New Code metric.has_rating_X.E metric.sqale_rating.tooltip.E.0.0%',
+      'component_measures.metric.software_quality_maintainability_issues.name 2',
+      'Technical Debt work_duration.x_minutes.1',
+      'Technical Debt Ratio 1.0%',
+      'Maintainability Rating metric.has_rating_X.E metric.sqale_rating.tooltip.E.0.0%',
+      'Effort to Reach Maintainability Rating A work_duration.x_minutes.1',
+    ].forEach((measure) => {
+      expect(ui.measureLink(measure).get()).toBeInTheDocument();
+    });
+  });
+
+  it('should show old measures and no flag message if no rating measures and legacy mode', async () => {
+    modeHandler.setMode(Mode.Standard);
+    measuresHandler.deleteComponentMeasure(
+      'foo',
+      MetricKey.software_quality_maintainability_rating,
+    );
+    measuresHandler.deleteComponentMeasure(
+      'foo',
+      MetricKey.new_software_quality_maintainability_rating,
+    );
 
     const { ui, user } = getPageObject();
     renderMeasuresApp();
@@ -117,42 +238,41 @@ describe('rendering', () => {
       'component_measures.metric.new_code_smells.name 9',
       'Added Technical Debt work_duration.x_minutes.1',
       'Technical Debt Ratio on New Code 1.0%',
-      'Maintainability Rating on New Code metric.has_rating_X.E',
+      'Maintainability Rating on New Code metric.has_rating_X.E metric.sqale_rating.tooltip.E.0.0%',
       'component_measures.metric.code_smells.name 9',
       'Technical Debt work_duration.x_minutes.1',
       'Technical Debt Ratio 1.0%',
-      'Maintainability Rating metric.has_rating_X.E',
+      'Maintainability Rating metric.has_rating_X.E metric.sqale_rating.tooltip.E.0.0%',
       'Effort to Reach Maintainability Rating A work_duration.x_minutes.1',
     ].forEach((measure) => {
-      expect(ui.measureBtn(measure).get()).toBeInTheDocument();
+      expect(ui.measureLink(measure).get()).toBeInTheDocument();
     });
-    expect(screen.getByText('overview.missing_project_dataTRK')).toBeInTheDocument();
+    expect(screen.queryByText('overview.missing_project_dataTRK')).not.toBeInTheDocument();
   });
 
   it('should correctly render a list view', async () => {
     const { ui } = getPageObject();
     renderMeasuresApp('component_measures?id=foo&metric=code_smells&view=list');
-    await ui.appLoaded();
 
-    expect(ui.measuresTable.get()).toBeInTheDocument();
+    expect(await ui.measuresTable.find()).toBeInTheDocument();
     expect(ui.measuresRows.getAll()).toHaveLength(8);
   });
 
   it('should correctly render a tree view', async () => {
     const { ui } = getPageObject();
     renderMeasuresApp('component_measures?id=foo&metric=code_smells&view=tree');
-    await ui.appLoaded();
 
-    expect(ui.measuresTable.get()).toBeInTheDocument();
+    expect(await ui.measuresTable.find()).toBeInTheDocument();
     expect(ui.measuresRows.getAll()).toHaveLength(7);
   });
 
   it('should correctly render a rating treemap view', async () => {
     const { ui } = getPageObject();
     renderMeasuresApp('component_measures?id=foo&metric=sqale_rating&view=treemap');
-    await ui.appLoaded();
 
-    expect(ui.treeMap.byRole('link').getAll()).toHaveLength(7);
+    await waitFor(() => {
+      expect(ui.treeMap.byRole('link').getAll()).toHaveLength(7);
+    });
     expect(ui.treeMapCell(/folderA .+ Maintainability Rating: C/).get()).toBeInTheDocument();
     expect(ui.treeMapCell(/test1\.js .+ Maintainability Rating: B/).get()).toBeInTheDocument();
     expect(ui.treeMapCell(/index\.tsx .+ Maintainability Rating: A/).get()).toBeInTheDocument();
@@ -176,9 +296,10 @@ describe('rendering', () => {
 
     const { ui } = getPageObject();
     renderMeasuresApp('component_measures?id=foo&metric=coverage&view=treemap');
-    await ui.appLoaded();
 
-    expect(ui.treeMap.byRole('link').getAll()).toHaveLength(7);
+    await waitFor(() => {
+      expect(ui.treeMap.byRole('link').getAll()).toHaveLength(7);
+    });
 
     expect(ui.treeMapCell(/folderA .+ Coverage: 74.2%/).get()).toBeInTheDocument();
     expect(ui.treeMapCell(/test1\.js .+ Coverage: —/).get()).toBeInTheDocument();
@@ -191,7 +312,7 @@ describe('rendering', () => {
     await ui.appLoaded();
 
     // Fall back to a known metric.
-    expect(screen.getAllByText('Releasability rating').length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Releasability rating')).length).toBeGreaterThan(0);
   });
 
   it('should render issues measures when query by open_issues', async () => {
@@ -208,7 +329,7 @@ describe('rendering', () => {
       'component_measures.metric.new_accepted_issues.name 1',
       'component_measures.metric.false_positive_issues.name 1',
     ].forEach((measure) => {
-      expect(ui.measureBtn(measure).get()).toBeInTheDocument();
+      expect(ui.measureLink(measure).get()).toBeInTheDocument();
     });
   });
 
@@ -230,6 +351,14 @@ describe('rendering', () => {
     expect(await ui.detailsUnavailableText.find()).toBeInTheDocument();
   });
 
+  it('should not render analysis missing if on a pull request and leak measure are available', async () => {
+    const { ui } = getPageObject();
+    renderMeasuresApp('component_measures?id=foo&pullRequest=01');
+    await ui.appLoaded();
+
+    expect(screen.queryByText('overview.missing_project_dataTRK')).not.toBeInTheDocument();
+  });
+
   it('should render a warning message if the user does not have access to all components', async () => {
     const { ui } = getPageObject();
     renderMeasuresApp('component_measures?id=foo&metric=code_smells', {
@@ -247,11 +376,9 @@ describe('rendering', () => {
   });
 
   it('should correctly render the language distribution', async () => {
-    const { ui } = getPageObject();
     renderMeasuresApp('component_measures?id=foo&metric=ncloc');
-    await ui.appLoaded();
 
-    expect(screen.getByText('10short_number_suffix.k')).toBeInTheDocument();
+    expect(await screen.findByText('10short_number_suffix.k')).toBeInTheDocument();
     expect(screen.getByText('java')).toBeInTheDocument();
     expect(screen.getByText('5short_number_suffix.k')).toBeInTheDocument();
     expect(screen.getByText('javascript')).toBeInTheDocument();
@@ -295,25 +422,28 @@ describe('rendering', () => {
 
     const { ui, user } = getPageObject();
     renderMeasuresApp('component_measures?id=foo&metric=sqale_rating&view=list');
-    await ui.appLoaded();
 
-    expect(ui.notShowingAllComponentsTxt.get()).toBeInTheDocument();
+    expect(await ui.notShowingAllComponentsTxt.find()).toBeInTheDocument();
     await user.click(ui.showAllBtn.get());
     expect(ui.notShowingAllComponentsTxt.query()).not.toBeInTheDocument();
   });
 
   it('should correctly render a link to the activity page', async () => {
     const { ui, user } = getPageObject();
-    renderMeasuresApp('component_measures?id=foo&metric=new_maintainability_issues');
+    renderMeasuresApp(
+      'component_measures?id=foo&metric=new_software_quality_maintainability_issues',
+    );
     await ui.appLoaded();
 
     expect(ui.goToActivityLink.query()).not.toBeInTheDocument();
     await user.click(
-      ui.measureBtn('component_measures.metric.maintainability_issues.name 2').get(),
+      ui
+        .measureLink('component_measures.metric.software_quality_maintainability_issues.name 2')
+        .get(),
     );
     expect(ui.goToActivityLink.get()).toHaveAttribute(
       'href',
-      '/project/activity?id=foo&graph=custom&custom_metrics=maintainability_issues',
+      '/project/activity?id=foo&graph=custom&custom_metrics=software_quality_maintainability_issues',
     );
   });
 
@@ -345,7 +475,9 @@ describe('navigation', () => {
     await user.click(ui.maintainabilityDomainBtn.get());
 
     await user.click(
-      ui.measureBtn('component_measures.metric.maintainability_issues.name 2').get(),
+      ui
+        .measureLink('component_measures.metric.software_quality_maintainability_issues.name 2')
+        .get(),
     );
     expect(
       within(ui.measuresRow('folderA').get()).getByRole('cell', { name: '2' }),
@@ -378,9 +510,14 @@ describe('navigation', () => {
 
     await user.click(ui.maintainabilityDomainBtn.get());
     await user.click(
-      ui.measureBtn('component_measures.metric.maintainability_issues.name 2').get(),
+      ui
+        .measureLink('component_measures.metric.software_quality_maintainability_issues.name 2')
+        .get(),
     );
-    await waitFor(() => ui.changeViewToList());
+
+    // Click list option in view select
+    await user.click(ui.viewSelect.get());
+    await user.click(ui.selectOptions('component_measures.tab.list').get());
 
     expect(
       within(await ui.measuresRow('out.tsx').find()).getByRole('cell', { name: '2' }),
@@ -399,8 +536,17 @@ describe('navigation', () => {
     await ui.appLoaded();
 
     await user.click(ui.maintainabilityDomainBtn.get());
-    await user.click(ui.measureBtn('Maintainability Rating metric.has_rating_X.E').get());
-    await waitFor(() => ui.changeViewToTreeMap());
+    await user.click(
+      ui
+        .measureLink(
+          'Maintainability Rating metric.has_rating_X.D metric.software_quality_maintainability_rating.tooltip.D.0.0%',
+        )
+        .get(),
+    );
+
+    // Click treemap option in view select
+    await user.click(ui.viewSelect.get());
+    await user.click(ui.selectOptions('component_measures.tab.treemap').get());
 
     expect(await ui.treeMapCell(/folderA/).find()).toBeInTheDocument();
     expect(ui.treeMapCell(/test1\.js/).get()).toBeInTheDocument();
@@ -422,7 +568,9 @@ describe('navigation', () => {
     // Drilldown to the file level.
     await user.click(ui.maintainabilityDomainBtn.get());
     await user.click(
-      ui.measureBtn('component_measures.metric.maintainability_issues.name 2').get(),
+      ui
+        .measureLink('component_measures.metric.software_quality_maintainability_issues.name 2')
+        .get(),
     );
 
     await ui.arrowDown(); // Select the 1st element ("folderA")
@@ -442,6 +590,7 @@ describe('navigation', () => {
       within(ui.measuresRow('folderA').get()).getByRole('cell', { name: '2' }),
     ).toBeInTheDocument();
 
+    await ui.arrowDown(); // Select the 1st element ("folderA")
     await ui.arrowRight(); // Open "folderA"
 
     await ui.arrowDown(); // Select the 1st element ("out.tsx")
@@ -461,13 +610,19 @@ describe('redirects', () => {
   });
 
   it('should redirect old metric route', async () => {
-    measuresHandler.deleteComponentMeasure('foo', MetricKey.maintainability_issues);
-    measuresHandler.deleteComponentMeasure('foo', MetricKey.new_maintainability_issues);
+    measuresHandler.deleteComponentMeasure(
+      'foo',
+      MetricKey.software_quality_maintainability_issues,
+    );
+    measuresHandler.deleteComponentMeasure(
+      'foo',
+      MetricKey.new_software_quality_maintainability_issues,
+    );
 
     const { ui } = getPageObject();
     renderMeasuresApp('component_measures/metric/bugs?id=foo');
     await ui.appLoaded();
-    expect(ui.measureBtn('component_measures.metric.bugs.name 0').get()).toHaveAttribute(
+    expect(ui.measureLink('component_measures.awaiting_analysis.name 0').get()).toHaveAttribute(
       'aria-current',
       'true',
     );
@@ -477,15 +632,20 @@ describe('redirects', () => {
     const { ui } = getPageObject();
     renderMeasuresApp('component_measures/metric/security_issues?id=foo');
     await ui.appLoaded();
-    expect(ui.measureBtn('component_measures.metric.security_issues.name 1').get()).toHaveAttribute(
-      'aria-current',
-      'true',
-    );
+    expect(
+      ui.measureLink('component_measures.metric.software_quality_security_issues.name 1').get(),
+    ).toHaveAttribute('aria-current', 'true');
   });
 
   it('should redirect old domain route', async () => {
-    measuresHandler.deleteComponentMeasure('foo', MetricKey.maintainability_issues);
-    measuresHandler.deleteComponentMeasure('foo', MetricKey.new_maintainability_issues);
+    measuresHandler.deleteComponentMeasure(
+      'foo',
+      MetricKey.software_quality_maintainability_issues,
+    );
+    measuresHandler.deleteComponentMeasure(
+      'foo',
+      MetricKey.new_software_quality_maintainability_issues,
+    );
 
     const { ui } = getPageObject();
     renderMeasuresApp('component_measures/domain/bugs?id=foo');
@@ -524,8 +684,7 @@ it('should allow to load more components', async () => {
 
   const { ui, user } = getPageObject();
   renderMeasuresApp('component_measures?id=foo&metric=code_smells&view=list');
-  await ui.appLoaded();
-  await user.click(ui.showAllBtn.get());
+  await user.click(await ui.showAllBtn.find());
 
   expect(ui.showingOutOfTxt('500', '1,008').get()).toBeInTheDocument();
   await ui.clickLoadMore();
@@ -542,7 +701,7 @@ function getPageObject() {
     newCodePeriodTxt: byText('component_measures.leak_legend.new_code'),
 
     // Navigation
-    overviewDomainBtn: byRole('button', {
+    overviewDomainLink: byRole('link', {
       name: 'component_measures.overview.project_overview.subnavigation',
     }),
     releasabilityDomainBtn: byRole('button', {
@@ -575,7 +734,7 @@ function getPageObject() {
     issuesDomainBtn: byRole('button', {
       name: 'Issues component_measures.domain_subnavigation.Issues.help',
     }),
-    measureBtn: (name: string) => byRole('button', { name }),
+    measureLink: (name: string) => byRole('link', { name }),
 
     // Measure content
     measuresTable: byRole('table'),
@@ -600,6 +759,7 @@ function getPageObject() {
       name: 'component_measures.hidden_best_score_metrics_show_label',
     }),
     goToActivityLink: byRole('link', { name: 'component_measures.see_metric_history' }),
+    selectOptions: (name: string) => byRole('option', { name }),
   };
 
   const ui = {
@@ -609,12 +769,6 @@ function getPageObject() {
       await waitFor(() => {
         expect(selectors.loading.query()).not.toBeInTheDocument();
       });
-    },
-    async changeViewToList() {
-      await selectEvent.select(ui.viewSelect.get(), 'component_measures.tab.list');
-    },
-    async changeViewToTreeMap() {
-      await selectEvent.select(ui.viewSelect.get(), 'component_measures.tab.treemap');
     },
     async arrowDown() {
       await user.keyboard('[ArrowDown]');

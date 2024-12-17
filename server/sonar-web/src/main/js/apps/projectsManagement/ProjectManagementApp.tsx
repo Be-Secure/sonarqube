@@ -18,10 +18,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { LargeCenteredLayout, PageContentFontWrapper } from 'design-system';
 import { debounce, uniq } from 'lodash';
 import * as React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { LargeCenteredLayout, PageContentFontWrapper } from '~design-system';
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { Visibility } from '~sonar-aligned/types/component';
 import {
@@ -125,7 +125,7 @@ class ProjectManagementApp extends React.PureComponent<Props, State> {
           if (this.state.page > 1) {
             projects = [...this.state.projects, ...projects];
           }
-          this.setState({ ready: true, projects, selection: [], total: r.paging.total });
+          this.setState({ ready: true, projects, total: r.paging.total });
         }
       })
       .catch(throwGlobalError);
@@ -199,12 +199,16 @@ class ProjectManagementApp extends React.PureComponent<Props, State> {
     this.setState({ selection: [] });
   };
 
+  onProjectsDeleted = () => {
+    this.setState({ ready: false, page: 1, selection: [] }, this.requestProjects);
+  };
+
   render() {
     const { currentUser } = this.props;
     const { defaultProjectVisibility } = this.state;
     return (
       <LargeCenteredLayout as="main" id="projects-management-page">
-        <PageContentFontWrapper className="sw-body-sm sw-my-8">
+        <PageContentFontWrapper className="sw-typo-default sw-my-8">
           <Helmet defer={false} title={translate('projects_management')} />
 
           <Header
@@ -218,7 +222,7 @@ class ProjectManagementApp extends React.PureComponent<Props, State> {
             onAllDeselected={this.onAllDeselected}
             onAllSelected={this.onAllSelected}
             onDateChanged={this.handleDateChanged}
-            onDeleteProjects={this.requestProjects}
+            onDeleteProjects={this.onProjectsDeleted}
             onProvisionedChanged={this.onProvisionedChanged}
             onQualifierChanged={this.onQualifierChanged}
             onSearch={this.onSearch}

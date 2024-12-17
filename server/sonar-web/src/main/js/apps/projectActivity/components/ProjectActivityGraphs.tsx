@@ -18,10 +18,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { FlagMessage } from 'design-system';
 import { debounce, findLast, maxBy, minBy, sortBy } from 'lodash';
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
+import { FlagMessage } from '~design-system';
 import GraphsHeader from '../../../components/activity-graph/GraphsHeader';
 import GraphsHistory from '../../../components/activity-graph/GraphsHistory';
 import GraphsZoom from '../../../components/activity-graph/GraphsZoom';
@@ -35,9 +35,9 @@ import {
   splitSeriesInGraphs,
 } from '../../../components/activity-graph/utils';
 import DocumentationLink from '../../../components/common/DocumentationLink';
-import { CCT_SOFTWARE_QUALITY_METRICS } from '../../../helpers/constants';
 import { DocLink } from '../../../helpers/doc-links';
 import { translate } from '../../../helpers/l10n';
+import { MetricKey } from '../../../sonar-aligned/types/metrics';
 import {
   GraphType,
   MeasureHistory,
@@ -46,11 +46,13 @@ import {
   Serie,
 } from '../../../types/project-activity';
 import { Metric } from '../../../types/types';
+import { MQR_CONDITIONS_MAP } from '../../quality-gates/utils';
 import { Query, datesQueryChanged, historyQueryChanged } from '../utils';
 import { PROJECT_ACTIVITY_GRAPH } from './ProjectActivityApp';
 
 interface Props {
   analyses: ParsedAnalysis[];
+  isStandardMode?: boolean;
   leakPeriodDate?: Date;
   loading: boolean;
   measuresHistory: MeasureHistory[];
@@ -205,25 +207,22 @@ export default class ProjectActivityGraphs extends React.PureComponent<Props, St
     }
   };
 
+  hasGaps = (value?: MeasureHistory) => {
+    const indexOfFirstMeasureWithValue = value?.history.findIndex((item) => item.value);
+
+    return indexOfFirstMeasureWithValue === -1
+      ? false
+      : value?.history.slice(indexOfFirstMeasureWithValue).some((item) => item.value === undefined);
+  };
+
   renderQualitiesMetricInfoMessage = () => {
-    const { measuresHistory } = this.props;
+    const { measuresHistory, isStandardMode } = this.props;
 
-    const qualityMeasuresHistory = measuresHistory.find((history) =>
-      CCT_SOFTWARE_QUALITY_METRICS.includes(history.metric),
+    const mqrMeasuresHistory = measuresHistory.find(
+      (history) => MQR_CONDITIONS_MAP[history.metric as MetricKey] !== undefined,
     );
 
-    const indexOfFirstMeasureWithValue = qualityMeasuresHistory?.history.findIndex(
-      (item) => item.value,
-    );
-
-    const hasGaps =
-      indexOfFirstMeasureWithValue === -1
-        ? false
-        : qualityMeasuresHistory?.history
-            .slice(indexOfFirstMeasureWithValue)
-            .some((item) => item.value === undefined);
-
-    if (hasGaps) {
+    if (!isStandardMode && this.hasGaps(mqrMeasuresHistory)) {
       return (
         <FlagMessage variant="info">
           <FormattedMessage

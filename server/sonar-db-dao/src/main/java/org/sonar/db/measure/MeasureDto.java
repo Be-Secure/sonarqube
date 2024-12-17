@@ -19,40 +19,27 @@
  */
 package org.sonar.db.measure;
 
-import com.google.common.base.MoreObjects;
-import java.nio.charset.StandardCharsets;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import java.util.Map;
+import java.util.TreeMap;
 import javax.annotation.CheckForNull;
-import javax.annotation.Nullable;
+import org.apache.commons.codec.digest.MurmurHash3;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class MeasureDto {
-  private static final int MAX_TEXT_VALUE_LENGTH = 4000;
 
-  private String uuid;
-  private Double value;
-  private String textValue;
-  private byte[] dataValue;
-  private String alertStatus;
-  private String alertText;
+  private static final Gson GSON = new Gson();
+
   private String componentUuid;
-  private String analysisUuid;
-  private String metricUuid;
+  private String branchUuid;
+  // measures are kept sorted by metric key so that the value hash is consistent
+  private Map<String, Object> metricValues = new TreeMap<>();
+  private Long jsonValueHash;
 
-  public String getUuid() {
-    return uuid;
-  }
-
-  public void setUuid(String uuid) {
-    this.uuid = uuid;
-  }
-
-  @CheckForNull
-  public Double getValue() {
-    return value;
-  }
-
-  public MeasureDto setValue(@Nullable Double value) {
-    this.value = value;
-    return this;
+  public MeasureDto() {
+    // empty constructor
   }
 
   public String getComponentUuid() {
@@ -64,78 +51,88 @@ public class MeasureDto {
     return this;
   }
 
+  public String getBranchUuid() {
+    return branchUuid;
+  }
+
+  public MeasureDto setBranchUuid(String s) {
+    this.branchUuid = s;
+    return this;
+  }
+
+  public Map<String, Object> getMetricValues() {
+    return metricValues;
+  }
+
+  public MeasureDto addValue(String metricKey, Object value) {
+    metricValues.put(metricKey, value);
+    return this;
+  }
+
+  // used by MyBatis mapper
+  public String getJsonValue() {
+    return GSON.toJson(metricValues);
+  }
+
+  // used by MyBatis mapper
+  public MeasureDto setJsonValue(String jsonValue) {
+    metricValues = GSON.fromJson(jsonValue, new TypeToken<TreeMap<String, Object>>() {
+    }.getType());
+    return this;
+  }
+
+  public Long getJsonValueHash() {
+    return jsonValueHash;
+  }
+
+  public long computeJsonValueHash() {
+    jsonValueHash = MurmurHash3.hash128(getJsonValue().getBytes(UTF_8))[0];
+    return jsonValueHash;
+  }
+
   @CheckForNull
-  public String getData() {
-    if (dataValue != null) {
-      return new String(dataValue, StandardCharsets.UTF_8);
+  public String getString(String metricKey) {
+    Object value = metricValues.get(metricKey);
+    if (value == null) {
+      return null;
     }
-    return textValue;
+    return String.valueOf(value);
   }
 
-  public MeasureDto setData(@Nullable String data) {
-    if (data == null) {
-      this.textValue = null;
-      this.dataValue = null;
-    } else if (data.length() > MAX_TEXT_VALUE_LENGTH) {
-      this.textValue = null;
-      this.dataValue = data.getBytes(StandardCharsets.UTF_8);
-    } else {
-      this.textValue = data;
-      this.dataValue = null;
+  @CheckForNull
+  public Double getDouble(String metricKey) {
+    Object value = metricValues.get(metricKey);
+    if (value == null) {
+      return null;
     }
-
-    return this;
+    return Double.parseDouble(value.toString());
   }
 
   @CheckForNull
-  public String getAlertStatus() {
-    return alertStatus;
-  }
-
-  public MeasureDto setAlertStatus(@Nullable String alertStatus) {
-    this.alertStatus = alertStatus;
-    return this;
+  public Integer getInt(String metricKey) {
+    Object value = metricValues.get(metricKey);
+    if (value == null) {
+      return null;
+    }
+    return (int) Double.parseDouble(value.toString());
   }
 
   @CheckForNull
-  public String getAlertText() {
-    return alertText;
-  }
-
-  public MeasureDto setAlertText(@Nullable String alertText) {
-    this.alertText = alertText;
-    return this;
-  }
-
-  public String getMetricUuid() {
-    return metricUuid;
-  }
-
-  public MeasureDto setMetricUuid(String metricUuid) {
-    this.metricUuid = metricUuid;
-    return this;
-  }
-
-  public String getAnalysisUuid() {
-    return analysisUuid;
-  }
-
-  public MeasureDto setAnalysisUuid(String s) {
-    this.analysisUuid = s;
-    return this;
+  public Long getLong(String metricKey) {
+    Object value = metricValues.get(metricKey);
+    if (value == null) {
+      return null;
+    }
+    return (long) Double.parseDouble(value.toString());
   }
 
   @Override
   public String toString() {
-    return MoreObjects.toStringHelper(this)
-      .add("value", value)
-      .add("textValue", textValue)
-      .add("dataValue", dataValue)
-      .add("alertStatus", alertStatus)
-      .add("alertText", alertText)
-      .add("componentUuid", componentUuid)
-      .add("analysisUuid", analysisUuid)
-      .add("metricUuid", metricUuid)
-      .toString();
+    return "MeasureDto{" +
+      "componentUuid='" + componentUuid + '\'' +
+      ", branchUuid='" + branchUuid + '\'' +
+      ", metricValues=" + metricValues +
+      ", jsonValueHash=" + jsonValueHash +
+      '}';
   }
 }

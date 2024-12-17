@@ -17,11 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { screen, waitFor, within } from '@testing-library/react';
 
 import userEvent from '@testing-library/user-event';
-import * as React from 'react';
-import selectEvent from 'react-select-event';
 import { byLabelText, byRole, byText } from '~sonar-aligned/helpers/testSelector';
 import { searchForBitbucketServerRepositories } from '../../../../api/alm-integrations';
 import AlmIntegrationsServiceMock from '../../../../api/mocks/AlmIntegrationsServiceMock';
@@ -56,13 +55,8 @@ const ui = {
   }),
   instanceSelector: byLabelText(/alm.configuration.selector.label/),
 };
-const original = window.location;
 
 beforeAll(() => {
-  Object.defineProperty(window, 'location', {
-    configurable: true,
-    value: { replace: jest.fn() },
-  });
   almIntegrationHandler = new AlmIntegrationsServiceMock();
   dopTranslationHandler = new DopTranslationServiceMock();
   newCodePeriodHandler = new NewCodeDefinitionServiceMock();
@@ -75,17 +69,15 @@ beforeEach(() => {
   newCodePeriodHandler.reset();
 });
 
-afterAll(() => {
-  Object.defineProperty(window, 'location', { configurable: true, value: original });
-});
-
 it('should ask for PAT when it is not set yet and show the import project feature afterwards', async () => {
   const user = userEvent.setup();
   renderCreateProject();
 
   expect(screen.getByText('onboarding.create_project.bitbucket.title')).toBeInTheDocument();
   expect(await ui.instanceSelector.find()).toBeInTheDocument();
-  await selectEvent.select(ui.instanceSelector.get(), [/conf-bitbucketserver-1/]);
+
+  await user.click(ui.instanceSelector.get());
+  await user.click(byRole('option', { name: /conf-bitbucketserver-1/ }).get());
 
   expect(await screen.findByText('onboarding.create_project.pat_form.title')).toBeInTheDocument();
 
@@ -102,7 +94,7 @@ it('should ask for PAT when it is not set yet and show the import project featur
   expect(screen.getByRole('button', { name: 'save' })).toBeEnabled();
   await user.click(screen.getByRole('button', { name: 'save' }));
 
-  expect(screen.getByText('Bitbucket Project 1')).toBeInTheDocument();
+  expect(await screen.findByText('Bitbucket Project 1')).toBeInTheDocument();
   expect(screen.getByText('Bitbucket Project 2')).toBeInTheDocument();
 });
 
@@ -113,7 +105,8 @@ it('should show import project feature when PAT is already set', async () => {
   expect(screen.getByText('onboarding.create_project.bitbucket.title')).toBeInTheDocument();
   expect(await ui.instanceSelector.find()).toBeInTheDocument();
 
-  await selectEvent.select(ui.instanceSelector.get(), [/conf-bitbucketserver-2/]);
+  await user.click(ui.instanceSelector.get());
+  await user.click(byRole('option', { name: /conf-bitbucketserver-2/ }).get());
 
   expect(await screen.findByText('Bitbucket Project 1')).toBeInTheDocument();
 
@@ -167,7 +160,8 @@ it('should show search filter when PAT is already set', async () => {
   expect(screen.getByText('onboarding.create_project.bitbucket.title')).toBeInTheDocument();
   expect(await ui.instanceSelector.find()).toBeInTheDocument();
 
-  await selectEvent.select(ui.instanceSelector.get(), [/conf-bitbucketserver-2/]);
+  await user.click(ui.instanceSelector.get());
+  await user.click(byRole('option', { name: /conf-bitbucketserver-2/ }).get());
 
   const inputSearch = await screen.findByRole('searchbox', {
     name: 'onboarding.create_project.search_repositories_by_name',
@@ -184,12 +178,14 @@ it('should show search filter when PAT is already set', async () => {
 });
 
 it('should show no result message when there are no projects', async () => {
+  const user = userEvent.setup();
   almIntegrationHandler.setBitbucketServerProjects([]);
   renderCreateProject();
   expect(screen.getByText('onboarding.create_project.bitbucket.title')).toBeInTheDocument();
   expect(await ui.instanceSelector.find()).toBeInTheDocument();
 
-  await selectEvent.select(ui.instanceSelector.get(), [/conf-bitbucketserver-2/]);
+  await user.click(ui.instanceSelector.get());
+  await user.click(byRole('option', { name: /conf-bitbucketserver-2/ }).get());
 
   expect(await screen.findByText('onboarding.create_project.no_bbs_projects')).toBeInTheDocument();
 });

@@ -19,27 +19,39 @@
  */
 package org.sonar.db.measure;
 
+import java.util.Collection;
 import java.util.List;
-import javax.annotation.CheckForNull;
+import java.util.Set;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.session.ResultHandler;
 
 public interface MeasureMapper {
 
-  @CheckForNull
-  MeasureDto selectLastMeasure(
-    @Param("componentUuid") String componentUuid,
-    @Param("metricKey") String metricKey
-  );
+  int insert(
+    @Param("dto") MeasureDto dto,
+    @Param("now") long now);
 
-  @CheckForNull
-  MeasureDto selectMeasure(
-    @Param("analysisUuid") String analysisUuid,
-    @Param("componentUuid") String componentUuid,
-    @Param("metricKey") String metricKey
-  );
+  int update(
+    @Param("dto") MeasureDto dto,
+    @Param("now") long now);
 
-  List<MeasureDto> selectPastMeasuresOnSeveralAnalyses(@Param("query") PastMeasureQuery query);
+  List<MeasureDto> selectByComponentUuids(@Param("componentUuids") Collection<String> componentUuids);
 
-  void insert(MeasureDto measureDto);
+  void scrollSelectByComponentUuid(@Param("componentUuid") String componentUuid, ResultHandler<MeasureDto> handler);
 
+  Set<MeasureHash> selectMeasureHashesForBranch(@Param("branchUuid") String branchUuid);
+
+  List<MeasureDto> selectBranchMeasuresForProject(@Param("projectUuid") String projectUuid);
+
+  void selectTreeByQuery(
+    @Param("query") MeasureTreeQuery measureQuery,
+    @Param("baseUuid") String baseUuid,
+    @Param("baseUuidPath") String baseUuidPath,
+    ResultHandler<MeasureDto> resultHandler);
+
+  List<ProjectMainBranchMeasureDto> selectAllForProjectMainBranches();
+
+  List<ProjectMainBranchMeasureDto> selectAllForProjectMainBranchesAssociatedToDefaultQualityProfile();
+
+  List<MeasureDto> selectAllForMainBranches();
 }

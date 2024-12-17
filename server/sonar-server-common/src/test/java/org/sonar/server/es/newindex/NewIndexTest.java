@@ -33,7 +33,7 @@ import org.sonar.server.es.Index;
 import org.sonar.server.es.IndexType;
 import org.sonar.server.es.IndexType.IndexMainType;
 
-import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
+import static org.apache.commons.lang3.RandomStringUtils.secure;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.MapEntry.entry;
@@ -45,9 +45,9 @@ import static org.sonar.server.es.newindex.SettingsConfiguration.newBuilder;
 public class NewIndexTest {
 
 
-  private static final String someIndexName = randomAlphabetic(5).toLowerCase();
-  private MapSettings settings = new MapSettings();
-  private SettingsConfiguration defaultSettingsConfiguration = newBuilder(settings.asConfig()).build();
+  private static final String SOME_INDEX_NAME = secure().nextAlphabetic(5).toLowerCase();
+  private final MapSettings settings = new MapSettings();
+  private final SettingsConfiguration defaultSettingsConfiguration = newBuilder(settings.asConfig()).build();
 
   @Test
   @UseDataProvider("indexWithAndWithoutRelations")
@@ -209,7 +209,7 @@ public class NewIndexTest {
 
   @DataProvider
   public static Object[][] indexAndTypeMappings() {
-    String indexName = randomAlphabetic(5).toLowerCase();
+    String indexName = secure().nextAlphabetic(5).toLowerCase();
     MapSettings settings = new MapSettings();
     SettingsConfiguration defaultSettingsConfiguration = newBuilder(settings.asConfig()).build();
     Index index = Index.withRelations(indexName);
@@ -341,10 +341,21 @@ public class NewIndexTest {
   }
 
   @Test
-  public void createTypeMapping_with_IndexRelationType_fails_with_ISE_if_index_does_not_allow_relations() {
-    IndexType.IndexRelationType indexRelationType = IndexType.relation(IndexType.main(Index.withRelations(someIndexName), "bar"), "bar");
+  @UseDataProvider("indexWithAndWithoutRelations")
+  public void index_withHashMetadata(Index index) {
+    NewIndex newIndex = new SimplestNewIndex(IndexType.main(index, "foo"), defaultSettingsConfiguration).addCustomHashMetadata("custom", "hash");
 
-    Index index = Index.simple(someIndexName);
+    assertThat(newIndex.getCustomHashMetadata()).containsExactly(entry("custom", "hash"));
+
+    BuiltIndex build = newIndex.build();
+    assertThat(build.getCustomHashMetadata()).containsExactly(entry("custom", "hash"));
+  }
+
+  @Test
+  public void createTypeMapping_with_IndexRelationType_fails_with_ISE_if_index_does_not_allow_relations() {
+    IndexType.IndexRelationType indexRelationType = IndexType.relation(IndexType.main(Index.withRelations(SOME_INDEX_NAME), "bar"), "bar");
+
+    Index index = Index.simple(SOME_INDEX_NAME);
     IndexMainType mainType = IndexType.main(index, "foo");
     NewIndex underTest = new NewIndex(index, defaultSettingsConfiguration) {
       @Override
@@ -366,8 +377,8 @@ public class NewIndexTest {
   @DataProvider
   public static Object[][] indexWithAndWithoutRelations() {
     return new Object[][] {
-      {Index.simple(someIndexName)},
-      {Index.withRelations(someIndexName)}
+      {Index.simple(SOME_INDEX_NAME)},
+      {Index.withRelations(SOME_INDEX_NAME)}
     };
   }
 

@@ -55,7 +55,7 @@ import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.FieldSortBuilder;
 import org.elasticsearch.search.sort.NestedSortBuilder;
-import org.sonar.api.resources.Qualifiers;
+import org.sonar.db.component.ComponentQualifiers;
 import org.sonar.api.server.ServerSide;
 import org.sonar.api.utils.System2;
 import org.sonar.server.es.EsClient;
@@ -103,6 +103,12 @@ import static org.sonar.api.measures.CoreMetrics.SECURITY_HOTSPOTS_REVIEWED_KEY;
 import static org.sonar.api.measures.CoreMetrics.SECURITY_RATING_KEY;
 import static org.sonar.api.measures.CoreMetrics.SECURITY_REVIEW_RATING_KEY;
 import static org.sonar.api.measures.CoreMetrics.SQALE_RATING_KEY;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_MAINTAINABILITY_RATING_KEY;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_RELIABILITY_RATING_KEY;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.NEW_SOFTWARE_QUALITY_SECURITY_RATING_KEY;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.SOFTWARE_QUALITY_MAINTAINABILITY_RATING_KEY;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.SOFTWARE_QUALITY_RELIABILITY_RATING_KEY;
+import static org.sonar.core.metric.SoftwareQualitiesMetrics.SOFTWARE_QUALITY_SECURITY_RATING_KEY;
 import static org.sonar.server.es.EsUtils.escapeSpecialRegexChars;
 import static org.sonar.server.es.EsUtils.termsToMap;
 import static org.sonar.server.es.IndexType.FIELD_INDEX_TYPE;
@@ -154,6 +160,8 @@ public class ProjectMeasuresIndex {
     NEW_DUPLICATED_LINES_DENSITY(new RangeWithNoDataMeasureFacet(NEW_DUPLICATED_LINES_DENSITY_KEY, DUPLICATIONS_THRESHOLDS)),
     COVERAGE(new RangeWithNoDataMeasureFacet(COVERAGE_KEY, COVERAGE_THRESHOLDS)),
     NEW_COVERAGE(new RangeWithNoDataMeasureFacet(NEW_COVERAGE_KEY, COVERAGE_THRESHOLDS)),
+
+    //RuleType ratings
     SQALE_RATING(new RatingMeasureFacet(SQALE_RATING_KEY)),
     NEW_MAINTAINABILITY_RATING(new RatingMeasureFacet(NEW_MAINTAINABILITY_RATING_KEY)),
     RELIABILITY_RATING(new RatingMeasureFacet(RELIABILITY_RATING_KEY)),
@@ -162,6 +170,15 @@ public class ProjectMeasuresIndex {
     NEW_SECURITY_RATING(new RatingMeasureFacet(NEW_SECURITY_RATING_KEY)),
     SECURITY_REVIEW_RATING(new RatingMeasureFacet(SECURITY_REVIEW_RATING_KEY)),
     NEW_SECURITY_REVIEW_RATING(new RatingMeasureFacet(NEW_SECURITY_REVIEW_RATING_KEY)),
+
+    //Software quality ratings
+    SOFTWARE_QUALITY_MAINTAINABILITY_RATING(new RatingMeasureFacet(SOFTWARE_QUALITY_MAINTAINABILITY_RATING_KEY)),
+    NEW_SOFTWARE_QUALITY_MAINTAINABILITY_RATING(new RatingMeasureFacet(NEW_SOFTWARE_QUALITY_MAINTAINABILITY_RATING_KEY)),
+    SOFTWARE_QUALITY_RELIABILITY_RATING(new RatingMeasureFacet(SOFTWARE_QUALITY_RELIABILITY_RATING_KEY)),
+    NEW_SOFTWARE_QUALITY_RELIABILITY_RATING(new RatingMeasureFacet(NEW_SOFTWARE_QUALITY_RELIABILITY_RATING_KEY)),
+    SOFTWARE_QUALITY_SECURITY_RATING(new RatingMeasureFacet(SOFTWARE_QUALITY_SECURITY_RATING_KEY)),
+    NEW_SOFTWARE_QUALITY_SECURITY_RATING(new RatingMeasureFacet(NEW_SOFTWARE_QUALITY_SECURITY_RATING_KEY)),
+
     SECURITY_HOTSPOTS_REVIEWED(new RangeMeasureFacet(SECURITY_HOTSPOTS_REVIEWED_KEY, SECURITY_REVIEW_RATING_THRESHOLDS)),
     NEW_SECURITY_HOTSPOTS_REVIEWED(new RangeMeasureFacet(NEW_SECURITY_HOTSPOTS_REVIEWED_KEY, SECURITY_REVIEW_RATING_THRESHOLDS)),
     ALERT_STATUS(new MeasureFacet(ALERT_STATUS_KEY, ProjectMeasuresIndex::buildAlertStatusFacet)),
@@ -257,7 +274,7 @@ public class ProjectMeasuresIndex {
 
     BoolQueryBuilder esFilter = boolQuery()
       .filter(termQuery(FIELD_INDEX_TYPE, TYPE_PROJECT_MEASURES.getName()))
-      .filter(termQuery(FIELD_QUALIFIER, Qualifiers.PROJECT));
+      .filter(termQuery(FIELD_QUALIFIER, ComponentQualifiers.PROJECT));
     searchSourceBuilder.query(esFilter);
     searchSourceBuilder.aggregation(AggregationBuilders.terms(FIELD_LANGUAGES)
       .field(FIELD_LANGUAGES)
@@ -370,7 +387,7 @@ public class ProjectMeasuresIndex {
   private static AbstractAggregationBuilder<?> createQualifierFacet() {
     return filters(
       FILTER_QUALIFIER,
-      Stream.of(Qualifiers.APP, Qualifiers.PROJECT)
+      Stream.of(ComponentQualifiers.APP, ComponentQualifiers.PROJECT)
         .map(qualifier -> new KeyedFilter(qualifier, termQuery(FIELD_QUALIFIER, qualifier)))
         .toArray(KeyedFilter[]::new));
   }

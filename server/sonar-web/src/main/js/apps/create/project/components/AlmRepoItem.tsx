@@ -17,8 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import styled from '@emotion/styled';
 import classNames from 'classnames';
+import React from 'react';
 import {
   ButtonSecondary,
   CheckIcon,
@@ -28,8 +30,7 @@ import {
   LightPrimary,
   Link,
   themeBorder,
-} from 'design-system';
-import React from 'react';
+} from '~design-system';
 import { translate } from '../../../../helpers/l10n';
 import { getProjectUrl } from '../../../../helpers/urls';
 
@@ -99,24 +100,22 @@ export default function AlmRepoItem({
           />
           {sqProjectKey ? (
             <DiscreetLink className="sw-truncate" to={getProjectUrl(sqProjectKey)}>
-              <LightPrimary className="sw-body-sm-highlight sw-truncate">
+              <LightPrimary className="sw-typo-semibold sw-truncate">
                 {primaryTextNode}
               </LightPrimary>
             </DiscreetLink>
           ) : (
-            <LightPrimary className="sw-body-sm-highlight sw-truncate">
-              {primaryTextNode}
-            </LightPrimary>
+            <LightPrimary className="sw-typo-semibold sw-truncate">{primaryTextNode}</LightPrimary>
           )}
         </div>
         <div className="sw-max-w-full sw-min-w-0 sw-ml-2 sw-flex sw-items-center">
-          <LightLabel className="sw-body-sm sw-truncate">{secondaryTextNode}</LightLabel>
+          <LightLabel className="sw-typo-default sw-truncate">{secondaryTextNode}</LightLabel>
         </div>
       </div>
       {almUrl !== undefined && (
         <div className="sw-flex sw-items-center sw-flex-shrink-0 sw-ml-2">
           <Link
-            className="sw-body-sm-highlight"
+            className="sw-typo-semibold"
             onClick={(e) => e.stopPropagation()}
             target="_blank"
             to={almUrl}
@@ -130,7 +129,7 @@ export default function AlmRepoItem({
         {sqProjectKey ? (
           <div className="sw-flex sw-items-center">
             <CheckIcon />
-            <LightPrimary className="sw-ml-2 sw-body-sm">
+            <LightPrimary className="sw-ml-2 sw-typo-default">
               {translate('onboarding.create_project.repository_imported')}
             </LightPrimary>
           </div>

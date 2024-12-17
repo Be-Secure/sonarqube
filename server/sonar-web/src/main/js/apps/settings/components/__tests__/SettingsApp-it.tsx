@@ -17,12 +17,12 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { Route } from 'react-router-dom';
-import selectEvent from 'react-select-event';
-import { byRole } from '~sonar-aligned/helpers/testSelector';
+import { byRole, byText } from '~sonar-aligned/helpers/testSelector';
+import { ModeServiceMock } from '../../../../api/mocks/ModeServiceMock';
 import SettingsServiceMock from '../../../../api/mocks/SettingsServiceMock';
 import { KeyboardKeys } from '../../../../helpers/keycodes';
 import { mockComponent } from '../../../../helpers/mocks/component';
@@ -36,13 +36,16 @@ import { Component } from '../../../../types/types';
 import routes from '../../routes';
 
 let settingsMock: SettingsServiceMock;
+let modeHandler: ModeServiceMock;
 
 beforeAll(() => {
   settingsMock = new SettingsServiceMock();
+  modeHandler = new ModeServiceMock();
 });
 
 afterEach(() => {
   settingsMock.reset();
+  modeHandler.reset();
 });
 
 beforeEach(() => {
@@ -108,7 +111,9 @@ describe('Global Settings', () => {
     await user.click(await ui.categoryLink('property.category.languages').find());
     expect(await ui.languagesHeading.find()).toBeInTheDocument();
 
-    await selectEvent.select(ui.languagesSelect.get(), 'property.category.javascript');
+    await user.click(ui.languagesSelect.get());
+    await user.click(byText('property.category.javascript').get());
+
     expect(await ui.jsGeneralSubCategoryHeading.find()).toBeInTheDocument();
   });
 
@@ -153,6 +158,14 @@ describe('Global Settings', () => {
     await user.click(ui.searchItem(searchResultsKeys[1]).get());
 
     expect(await ui.generalComputeEngineHeading.find()).toBeInTheDocument();
+  });
+
+  it('can open mode and see custom implementation', async () => {
+    const user = userEvent.setup();
+    renderSettingsApp();
+
+    await user.click(await ui.categoryLink('settings.mode.title').find());
+    expect(byRole('radio', { name: /settings.mode.standard/ }).get()).toBeInTheDocument();
   });
 });
 

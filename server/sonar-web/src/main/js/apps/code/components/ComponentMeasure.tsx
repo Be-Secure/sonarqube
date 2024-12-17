@@ -17,75 +17,59 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import {
-  ContentCell,
-  MetricsRatingBadge,
-  NumericalCell,
-  QualityGateIndicator,
-  RatingCell,
-  RatingEnum,
-} from 'design-system';
-import * as React from 'react';
+
+import { ContentCell, NumericalCell, QualityGateIndicator, RatingCell } from '~design-system';
 import Measure from '~sonar-aligned/components/measure/Measure';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { Status } from '~sonar-aligned/types/common';
 import { MetricKey, MetricType } from '~sonar-aligned/types/metrics';
+import RatingComponent from '../../../app/components/metrics/RatingComponent';
 import { getLeakValue } from '../../../components/measure/utils';
-import {
-  CCT_SOFTWARE_QUALITY_METRICS,
-  OLD_TO_NEW_TAXONOMY_METRICS_MAP,
-} from '../../../helpers/constants';
-import { translateWithParameters } from '../../../helpers/l10n';
+import { OLD_TO_NEW_TAXONOMY_METRICS_MAP } from '../../../helpers/constants';
 import {
   areCCTMeasuresComputed as areCCTMeasuresComputedFn,
   isDiffMetric,
 } from '../../../helpers/measures';
+import { useStandardExperienceModeQuery } from '../../../queries/mode';
+import { BranchLike } from '../../../types/branch-like';
 import { isApplication, isProject } from '../../../types/component';
 import { Metric, ComponentMeasure as TypeComponentMeasure } from '../../../types/types';
 
 interface Props {
+  branchLike?: BranchLike;
   component: TypeComponentMeasure;
   metric: Metric;
 }
 
-export default function ComponentMeasure(props: Props) {
-  const { component, metric } = props;
+export default function ComponentMeasure(props: Readonly<Props>) {
+  const { component, metric, branchLike } = props;
   const isProjectLike = isProject(component.qualifier) || isApplication(component.qualifier);
+  const { data: isStandardMode } = useStandardExperienceModeQuery();
   const isReleasability = metric.key === MetricKey.releasability_rating;
 
   let finalMetricKey = isProjectLike && isReleasability ? MetricKey.alert_status : metric.key;
   const finalMetricType = isProjectLike && isReleasability ? MetricType.Level : metric.type;
 
-  const areCCTMeasasuresComputed = areCCTMeasuresComputedFn(component.measures);
-  finalMetricKey = areCCTMeasasuresComputed
-    ? OLD_TO_NEW_TAXONOMY_METRICS_MAP[finalMetricKey as MetricKey] ?? finalMetricKey
+  const areCCTMeasuresComputed = !isStandardMode && areCCTMeasuresComputedFn(component.measures);
+  finalMetricKey = areCCTMeasuresComputed
+    ? (OLD_TO_NEW_TAXONOMY_METRICS_MAP[finalMetricKey as MetricKey] ?? finalMetricKey)
     : finalMetricKey;
 
   const measure = Array.isArray(component.measures)
     ? component.measures.find((measure) => measure.metric === finalMetricKey)
     : undefined;
 
-  let value;
-  if (
-    measure?.value !== undefined &&
-    CCT_SOFTWARE_QUALITY_METRICS.includes(measure.metric as MetricKey)
-  ) {
-    value = JSON.parse(measure.value).total;
-  } else {
-    value = isDiffMetric(metric.key) ? getLeakValue(measure) : measure?.value;
-  }
+  const value = isDiffMetric(metric.key) ? getLeakValue(measure) : measure?.value;
 
   switch (finalMetricType) {
     case MetricType.Level: {
       const formatted = formatMeasure(value, MetricType.Level);
-      const ariaLabel = translateWithParameters('overview.quality_gate_x', formatted);
 
       return (
         <ContentCell className="sw-whitespace-nowrap">
           <QualityGateIndicator
             status={(value as Status) ?? 'NONE'}
             className="sw-mr-2"
-            ariaLabel={ariaLabel}
             size="sm"
           />
           <span>{formatted}</span>
@@ -95,16 +79,23 @@ export default function ComponentMeasure(props: Props) {
     case MetricType.Rating:
       return (
         <RatingCell className="sw-whitespace-nowrap">
-          <MetricsRatingBadge
-            label={value ?? '—'}
-            rating={formatMeasure(value, MetricType.Rating) as RatingEnum}
+          <RatingComponent
+            branchLike={branchLike}
+            componentKey={component.key}
+            ratingMetric={metric.key as MetricKey}
           />
         </RatingCell>
       );
     default:
       return (
         <NumericalCell className="sw-whitespace-nowrap">
-          <Measure metricKey={finalMetricKey} metricType={finalMetricType} value={value} />
+          <Measure
+            branchLike={branchLike}
+            componentKey={component.key}
+            metricKey={finalMetricKey}
+            metricType={finalMetricType}
+            value={value}
+          />
         </NumericalCell>
       );
   }

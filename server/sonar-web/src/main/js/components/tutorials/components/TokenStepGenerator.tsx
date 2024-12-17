@@ -17,9 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonSecondary } from 'design-system';
+
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
+import { ButtonSecondary } from '~design-system';
 import { translate } from '../../../helpers/l10n';
 import { Component } from '../../../types/types';
 import { LoggedInUser } from '../../../types/users';
@@ -49,7 +50,7 @@ export default function TokenStepGenerator(props: TokenStepGeneratorProps) {
             </ButtonSecondary>
           ),
           field: (
-            <span className="sw-body-sm-highlight">
+            <span className="sw-typo-semibold">
               {translate('onboarding.tutorial.env_variables.field')}
             </span>
           ),

@@ -38,6 +38,10 @@ import org.sonar.db.component.ComponentDao;
 import org.sonar.db.component.ComponentKeyUpdaterDao;
 import org.sonar.db.component.ProjectLinkDao;
 import org.sonar.db.component.SnapshotDao;
+import org.sonar.db.dependency.CveCweDao;
+import org.sonar.db.dependency.CveDao;
+import org.sonar.db.dependency.IssuesDependencyDao;
+import org.sonar.db.dependency.ProjectDependenciesDao;
 import org.sonar.db.duplication.DuplicationDao;
 import org.sonar.db.entity.EntityDao;
 import org.sonar.db.es.EsQueueDao;
@@ -47,8 +51,8 @@ import org.sonar.db.issue.AnticipatedTransitionDao;
 import org.sonar.db.issue.IssueChangeDao;
 import org.sonar.db.issue.IssueDao;
 import org.sonar.db.issue.IssueFixedDao;
-import org.sonar.db.measure.LiveMeasureDao;
 import org.sonar.db.measure.MeasureDao;
+import org.sonar.db.measure.ProjectMeasureDao;
 import org.sonar.db.metric.MetricDao;
 import org.sonar.db.newcodeperiod.NewCodePeriodDao;
 import org.sonar.db.notification.NotificationQueueDao;
@@ -65,8 +69,8 @@ import org.sonar.db.project.ProjectExportDao;
 import org.sonar.db.property.InternalComponentPropertiesDao;
 import org.sonar.db.property.InternalPropertiesDao;
 import org.sonar.db.property.PropertiesDao;
+import org.sonar.db.provisioning.DevOpsPermissionsMappingDao;
 import org.sonar.db.provisioning.GithubOrganizationGroupDao;
-import org.sonar.db.provisioning.GithubPermissionsMappingDao;
 import org.sonar.db.purge.PurgeDao;
 import org.sonar.db.pushevent.PushEventDao;
 import org.sonar.db.qualitygate.ProjectQgateAssociationDao;
@@ -92,6 +96,7 @@ import org.sonar.db.schemamigration.SchemaMigrationDao;
 import org.sonar.db.scim.ScimGroupDao;
 import org.sonar.db.scim.ScimUserDao;
 import org.sonar.db.source.FileSourceDao;
+import org.sonar.db.telemetry.TelemetryMetricsSentDao;
 import org.sonar.db.user.ExternalGroupDao;
 import org.sonar.db.user.GroupDao;
 import org.sonar.db.user.GroupMembershipDao;
@@ -125,14 +130,16 @@ public class DaoModule extends Module {
     CeTaskMessageDao.class,
     ComponentDao.class,
     ComponentKeyUpdaterDao.class,
+    CveDao.class,
+    CveCweDao.class,
     DefaultQProfileDao.class,
+    DevOpsPermissionsMappingDao.class,
     DuplicationDao.class,
     EntityDao.class,
     EsQueueDao.class,
     EventDao.class,
     EventComponentChangeDao.class,
     GithubOrganizationGroupDao.class,
-    GithubPermissionsMappingDao.class,
     ExternalGroupDao.class,
     FileSourceDao.class,
     GroupDao.class,
@@ -146,8 +153,9 @@ public class DaoModule extends Module {
     IssueChangeDao.class,
     IssueDao.class,
     IssueFixedDao.class,
-    LiveMeasureDao.class,
+    IssuesDependencyDao.class,
     MeasureDao.class,
+    ProjectMeasureDao.class,
     MetricDao.class,
     NewCodePeriodDao.class,
     NotificationQueueDao.class,
@@ -156,6 +164,7 @@ public class DaoModule extends Module {
     PluginDao.class,
     ProjectDao.class,
     ProjectBadgeTokenDao.class,
+    ProjectDependenciesDao.class,
     ProjectExportDao.class,
     PortfolioDao.class,
     ProjectLinkDao.class,
@@ -186,6 +195,7 @@ public class DaoModule extends Module {
     ScimUserDao.class,
     SnapshotDao.class,
     SessionTokensDao.class,
+    TelemetryMetricsSentDao.class,
     UserDao.class,
     UserDismissedMessagesDao.class,
     UserGroupDao.class,

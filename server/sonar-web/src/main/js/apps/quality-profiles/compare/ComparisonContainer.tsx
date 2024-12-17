@@ -17,8 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Spinner } from 'design-system';
-import * as React from 'react';
+
+import { Spinner } from '~design-system';
 import { useLocation, useRouter } from '~sonar-aligned/components/hoc/withRouter';
 import { useProfilesCompareQuery } from '../../../queries/quality-profiles';
 import { useGetValueQuery } from '../../../queries/settings';
@@ -38,9 +38,9 @@ export function ComparisonContainer(props: Readonly<Props>) {
   const { profile, profiles } = props;
   const location = useLocation();
   const router = useRouter();
-  const { data: inheritRulesSetting } = useGetValueQuery(
-    SettingsKey.QPAdminCanDisableInheritedRules,
-  );
+  const { data: inheritRulesSetting } = useGetValueQuery({
+    key: SettingsKey.QPAdminCanDisableInheritedRules,
+  });
   const canDeactivateInheritedRules = inheritRulesSetting?.value === 'true';
 
   const { withKey } = location.query;
@@ -60,7 +60,7 @@ export function ComparisonContainer(props: Readonly<Props>) {
   };
 
   return (
-    <div className="sw-body-sm">
+    <div className="sw-typo-default">
       <div className="sw-flex sw-items-center">
         <ComparisonForm
           onCompare={handleCompare}

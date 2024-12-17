@@ -17,9 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { SubHeading, Switch } from 'design-system';
+
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
+import { SubHeading, Switch } from '~design-system';
 import { translate } from '../../../helpers/l10n';
 import {
   getKeyboardShortcutEnabled,
@@ -60,10 +61,7 @@ export function Preferences() {
               />
             </div>
             <Switch
-              labels={{
-                on: translate('my_account.preferences.keyboard_shortcuts.enabled'),
-                off: translate('my_account.preferences.keyboard_shortcuts.disabled'),
-              }}
+              name={translate('my_account.preferences.keyboard_shortcuts')}
               onChange={handleToggleKeyboardShortcut}
               value={shortcutsPreferenceValue}
             />

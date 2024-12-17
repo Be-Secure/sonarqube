@@ -17,8 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { IconQuestionMark, Tooltip, TooltipSide } from '@sonarsource/echoes-react';
 import classNames from 'classnames';
+import * as React from 'react';
+import { useIntl } from 'react-intl';
 import {
   Card,
   LightLabel,
@@ -27,9 +30,7 @@ import {
   TextSubdued,
   TrendDownCircleIcon,
   TrendUpCircleIcon,
-} from 'design-system';
-import * as React from 'react';
-import { useIntl } from 'react-intl';
+} from '~design-system';
 import {
   getComponentIssuesUrl,
   getComponentSecurityHotspotsUrl,
@@ -131,11 +132,11 @@ export default function MeasuresCardPanel(props: React.PropsWithChildren<Props>)
               issuesCondition &&
               (isIssuesConditionFailed ? (
                 <TextError
-                  className="sw-font-regular sw-body-xs sw-inline"
+                  className="sw-font-regular sw-typo-sm sw-inline"
                   text={getConditionRequiredLabel(issuesCondition, intl, true)}
                 />
               ) : (
-                <LightLabel className="sw-body-xs">
+                <LightLabel className="sw-typo-sm">
                   {getConditionRequiredLabel(issuesCondition, intl)}
                 </LightLabel>
               ))
@@ -160,7 +161,7 @@ export default function MeasuresCardPanel(props: React.PropsWithChildren<Props>)
               )
             }
             footer={
-              <TextSubdued className="sw-body-xs">
+              <TextSubdued className="sw-typo-sm">
                 {intl.formatMessage({ id: 'overview.accepted_issues.help' })}
               </TextSubdued>
             }
@@ -188,7 +189,7 @@ export default function MeasuresCardPanel(props: React.PropsWithChildren<Props>)
                   }
                   side={TooltipSide.Top}
                 >
-                  <span className="sw-body-sm sw-cursor-default">
+                  <span className="sw-typo-default sw-cursor-default">
                     <IconQuestionMark color="echoes-color-icon-subdued" />
                   </span>
                 </Tooltip>
@@ -201,7 +202,7 @@ export default function MeasuresCardPanel(props: React.PropsWithChildren<Props>)
             url={fixedUrl}
             icon={fixedCount !== undefined && fixedCount !== '0' && <TrendDownCircleIcon />}
             footer={
-              <TextSubdued className="sw-body-xs">
+              <TextSubdued className="sw-typo-sm">
                 {intl.formatMessage({ id: 'overview.pull_request.fixed_issues.help' })}
               </TextSubdued>
             }

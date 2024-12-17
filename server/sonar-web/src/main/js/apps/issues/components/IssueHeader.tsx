@@ -17,20 +17,22 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+import { IconLink, Link } from '@sonarsource/echoes-react';
+import * as React from 'react';
+import { FormattedMessage } from 'react-intl';
 import {
+  addGlobalSuccessMessage,
   Badge,
   BasicSeparator,
   ClipboardIconButton,
   IssueMessageHighlighting,
-  Link,
-  LinkIcon,
   Note,
   PageContentFontWrapper,
-} from 'design-system';
-import * as React from 'react';
+} from '~design-system';
 import { getBranchLikeQuery } from '~sonar-aligned/helpers/branch-like';
 import { getComponentIssuesUrl } from '~sonar-aligned/helpers/urls';
-import { setIssueAssignee } from '../../../api/issues';
+import { setIssueAssignee, setIssueSeverity } from '../../../api/issues';
 import { updateIssue } from '../../../components/issue/actions';
 import IssueActionsBar from '../../../components/issue/components/IssueActionsBar';
 import { WorkspaceContext } from '../../../components/workspace/context';
@@ -40,11 +42,11 @@ import { translate } from '../../../helpers/l10n';
 import { getKeyboardShortcutEnabled } from '../../../helpers/preferences';
 import { getPathUrlAsString, getRuleUrl } from '../../../helpers/urls';
 import { BranchLike } from '../../../types/branch-like';
-import { IssueActions, IssueType } from '../../../types/issues';
+import { SoftwareImpactSeverity, SoftwareQuality } from '../../../types/clean-code-taxonomy';
+import { IssueActions, IssueSeverity, IssueType } from '../../../types/issues';
 import { Issue, RuleDetails } from '../../../types/types';
 import IssueHeaderMeta from './IssueHeaderMeta';
 import IssueHeaderSide from './IssueHeaderSide';
-import IssueNewStatusAndTransitionGuide from './IssueNewStatusAndTransitionGuide';
 
 interface Props {
   branchLike?: BranchLike;
@@ -98,6 +100,39 @@ export default class IssueHeader extends React.PureComponent<Props, State> {
     this.handleIssuePopupToggle('assign', false);
   };
 
+  handleSeverityChange = (
+    severity: IssueSeverity | SoftwareImpactSeverity,
+    quality?: SoftwareQuality,
+  ) => {
+    const { issue } = this.props;
+
+    const data = quality
+      ? { issue: issue.key, impact: `${quality}=${severity}` }
+      : { issue: issue.key, severity: severity as IssueSeverity };
+
+    const severityBefore = quality
+      ? issue.impacts.find((impact) => impact.softwareQuality === quality)?.severity
+      : issue.severity;
+
+    return updateIssue(
+      this.props.onIssueChange,
+      setIssueSeverity(data).then((r) => {
+        addGlobalSuccessMessage(
+          <FormattedMessage
+            id="issue.severity.updated_notification"
+            values={{
+              issueLink: undefined,
+              quality: quality ? translate('software_quality', quality) : undefined,
+              before: translate(quality ? 'severity_impact' : 'severity', severityBefore ?? ''),
+              after: translate(quality ? 'severity_impact' : 'severity', severity),
+            }}
+          />,
+        );
+        return r;
+      }),
+    );
+  };
+
   handleKeyDown = (event: KeyboardEvent) => {
     if (isInput(event) || isShortcut(event) || !getKeyboardShortcutEnabled()) {
       return true;
@@ -129,7 +164,7 @@ export default class IssueHeader extends React.PureComponent<Props, State> {
         {isExternal ? (
           <span>({key})</span>
         ) : (
-          <Link to={getRuleUrl(key)} target="_blank">
+          <Link to={getRuleUrl(key)} shouldOpenInNewTab>
             {key}
           </Link>
         )}
@@ -166,13 +201,13 @@ export default class IssueHeader extends React.PureComponent<Props, State> {
         <div className="sw-mr-8 sw-flex-1 sw-flex sw-flex-col sw-gap-4 sw-min-w-0">
           <div className="sw-flex sw-flex-col sw-gap-2">
             <div className="sw-flex sw-items-center">
-              <PageContentFontWrapper className="sw-body-md-highlight" as="h1">
+              <PageContentFontWrapper className="sw-typo-lg-semibold" as="h1">
                 <IssueMessageHighlighting
                   message={issue.message}
                   messageFormattings={issue.messageFormattings}
                 />
                 <ClipboardIconButton
-                  Icon={LinkIcon}
+                  Icon={IconLink}
                   aria-label={translate('permalink')}
                   className="sw-ml-1 sw-align-bottom"
                   copyValue={getPathUrlAsString(issueUrl, false)}
@@ -201,11 +236,11 @@ export default class IssueHeader extends React.PureComponent<Props, State> {
             showSonarLintBadge
           />
         </div>
-        <IssueHeaderSide issue={issue} />
-        <IssueNewStatusAndTransitionGuide
-          run
-          issues={[issue]}
-          togglePopup={(_, popup, show) => this.handleIssuePopupToggle(popup, show)}
+        <IssueHeaderSide
+          issue={issue}
+          onSetSeverity={
+            issue.actions.includes(IssueActions.SetSeverity) ? this.handleSeverityChange : undefined
+          }
         />
       </header>
     );

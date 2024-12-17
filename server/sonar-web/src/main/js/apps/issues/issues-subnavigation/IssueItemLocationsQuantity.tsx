@@ -17,8 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ExecutionFlowIcon } from 'design-system';
-import * as React from 'react';
+
+import { ExecutionFlowIcon } from '~design-system';
 import { translate } from '../../../helpers/l10n';
 import { FlowType, Issue } from '../../../types/types';
 
@@ -34,7 +34,7 @@ export default function IssueItemLocationsQuantity(props: Props) {
       <div className="sw-flex sw-items-center sw-justify-center sw-gap-1 sw-overflow-hidden">
         <ExecutionFlowIcon />
         <span className="sw-truncate" title={`${quantity} ${message}`}>
-          <span className="sw-body-sm-highlight">{quantity}</span> {message}
+          <span className="sw-typo-semibold">{quantity}</span> {message}
         </span>
       </div>
     );

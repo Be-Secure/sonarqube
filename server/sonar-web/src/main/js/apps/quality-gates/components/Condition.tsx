@@ -17,23 +17,31 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+import {
+  Button,
+  ButtonIcon,
+  ButtonSize,
+  ButtonVariety,
+  IconDelete,
+  IconRefresh,
+  ModalAlert,
+  Text,
+} from '@sonarsource/echoes-react';
+import { useIntl } from 'react-intl';
 import {
   ActionCell,
   ContentCell,
-  DangerButtonPrimary,
-  DestructiveIcon,
-  InteractiveIcon,
-  Modal,
   NumericalCell,
-  PencilIcon,
+  Pill,
+  PillHighlight,
+  PillVariant,
   TableRow,
-  TextError,
-  TrashIcon,
-} from 'design-system';
-import * as React from 'react';
+} from '~design-system';
 import { useMetrics } from '../../../app/components/metrics/withMetricsContext';
 import { getLocalizedMetricName, translate, translateWithParameters } from '../../../helpers/l10n';
 import { getOperatorLabel } from '../../../helpers/qualityGates';
+import { useStandardExperienceModeQuery } from '../../../queries/mode';
 import { useDeleteConditionMutation } from '../../../queries/quality-gates';
 import { MetricKey } from '../../../sonar-aligned/types/metrics';
 import { CaycStatus, Condition as ConditionType, Metric, QualityGate } from '../../../types/types';
@@ -41,15 +49,12 @@ import {
   getLocalizedMetricNameNoDiffMetric,
   isConditionWithFixedValue,
   isNonEditableMetric,
+  MQR_CONDITIONS_MAP,
+  STANDARD_CONDITIONS_MAP,
 } from '../utils';
 import ConditionValue from './ConditionValue';
 import EditConditionModal from './EditConditionModal';
-
-export enum ConditionChange {
-  Added = 'added',
-  Updated = 'updated',
-  Deleted = 'deleted',
-}
+import UpdateConditionsFromOtherModeModal from './UpdateConditionsFromOtherModeModal';
 
 interface Props {
   canEdit: boolean;
@@ -68,35 +73,33 @@ export default function ConditionComponent({
   showEdit,
   isCaycModal,
 }: Readonly<Props>) {
-  const [deleteFormOpen, setDeleteFormOpen] = React.useState(false);
-  const [modal, setModal] = React.useState(false);
   const { mutateAsync: deleteCondition } = useDeleteConditionMutation(qualityGate.name);
   const metrics = useMetrics();
+  const intl = useIntl();
+  const { data: isStandard } = useStandardExperienceModeQuery();
   const { op = 'GT' } = condition;
 
-  const handleOpenUpdate = () => {
-    setModal(true);
-  };
-
-  const handleUpdateClose = () => {
-    setModal(false);
-  };
-
-  const handleDeleteClick = () => {
-    setDeleteFormOpen(true);
-  };
-
-  const closeDeleteForm = () => {
-    setDeleteFormOpen(false);
-  };
-
   const isCaycCompliantAndOverCompliant = qualityGate.caycStatus !== CaycStatus.NonCompliant;
+  const isMetricFromOtherMode = isStandard
+    ? MQR_CONDITIONS_MAP[condition.metric as MetricKey] !== undefined
+    : STANDARD_CONDITIONS_MAP[condition.metric as MetricKey] !== undefined;
 
   return (
     <TableRow>
       <ContentCell>
         {getLocalizedMetricNameNoDiffMetric(metric, metrics)}
-        {metric.hidden && <TextError className="sw-ml-1" text={translate('deprecated')} />}
+        {isMetricFromOtherMode && canEdit && (
+          <Pill className="sw-ml-2" variant={PillVariant.Neutral} highlight={PillHighlight.Medium}>
+            {intl.formatMessage({
+              id: `quality_gates.metric.${isStandard ? 'mqr' : 'standard'}_mode_short`,
+            })}
+          </Pill>
+        )}
+        {metric.hidden && (
+          <Text colorOverride="echoes-color-text-danger" className="sw-ml-1">
+            {translate('deprecated')}
+          </Text>
+        )}
       </ContentCell>
 
       <ContentCell className="sw-whitespace-nowrap">{getOperatorLabel(op, metric)}</ContentCell>
@@ -112,67 +115,62 @@ export default function ConditionComponent({
       <ActionCell>
         {!isCaycModal && canEdit && (
           <>
+            {isMetricFromOtherMode && (
+              <UpdateConditionsFromOtherModeModal
+                condition={condition}
+                qualityGateName={qualityGate.name}
+              >
+                <ButtonIcon
+                  Icon={IconRefresh}
+                  variety={ButtonVariety.PrimaryGhost}
+                  className="sw-mr-4"
+                  ariaLabel={intl.formatMessage(
+                    { id: 'quality_gates.mqr_mode_update.single_metric.tooltip.message' },
+                    {
+                      metric: getLocalizedMetricNameNoDiffMetric(metric, metrics),
+                      mode: intl.formatMessage({
+                        id: `settings.mode.${isStandard ? 'standard' : 'mqr'}.name`,
+                      }),
+                    },
+                  )}
+                />
+              </UpdateConditionsFromOtherModeModal>
+            )}
             {(!isCaycCompliantAndOverCompliant ||
               !isConditionWithFixedValue(condition) ||
               (isCaycCompliantAndOverCompliant && showEdit)) &&
-              !isNonEditableMetric(condition.metric as MetricKey) && (
-                <>
-                  <InteractiveIcon
-                    Icon={PencilIcon}
-                    aria-label={translateWithParameters(
-                      'quality_gates.condition.edit',
-                      metric.name,
-                    )}
-                    data-test="quality-gates__condition-update"
-                    onClick={handleOpenUpdate}
-                    className="sw-mr-4"
-                    size="small"
-                  />
-                  {modal && (
-                    <EditConditionModal
-                      condition={condition}
-                      header={translate('quality_gates.update_condition')}
-                      metric={metric}
-                      onClose={handleUpdateClose}
-                      qualityGate={qualityGate}
-                    />
-                  )}
-                </>
+              !isNonEditableMetric(condition.metric as MetricKey) &&
+              !isMetricFromOtherMode && (
+                <EditConditionModal
+                  condition={condition}
+                  header={translate('quality_gates.update_condition')}
+                  metric={metric}
+                  qualityGate={qualityGate}
+                />
               )}
             {(!isCaycCompliantAndOverCompliant ||
               !condition.isCaycCondition ||
               (isCaycCompliantAndOverCompliant && showEdit)) && (
-              <>
-                <DestructiveIcon
-                  Icon={TrashIcon}
-                  aria-label={translateWithParameters(
-                    'quality_gates.condition.delete',
-                    metric.name,
-                  )}
-                  onClick={handleDeleteClick}
-                  size="small"
-                />
-                {deleteFormOpen && (
-                  <Modal
-                    headerTitle={translate('quality_gates.delete_condition')}
-                    onClose={closeDeleteForm}
-                    body={translateWithParameters(
-                      'quality_gates.delete_condition.confirm.message',
-                      getLocalizedMetricName(metric),
-                    )}
-                    primaryButton={
-                      <DangerButtonPrimary
-                        autoFocus
-                        type="submit"
-                        onClick={() => deleteCondition(condition)}
-                      >
-                        {translate('delete')}
-                      </DangerButtonPrimary>
-                    }
-                    secondaryButtonLabel={translate('close')}
-                  />
+              <ModalAlert
+                title={translate('quality_gates.delete_condition')}
+                description={translateWithParameters(
+                  'quality_gates.delete_condition.confirm.message',
+                  getLocalizedMetricName(metric),
                 )}
-              </>
+                primaryButton={
+                  <Button variety={ButtonVariety.Danger} onClick={() => deleteCondition(condition)}>
+                    {translate('delete')}
+                  </Button>
+                }
+                secondaryButtonLabel={translate('close')}
+              >
+                <ButtonIcon
+                  Icon={IconDelete}
+                  ariaLabel={translateWithParameters('quality_gates.condition.delete', metric.name)}
+                  size={ButtonSize.Medium}
+                  variety={ButtonVariety.DangerGhost}
+                />
+              </ModalAlert>
             )}
           </>
         )}

@@ -18,10 +18,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { Spinner } from 'design-system';
 import { isEmpty, omitBy } from 'lodash';
-import React, { FormEvent, useContext } from 'react';
+import { FormEvent, useContext, useState } from 'react';
 import { FormattedMessage } from 'react-intl';
+import { ButtonSecondary, Highlight, Note, Spinner } from '~design-system';
 import GitLabSynchronisationWarning from '../../../../app/components/GitLabSynchronisationWarning';
 import { AvailableFeaturesContext } from '../../../../app/components/available-features/AvailableFeaturesContext';
 import DocumentationLink from '../../../../components/common/DocumentationLink';
@@ -31,18 +31,25 @@ import { useIdentityProviderQuery } from '../../../../queries/identity-provider/
 import {
   useDeleteGitLabConfigurationMutation,
   useGitLabConfigurationsQuery,
+  useGitlabRolesMappingMutation,
   useSyncWithGitLabNow,
   useUpdateGitLabConfigurationMutation,
 } from '../../../../queries/identity-provider/gitlab';
 import { Feature } from '../../../../types/features';
-import { GitLabConfigurationUpdateBody, ProvisioningType } from '../../../../types/provisioning';
+import {
+  DevopsRolesMapping,
+  GitLabConfigurationUpdateBody,
+  ProvisioningType,
+} from '../../../../types/provisioning';
 import { DefinitionV2, SettingType } from '../../../../types/settings';
 import { Provider } from '../../../../types/types';
 import AuthenticationFormField from './AuthenticationFormField';
+import AutoProvisioningConsent from './AutoProvisionningConsent';
 import ConfigurationDetails from './ConfigurationDetails';
 import ConfirmProvisioningModal from './ConfirmProvisioningModal';
 import GitLabConfigurationForm from './GitLabConfigurationForm';
 import GitLabConfigurationValidity from './GitLabConfigurationValidity';
+import GitLabMappingModal from './GitLabMappingModal';
 import ProvisioningSection from './ProvisioningSection';
 import TabHeader from './TabHeader';
 
@@ -83,10 +90,13 @@ const getDefinitions = (
 };
 
 export default function GitLabAuthenticationTab() {
-  const [openForm, setOpenForm] = React.useState(false);
-  const [changes, setChanges] = React.useState<ChangesForm | undefined>(undefined);
-  const [tokenKey, setTokenKey] = React.useState<number>(0);
-  const [showConfirmProvisioningModal, setShowConfirmProvisioningModal] = React.useState(false);
+  const [openForm, setOpenForm] = useState(false);
+  const [changes, setChanges] = useState<ChangesForm | undefined>();
+  const [tokenKey, setTokenKey] = useState<number>(0);
+  const [showConfirmProvisioningModal, setShowConfirmProvisioningModal] = useState(false);
+  const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
+  const [rolesMapping, setRolesMapping] = useState<DevopsRolesMapping[] | null>(null);
+  const { mutateAsync: updateMapping } = useGitlabRolesMappingMutation();
 
   const hasGitlabProvisioningFeature = useContext(AvailableFeaturesContext).includes(
     Feature.GitlabProvisioning,
@@ -136,7 +146,7 @@ export default function GitLabAuthenticationTab() {
   };
 
   const updateProvisioning = () => {
-    if (!changes || !configuration) {
+    if ((!changes && !rolesMapping) || !configuration) {
       return;
     }
 
@@ -149,6 +159,14 @@ export default function GitLabAuthenticationTab() {
         },
       },
     );
+
+    if (provisioningType === ProvisioningType.auto && rolesMapping) {
+      updateMapping(rolesMapping)
+        .then(() => {
+          setRolesMapping(null);
+        })
+        .catch(() => {});
+    }
   };
 
   const setJIT = () =>
@@ -177,11 +195,14 @@ export default function GitLabAuthenticationTab() {
   const provisioningToken = changes?.provisioningToken;
 
   const canSave = () => {
-    if (!configuration || changes === undefined || isUpdating) {
+    if (!configuration || (changes === undefined && rolesMapping === null) || isUpdating) {
       return false;
     }
-    const type = changes.provisioningType ?? configuration.provisioningType;
-    if (type === ProvisioningType.auto) {
+    const type = changes?.provisioningType ?? configuration.provisioningType;
+    if (type === ProvisioningType.auto && rolesMapping !== null) {
+      return true;
+    }
+    if (changes && type === ProvisioningType.auto) {
       const areGroupsDefined =
         changes.allowedGroups?.some((val) => val !== '') ??
         configuration.allowedGroups?.some((val) => val !== '');
@@ -260,12 +281,13 @@ export default function GitLabAuthenticationTab() {
               }
               disabledConfigText={translate('settings.authentication.gitlab.enable_first')}
               enabled={configuration.enabled}
-              hasUnsavedChanges={changes !== undefined}
+              hasUnsavedChanges={changes !== undefined || rolesMapping !== null}
               canSave={canSave()}
               onSave={handleSubmit}
               onCancel={() => {
                 setChanges(undefined);
                 setTokenKey(tokenKey + 1);
+                setRolesMapping(null);
               }}
               jitTitle={translate('settings.authentication.gitlab.provisioning_at_login')}
               jitDescription={
@@ -273,7 +295,7 @@ export default function GitLabAuthenticationTab() {
                   id="settings.authentication.gitlab.provisioning_at_login.description"
                   values={{
                     documentation: (
-                      <DocumentationLink to={DocLink.AlmGitLabAuthProvisioningMethod}>
+                      <DocumentationLink to={DocLink.AlmGitLabAuthJITProvisioningMethod}>
                         {translate(`learn_more`)}
                       </DocumentationLink>
                     ),
@@ -331,7 +353,7 @@ export default function GitLabAuthenticationTab() {
                   id="settings.authentication.gitlab.form.provisioning_with_gitlab.description"
                   values={{
                     documentation: (
-                      <DocumentationLink to={DocLink.AlmGitLabAuthProvisioningMethod}>
+                      <DocumentationLink to={DocLink.AlmGitLabAuthAutoProvisioningMethod}>
                         {translate(`learn_more`)}
                       </DocumentationLink>
                     ),
@@ -369,21 +391,45 @@ export default function GitLabAuthenticationTab() {
                     }
                     isNotSet={configuration.provisioningType !== ProvisioningType.auto}
                   />
+                  <div className="sw-mt-6">
+                    <div className="sw-flex">
+                      <Highlight className="sw-mb-4 sw-mr-4 sw-flex sw-items-center sw-gap-2">
+                        <FormattedMessage id="settings.authentication.configuration.roles_mapping.title" />
+                      </Highlight>
+                      <ButtonSecondary
+                        className="sw--mt-2"
+                        onClick={() => setIsMappingModalOpen(true)}
+                      >
+                        <FormattedMessage id="settings.authentication.configuration.roles_mapping.button_label" />
+                      </ButtonSecondary>
+                    </div>
+                    <Note className="sw-mt-2">
+                      <FormattedMessage id="settings.authentication.gitlab.configuration.roles_mapping.description" />
+                    </Note>
+                  </div>
                 </>
               }
             />
           </>
         )}
       </div>
-      {showConfirmProvisioningModal && provisioningType && (
+      {provisioningType && (
         <ConfirmProvisioningModal
           allowUsersToSignUp={allowUsersToSignUp}
           hasProvisioningTypeChange={Boolean(changes?.provisioningType)}
           isAllowListEmpty={isEmpty(allowedGroups)}
+          isOpen={showConfirmProvisioningModal}
           onClose={() => setShowConfirmProvisioningModal(false)}
           onConfirm={updateProvisioning}
           provider={Provider.Gitlab}
           provisioningStatus={provisioningType}
+        />
+      )}
+      {isMappingModalOpen && (
+        <GitLabMappingModal
+          mapping={rolesMapping}
+          setMapping={setRolesMapping}
+          onClose={() => setIsMappingModalOpen(false)}
         />
       )}
       {openForm && (
@@ -392,6 +438,7 @@ export default function GitLabAuthenticationTab() {
           onClose={() => setOpenForm(false)}
         />
       )}
+      <AutoProvisioningConsent gitlabConfiguration={configuration} />
     </Spinner>
   );
 }

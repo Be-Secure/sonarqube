@@ -17,9 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { HelperHintIcon, Spinner, Switch } from 'design-system';
-import * as React from 'react';
-import { useEffect } from 'react';
+
+import { HelperHintIcon, Spinner, Switch } from '~design-system';
 import HelpTooltip from '~sonar-aligned/components/controls/HelpTooltip';
 import { isMainBranch } from '~sonar-aligned/helpers/branch-like';
 import { translate } from '../../../helpers/l10n';
@@ -36,10 +35,6 @@ export default function BranchPurgeSetting(props: Props) {
   const { branch, component } = props;
   const { mutate: excludeFromPurge, isPending } = useExcludeFromPurgeMutation();
 
-  useEffect(() => {
-    excludeFromPurge({ component, key: branch.name, exclude: branch.excludedFromPurge });
-  }, [branch.excludedFromPurge]);
-
   const handleOnChange = (exclude: boolean) => {
     excludeFromPurge({ component, key: branch.name, exclude });
   };
@@ -51,12 +46,9 @@ export default function BranchPurgeSetting(props: Props) {
     <>
       <Switch
         disabled={disabled}
+        name={branch.name}
         onChange={handleOnChange}
         value={branch.excludedFromPurge}
-        labels={{
-          on: translate('on'),
-          off: translate('off'),
-        }}
       />
       <Spinner loading={isPending} className="sw-ml-1" />
       {isTheMainBranch && (

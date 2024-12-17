@@ -17,8 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { byRole, byTestId, byText } from '~sonar-aligned/helpers/testSelector';
 import SettingsServiceMock from '../../../../../api/mocks/SettingsServiceMock';
 import { AvailableFeaturesContext } from '../../../../../app/components/available-features/AvailableFeaturesContext';
@@ -46,8 +46,8 @@ const allowUsersToSignUpDefinition = byTestId('sonar.auth.bitbucket.allowUsersTo
 const workspacesDefinition = byTestId('sonar.auth.bitbucket.workspaces');
 
 const ui = {
-  save: byRole('button', { name: 'save' }),
-  cancel: byRole('button', { name: 'cancel' }),
+  save: byRole('button', { name: /save/ }),
+  cancel: byRole('button', { name: /cancel/ }),
   reset: byRole('button', { name: /settings.definition.reset/ }),
   confirmReset: byRole('dialog').byRole('button', { name: 'reset_verb' }),
   change: byRole('button', { name: 'change_verb' }),

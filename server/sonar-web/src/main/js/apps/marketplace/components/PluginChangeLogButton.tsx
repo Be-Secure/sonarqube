@@ -17,8 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonSecondary, DropdownToggler } from 'design-system';
+
+import { Button } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { DropdownToggler } from '~design-system';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { Release, Update } from '../../../types/plugins';
 import PluginChangeLog from './PluginChangeLog';
@@ -40,7 +42,7 @@ export default function PluginChangeLogButton({ pluginName, release, update }: R
       id={`plugin-changelog-${pluginName}`}
       overlay={<PluginChangeLog release={release} update={update} />}
     >
-      <ButtonSecondary
+      <Button
         aria-label={translateWithParameters(
           'marketplace.show_plugin_changelog',
           pluginName,
@@ -49,7 +51,7 @@ export default function PluginChangeLogButton({ pluginName, release, update }: R
         onClick={() => setOpen((open) => !open)}
       >
         {translate('see_changelog')}
-      </ButtonSecondary>
+      </Button>
     </DropdownToggler>
   );
 }

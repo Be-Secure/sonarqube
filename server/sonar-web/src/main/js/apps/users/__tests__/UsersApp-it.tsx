@@ -17,10 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { screen, waitFor } from '@testing-library/react';
+
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import * as React from 'react';
-import selectEvent from 'react-select-event';
 import { byLabelText, byRole, byText } from '~sonar-aligned/helpers/testSelector';
 import ComponentsServiceMock from '../../../api/mocks/ComponentsServiceMock';
 import DopTranslationServiceMock from '../../../api/mocks/DopTranslationServiceMock';
@@ -60,14 +59,17 @@ const groupsHandler = new GroupsServiceMock();
 const ui = {
   createUserButton: byRole('button', { name: 'users.create_user' }),
   localAndManagedFilter: byRole('radio', { name: 'all' }),
-  managedFilter: byRole('radio', { name: 'managed' }),
+  managedByScimFilter: byRole('radio', { name: 'managed.managed.SCIM' }),
+  managedByGithubFilter: byRole('radio', { name: 'managed.managed.github' }),
   localFilter: byRole('radio', { name: 'local' }),
   showMore: byRole('button', { name: 'show_more' }),
   aliceUpdateGroupButton: byRole('button', { name: 'users.update_users_groups.alice.merveille' }),
+  aliceViewGroupButton: byRole('button', { name: 'users.view_users_groups.alice.merveille' }),
   aliceUpdateButton: byRole('button', { name: 'users.manage_user.alice.merveille' }),
   denisUpdateButton: byRole('button', { name: 'users.manage_user.denis.villeneuve' }),
-  alicedDeactivateButton: byRole('menuitem', { name: 'users.deactivate' }),
+  alicedDeactivateButton: byText('users.deactivate'),
   bobUpdateGroupButton: byRole('button', { name: 'users.update_users_groups.bob.marley' }),
+  bobViewGroupButton: byRole('button', { name: 'users.view_users_groups.bob.marley' }),
   bobUpdateButton: byRole('button', { name: 'users.manage_user.bob.marley' }),
   scmAddButton: byRole('button', { name: 'add_verb' }),
   createUserDialogButton: byRole('button', { name: 'create' }),
@@ -117,6 +119,8 @@ const ui = {
   jackRow: byRole('row', { name: /Jack/ }),
 
   dialogGroups: byRole('dialog', { name: 'users.update_groups' }),
+  dialogViewGroups: byRole('dialog', { name: 'users.view_groups' }),
+  buttonCloseDialogViewGroups: byRole('button', { name: 'modal.close' }),
   allFilter: byRole('radio', { name: 'all' }),
   selectedFilter: byRole('radio', { name: 'selected' }),
   unselectedFilter: byRole('radio', { name: 'unselected' }),
@@ -128,7 +132,7 @@ const ui = {
   dialogCreateUser: byRole('dialog', { name: 'users.create_user' }),
   dialogDeactivateUser: byRole('dialog', { name: 'users.deactivate_user' }),
 
-  infoManageMode: byText(/users\.page\.managed_description/),
+  infoManageMode: byText(/users\.page\.managed_description\.recommendation/),
   description: byText('users.page.description'),
   deleteUserAlert: byText('delete-user-warning'),
 
@@ -137,13 +141,12 @@ const ui = {
   loginInput: byRole('textbox', { name: /login/ }),
   userNameInput: byRole('textbox', { name: /name/ }),
   emailInput: byRole('textbox', { name: /email/ }),
-  passwordInput: byLabelText(/password/),
+  passwordInput: byLabelText(/^password/),
   dialogSCMInputs: byRole('textbox', { name: /users.create_user.scm_account/ }),
   dialogSCMInput: (value?: string) =>
     byRole('textbox', { name: `users.create_user.scm_account_${value ? `x.${value}` : 'new'}` }),
   oldPassword: byLabelText('my_profile.password.old', { selector: 'input', exact: false }),
-  newPassword: byLabelText('my_profile.password.new', { selector: 'input', exact: false }),
-  confirmPassword: byLabelText('my_profile.password.confirm', { selector: 'input', exact: false }),
+  confirmPassword: byLabelText(/confirm_password\*/i),
   tokenNameInput: byRole('textbox', { name: 'users.tokens.name' }),
   deleteUserCheckbox: byRole('checkbox', { name: 'users.delete_user' }),
   githubProvisioningPending: byText(/synchronization_pending/),
@@ -151,6 +154,7 @@ const ui = {
   githubProvisioningSuccess: byText(/synchronization_successful/),
   githubProvisioningWarning: byText(/synchronization_successful.with_warning/),
   githubProvisioningAlert: byText(/synchronization_failed_short/),
+  githubProvisioningAlertDetailsLink: byText(/synchronization_failed_short/).byRole('link'),
   expiresInSelector: byRole('combobox', { name: 'users.tokens.expires_in' }),
 };
 
@@ -205,9 +209,9 @@ describe('different filters combinations', () => {
     await user.click(await ui.localFilter.find());
     await waitFor(() => expect(ui.activityFilter.get()).toBeEnabled());
 
-    await selectEvent.select(
-      ui.activityFilter.get(),
-      'users.activity_filter.active_sonarlint_users',
+    await user.click(ui.activityFilter.get());
+    await user.click(
+      byRole('option', { name: 'users.activity_filter.active_sonarlint_users' }).get(),
     );
 
     expect(await ui.userRows.findAll()).toHaveLength(1);
@@ -218,12 +222,12 @@ describe('different filters combinations', () => {
     const user = userEvent.setup();
     renderUsersApp();
 
-    await user.click(await ui.managedFilter.find());
+    await user.click(await ui.managedByScimFilter.find());
     await waitFor(() => expect(ui.activityFilter.get()).toBeEnabled());
 
-    await selectEvent.select(
-      ui.activityFilter.get(),
-      'users.activity_filter.active_sonarqube_users',
+    await user.click(ui.activityFilter.get());
+    await user.click(
+      byRole('option', { name: 'users.activity_filter.active_sonarqube_users' }).get(),
     );
 
     expect(await ui.userRows.findAll()).toHaveLength(1);
@@ -237,7 +241,8 @@ describe('different filters combinations', () => {
     await user.click(await ui.localAndManagedFilter.find());
     await waitFor(() => expect(ui.activityFilter.get()).toBeEnabled());
 
-    await selectEvent.select(ui.activityFilter.get(), 'users.activity_filter.inactive_users');
+    await user.click(ui.activityFilter.get());
+    await user.click(byRole('option', { name: 'users.activity_filter.inactive_users' }).get());
 
     expect(await ui.userRows.findAll()).toHaveLength(2);
     expect(ui.evaRow.get()).toBeInTheDocument();
@@ -262,7 +267,8 @@ describe('in non managed mode', () => {
 
     await user.type(ui.loginInput.get(), 'Login');
     await user.type(ui.userNameInput.get(), 'Jack');
-    await user.type(ui.passwordInput.get(), 'Password');
+    await user.type(ui.passwordInput.get(), 'P@ssword12345');
+    await user.type(ui.confirmPassword.get(), 'P@ssword12345');
     // Add SCM account
     expect(ui.dialogSCMInputs.queryAll()).toHaveLength(0);
     await user.click(ui.scmAddButton.get());
@@ -272,8 +278,8 @@ describe('in non managed mode', () => {
     // Clear input to get an error on save
     await user.clear(ui.dialogSCMInput('SCM').get());
     await user.click(ui.createUserDialogButton.get());
+    // addGlobalError should be called with `Error: Empty SCM`
     expect(ui.dialogCreateUser.get()).toBeInTheDocument();
-    expect(await ui.dialogCreateUser.byText('Error: Empty SCM').find()).toBeInTheDocument();
     // Remove SCM account
     await user.click(ui.deleteSCMButton().get());
     expect(ui.dialogSCMInputs.queryAll()).toHaveLength(0);
@@ -374,7 +380,7 @@ describe('in non managed mode', () => {
     renderUsersApp();
 
     await user.click(await ui.aliceUpdateButton.find());
-    await user.click(await ui.aliceRow.byRole('menuitem', { name: 'update_details' }).find());
+    await user.click(await byText('update_details').find());
     expect(await ui.dialogUpdateUser.find()).toBeInTheDocument();
 
     expect(ui.userNameInput.get()).toHaveValue('Alice Merveille');
@@ -393,7 +399,7 @@ describe('in non managed mode', () => {
     renderUsersApp();
 
     await user.click(await ui.aliceUpdateButton.find());
-    await user.click(await ui.aliceRow.byRole('menuitem', { name: 'users.deactivate' }).find());
+    await user.click(await byText('users.deactivate').find());
     expect(await ui.dialogDeactivateUser.find()).toBeInTheDocument();
     expect(ui.deleteUserAlert.query()).not.toBeInTheDocument();
     await user.click(ui.deleteUserCheckbox.get());
@@ -410,19 +416,26 @@ describe('in non managed mode', () => {
     renderUsersApp([], currentUser);
 
     await user.click(await ui.aliceUpdateButton.find());
-    await user.click(
-      await ui.aliceRow.byRole('menuitem', { name: 'my_profile.password.title' }).find(),
-    );
+    await user.click(await byText('my_profile.password.title').find());
     expect(await ui.dialogPasswords.find()).toBeInTheDocument();
 
     expect(await ui.oldPassword.find()).toBeInTheDocument();
 
     expect(ui.changeButton.get()).toBeDisabled();
 
-    await user.type(ui.oldPassword.get(), '123');
-    await user.type(ui.newPassword.get(), '1234');
-    await user.type(ui.confirmPassword.get(), '1234');
+    // changes password
+    await user.type(ui.oldPassword.get(), 'test');
+    await user.type(ui.passwordInput.get(), 'AveryStrongP@55');
+    await user.type(ui.confirmPassword.get(), 'AveryStrongP@55');
+    await user.click(ui.changeButton.get());
+    expect(ui.dialogPasswords.query()).not.toBeInTheDocument();
 
+    // cannot change password since old password is wrong
+    await user.click(await ui.aliceUpdateButton.find());
+    await user.click(await byText('my_profile.password.title').find());
+    await user.type(ui.oldPassword.get(), 'test');
+    await user.type(ui.passwordInput.get(), 'AveryStrongP@556');
+    await user.type(ui.confirmPassword.get(), 'AveryStrongP@556');
     expect(ui.changeButton.get()).toBeEnabled();
     expect(
       screen.queryByText(`user.${ChangePasswordResults.OldPasswordIncorrect}`),
@@ -432,12 +445,13 @@ describe('in non managed mode', () => {
       await ui.dialogPasswords.byText(`user.${ChangePasswordResults.OldPasswordIncorrect}`).find(),
     ).toBeInTheDocument();
 
+    // cannot change password since new and old password is same
     await user.clear(ui.oldPassword.get());
-    await user.clear(ui.newPassword.get());
+    await user.clear(ui.passwordInput.get());
     await user.clear(ui.confirmPassword.get());
-    await user.type(ui.oldPassword.get(), 'test');
-    await user.type(ui.newPassword.get(), 'test');
-    await user.type(ui.confirmPassword.get(), 'test');
+    await user.type(ui.oldPassword.get(), 'AveryStrongP@55');
+    await user.type(ui.passwordInput.get(), 'AveryStrongP@55');
+    await user.type(ui.confirmPassword.get(), 'AveryStrongP@55');
 
     expect(
       screen.queryByText(`user.${ChangePasswordResults.NewPasswordSameAsOld}`),
@@ -446,15 +460,6 @@ describe('in non managed mode', () => {
     expect(
       await screen.findByText(`user.${ChangePasswordResults.NewPasswordSameAsOld}`),
     ).toBeInTheDocument();
-
-    await user.clear(ui.newPassword.get());
-    await user.clear(ui.confirmPassword.get());
-    await user.type(ui.newPassword.get(), 'test2');
-    await user.type(ui.confirmPassword.get(), 'test2');
-
-    await user.click(ui.changeButton.get());
-
-    expect(ui.dialogPasswords.query()).not.toBeInTheDocument();
   });
 
   it('should not allow to update non-local user', async () => {
@@ -463,7 +468,7 @@ describe('in non managed mode', () => {
     renderUsersApp([], currentUser);
 
     await user.click(await ui.denisUpdateButton.find());
-    await user.click(await ui.denisRow.byRole('menuitem', { name: 'update_details' }).find());
+    await user.click(await byText('update_details').find());
     expect(await ui.dialogUpdateUser.find()).toBeInTheDocument();
 
     expect(ui.userNameInput.get()).toHaveValue('Denis Villeneuve');
@@ -483,7 +488,7 @@ describe('in non managed mode', () => {
 
     expect(await ui.aliceRow.byText('alice.merveille@wonderland.com').find()).toBeInTheDocument();
     await user.click(await ui.aliceUpdateButton.find());
-    await user.click(await ui.aliceRow.byRole('menuitem', { name: 'update_details' }).find());
+    await user.click(await byText('update_details').find());
     expect(await ui.dialogUpdateUser.find()).toBeInTheDocument();
 
     expect(ui.emailInput.get()).toHaveValue('alice.merveille@wonderland.com');
@@ -501,20 +506,25 @@ describe('in manage mode', () => {
     systemHandler.setProvider(Provider.Github);
   });
 
-  it('should not be able to create a user"', async () => {
+  it('should not be able to create a user', async () => {
     renderUsersApp();
 
     expect(await ui.infoManageMode.find()).toBeInTheDocument();
     expect(ui.createUserButton.get()).toBeDisabled();
   });
 
-  it("should not be able to add/remove a user's group", async () => {
+  it("should be able to view only a user's group", async () => {
+    const user = userEvent.setup({ skipHover: true });
     renderUsersApp();
 
     expect(await ui.aliceRowWithLocalBadge.find()).toBeInTheDocument();
-    expect(ui.aliceUpdateGroupButton.query()).not.toBeInTheDocument();
+    await user.click(ui.aliceViewGroupButton.get());
+    expect(ui.dialogViewGroups.get()).toBeInTheDocument();
+    expect(ui.dialogViewGroups.byRole('checkbox').query()).not.toBeInTheDocument();
+    await user.click(ui.buttonCloseDialogViewGroups.get());
     expect(ui.bobRow.get()).toBeInTheDocument();
-    expect(ui.bobUpdateGroupButton.query()).not.toBeInTheDocument();
+    await user.click(ui.bobViewGroupButton.get());
+    expect(ui.dialogViewGroups.byRole('checkbox').query()).not.toBeInTheDocument();
   });
 
   it('should not be able to update scm account', async () => {
@@ -534,7 +544,7 @@ describe('in manage mode', () => {
       ui.bobRow.byRole('button', { name: 'my_profile.password.title' }).query(),
     ).not.toBeInTheDocument();
 
-    await user.click(ui.bobRow.byRole('menuitem', { name: 'update_scm' }).get());
+    await user.click(byText('update_scm').get());
 
     expect(ui.userNameInput.get()).toBeDisabled();
     expect(ui.emailInput.get()).toBeDisabled();
@@ -570,7 +580,7 @@ describe('in manage mode', () => {
 
     expect(await ui.aliceRowWithLocalBadge.find()).toBeInTheDocument();
 
-    await user.click(await ui.managedFilter.find());
+    await user.click(await ui.managedByGithubFilter.find());
 
     expect(await ui.bobRow.find()).toBeInTheDocument();
     expect(ui.aliceRowWithLocalBadge.query()).not.toBeInTheDocument();
@@ -626,7 +636,9 @@ describe('in manage mode', () => {
     expect(getTokensList()).toHaveLength(2); // header + "No tokens"
     expect(await screen.findByText('users.no_tokens')).toBeInTheDocument();
 
-    await selectEvent.select(ui.expiresInSelector.get(), 'users.tokens.expiration.0');
+    await user.click(ui.expiresInSelector.get());
+    await user.click(byRole('option', { name: 'users.tokens.expiration.0' }).get());
+
     await user.click(ui.generateButton.get());
     expect(getTokensList()).toHaveLength(2); // header + "test" token
     expect(screen.queryByText('users.no_tokens')).not.toBeInTheDocument();
@@ -674,6 +686,10 @@ describe('in manage mode', () => {
       });
       renderUsersApp([Feature.GithubProvisioning]);
       expect(await ui.githubProvisioningAlert.find()).toBeInTheDocument();
+      expect(ui.githubProvisioningAlertDetailsLink.get()).toHaveAttribute(
+        'href',
+        '/admin/settings?category=authentication&tab=github',
+      );
       expect(screen.queryByText('Error Message')).not.toBeInTheDocument();
       expect(ui.githubProvisioningSuccess.query()).not.toBeInTheDocument();
     });
@@ -719,33 +735,29 @@ it('should render external identity Providers', async () => {
 
 it('accessibility', async () => {
   systemHandler.setProvider(null);
-  const user = userEvent.setup();
+  // Skip hover to avoid issues with Tooltip rerenders
+  const user = userEvent.setup({ skipHover: true });
   renderUsersApp();
 
   // user list page should be accessible
   expect(await ui.aliceRow.find()).toBeInTheDocument();
-  await expect(document.body).toHaveNoA11yViolations();
+  await act(async () => {
+    await expect(document.body).toHaveNoA11yViolations();
+  });
 
   // user creation dialog should be accessible
   await user.click(await ui.createUserButton.find());
-  expect(await ui.dialogCreateUser.find()).toBeInTheDocument();
-  await waitFor(async () => {
-    await expect(ui.dialogCreateUser.get()).toHaveNoA11yViolations();
-  });
+  await expect(await ui.dialogCreateUser.find()).toHaveNoA11yViolations();
   await user.click(ui.cancelButton.get());
 
   // users group membership dialog should be accessible
   await user.click(await ui.aliceUpdateGroupButton.find());
-  expect(await ui.dialogGroups.find()).toBeInTheDocument();
-  await waitFor(async () => {
-    await expect(await ui.dialogGroups.find()).toHaveNoA11yViolations();
-  });
+  await expect(await ui.dialogGroups.find()).toHaveNoA11yViolations();
   await user.click(ui.doneButton.get());
 
   // user update dialog should be accessible
   await user.click(await ui.aliceUpdateButton.find());
-  await user.click(await ui.aliceRow.byRole('menuitem', { name: 'update_details' }).find());
-  expect(await ui.dialogUpdateUser.find()).toBeInTheDocument();
+  await user.click(await byText('update_details').find());
   await expect(await ui.dialogUpdateUser.find()).toHaveNoA11yViolations();
   await user.click(ui.cancelButton.get());
 
@@ -757,20 +769,14 @@ it('accessibility', async () => {
       })
       .find(),
   );
-
-  expect(await ui.dialogTokens.find()).toBeInTheDocument();
-  await waitFor(async () => {
-    await expect(await ui.dialogTokens.find()).toHaveNoA11yViolations();
-  });
+  await expect(await ui.dialogTokens.find()).toHaveNoA11yViolations();
   await user.click(ui.closeButton.get());
 
   // user password dialog should be accessible
   await user.click(await ui.aliceUpdateButton.find());
-  await user.click(
-    await ui.aliceRow.byRole('menuitem', { name: 'my_profile.password.title' }).find(),
-  );
-  expect(await ui.dialogPasswords.find()).toBeInTheDocument();
+  await user.click(await byText('my_profile.password.title').find());
   await expect(await ui.dialogPasswords.find()).toHaveNoA11yViolations();
+  await user.click(ui.cancelButton.get());
 });
 
 function renderUsersApp(featureList: Feature[] = [], currentUser?: CurrentUser) {

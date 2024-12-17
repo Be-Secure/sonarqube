@@ -17,7 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { HotspotRatingEnum } from 'design-system';
+
+import { HotspotRatingEnum } from '~design-system';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import { Standards } from '../../types/security';
 import {
@@ -186,6 +187,16 @@ export function mockStandards(): Standards {
     'owaspAsvs-4.0': {
       '1': {
         title: 'New OWASP ASVS cat 1',
+      },
+    },
+    'stig-ASD_V5R3': {
+      'V-123': {
+        title: 'STIG requirement 123',
+      },
+    },
+    casa: {
+      '1': {
+        title: 'New CASA cat 1',
       },
     },
   };

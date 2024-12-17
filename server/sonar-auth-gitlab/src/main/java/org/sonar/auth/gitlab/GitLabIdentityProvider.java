@@ -140,15 +140,11 @@ public class GitLabIdentityProvider implements OAuth2IdentityProvider {
     }
 
     boolean allowedUser = userGroups.stream()
-      .anyMatch(userGroup -> isAllowedGroup(userGroup, allowedGroups));
+      .anyMatch(gitLabSettings::isAllowedGroup);
 
     if (!allowedUser) {
       throw new UnauthorizedException("You are not allowed to authenticate");
     }
-  }
-
-  private static boolean isAllowedGroup(String group, Set<String> allowedGroups) {
-    return allowedGroups.stream().anyMatch(group::startsWith);
   }
 
   private Set<String> getGroups(OAuth20Service scribe, OAuth2AccessToken accessToken) {

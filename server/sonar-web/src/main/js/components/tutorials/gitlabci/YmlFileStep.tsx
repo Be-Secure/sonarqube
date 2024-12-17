@@ -17,6 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+import * as React from 'react';
+import { FormattedMessage } from 'react-intl';
 import {
   ClipboardIconButton,
   CodeSnippet,
@@ -24,9 +27,7 @@ import {
   NumberedList,
   NumberedListItem,
   TutorialStep,
-} from 'design-system';
-import * as React from 'react';
-import { FormattedMessage } from 'react-intl';
+} from '~design-system';
 import withAvailableFeatures, {
   WithAvailableFeaturesProps,
 } from '../../../app/components/available-features/withAvailableFeatures';
@@ -38,14 +39,9 @@ import BuildConfigSelection from '../components/BuildConfigSelection';
 import GithubCFamilyExampleRepositories from '../components/GithubCFamilyExampleRepositories';
 import GradleBuildSelection from '../components/GradleBuildSelection';
 import { InlineSnippet } from '../components/InlineSnippet';
-import { JreRequiredWarning } from '../components/JreRequiredWarning';
 import RenderOptions from '../components/RenderOptions';
 import { Arch, BuildTools, GradleBuildDSL, OSs, TutorialConfig, TutorialModes } from '../types';
-import {
-  shouldShowArchSelector,
-  shouldShowGithubCFamilyExampleRepositories,
-  showJreWarning,
-} from '../utils';
+import { shouldShowArchSelector, shouldShowGithubCFamilyExampleRepositories } from '../utils';
 import PipeCommand from './commands/PipeCommand';
 
 export interface YmlFileStepProps extends WithAvailableFeaturesProps {
@@ -97,6 +93,7 @@ const snippetForBuildTool = {
   [BuildTools.ObjectiveC]: otherSnippet,
   [BuildTools.Gradle]: gradleSnippet,
   [BuildTools.Maven]: mavenSnippet,
+  [BuildTools.Dart]: otherSnippet,
   [BuildTools.Other]: otherSnippet,
 };
 
@@ -105,6 +102,7 @@ const filenameForBuildTool = {
   [BuildTools.ObjectiveC]: 'sonar-project.properties',
   [BuildTools.Gradle]: GradleBuildDSL.Groovy,
   [BuildTools.Maven]: 'pom.xml',
+  [BuildTools.Dart]: 'sonar-project.properties',
   [BuildTools.Other]: 'sonar-project.properties',
 };
 
@@ -113,12 +111,12 @@ const snippetLanguageForBuildTool = {
   [BuildTools.ObjectiveC]: undefined,
   [BuildTools.Gradle]: undefined,
   [BuildTools.Maven]: 'xml',
+  [BuildTools.Dart]: undefined,
   [BuildTools.Other]: undefined,
 };
 
 export function YmlFileStep(props: Readonly<YmlFileStepProps>) {
   const { component, hasCLanguageFeature, setDone } = props;
-  const [os, setOs] = React.useState<OSs>(OSs.Linux);
   const [arch, setArch] = React.useState<Arch>(Arch.X86_64);
 
   const [config, setConfig] = React.useState<TutorialConfig>({});
@@ -141,19 +139,7 @@ export function YmlFileStep(props: Readonly<YmlFileStepProps>) {
           supportCFamily={hasCLanguageFeature}
           onSetConfig={onSetConfig}
         />
-        {(config.buildTool === BuildTools.Other ||
-          config.buildTool === BuildTools.Cpp ||
-          config.buildTool === BuildTools.ObjectiveC) && (
-          <RenderOptions
-            label={translate('onboarding.build.other.os')}
-            checked={os}
-            onCheck={(value: OSs) => setOs(value)}
-            optionLabelKey="onboarding.build.other.os"
-            options={[OSs.Linux, OSs.Windows, OSs.MacOS]}
-            titleLabelKey="onboarding.build.other.os"
-          />
-        )}
-        {shouldShowArchSelector(os, config) && (
+        {shouldShowArchSelector(OSs.Linux, config) && (
           <RenderOptions
             label={translate('onboarding.build.other.architecture')}
             checked={arch}
@@ -250,13 +236,11 @@ export function YmlFileStep(props: Readonly<YmlFileStepProps>) {
               ),
             }}
           />
-          {showJreWarning(config, arch) && <JreRequiredWarning />}
 
           <PipeCommand
             buildTool={buildTool}
             projectKey={component.key}
-            os={os}
-            arch={arch}
+            arch={shouldShowArchSelector(OSs.Linux, config) ? arch : Arch.X86_64}
             config={config}
           />
 

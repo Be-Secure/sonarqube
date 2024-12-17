@@ -17,8 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { DateRangePicker } from 'design-system';
+
 import * as React from 'react';
+import { DateRangePicker } from '~design-system';
 import { translate } from '../../../helpers/l10n';
 
 interface Props {
@@ -36,7 +37,8 @@ export default class DateFilter extends React.PureComponent<Props> {
     const dateRange = { from: this.props.minSubmittedAt, to: this.props.maxExecutedAt };
     return (
       <DateRangePicker
-        clearButtonLabel={translate('clear')}
+        startClearButtonLabel={translate('clear.start')}
+        endClearButtonLabel={translate('clear.end')}
         fromLabel={translate('start_date')}
         toLabel={translate('end_date')}
         onChange={this.handleDateRangeChange}

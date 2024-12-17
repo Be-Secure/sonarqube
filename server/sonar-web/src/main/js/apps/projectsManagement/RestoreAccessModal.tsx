@@ -17,9 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonPrimary, Modal } from 'design-system';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
+import { Modal } from '~design-system';
 import { grantPermissionToUser } from '../../api/permissions';
 import { Project } from '../../api/project-management';
 import { translate } from '../../helpers/l10n';
@@ -92,9 +94,15 @@ export default class RestoreAccessModal extends React.PureComponent<Props, State
           </form>
         }
         primaryButton={
-          <ButtonPrimary autoFocus disabled={loading} form={FORM_ID} type="submit">
+          <Button
+            hasAutoFocus
+            isDisabled={loading}
+            form={FORM_ID}
+            type="submit"
+            variety={ButtonVariety.Primary}
+          >
             {translate('restore')}
-          </ButtonPrimary>
+          </Button>
         }
         secondaryButtonLabel={translate('cancel')}
       />

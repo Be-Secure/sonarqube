@@ -27,4 +27,8 @@ public interface DevOpsPlatformSettings {
 
   boolean isProjectVisibilitySynchronizationActivated();
 
+  boolean isUserConsentRequiredAfterUpgrade();
+
+  String getProjectsPermissionsProvisioningTaskName();
+
 }

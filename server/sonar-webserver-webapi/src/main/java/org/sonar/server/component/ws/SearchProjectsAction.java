@@ -40,21 +40,25 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
-import org.sonar.api.resources.Qualifiers;
 import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.Response;
 import org.sonar.api.server.ws.WebService;
 import org.sonar.api.server.ws.WebService.Param;
+import org.sonar.api.web.UserRole;
 import org.sonar.core.platform.EditionProvider.Edition;
 import org.sonar.core.platform.PlatformEditionProvider;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.component.BranchDto;
+import org.sonar.db.component.ComponentQualifiers;
 import org.sonar.db.component.SnapshotDto;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.db.property.PropertyDto;
 import org.sonar.db.property.PropertyQuery;
+import org.sonar.db.user.TokenType;
+import org.sonar.server.ai.code.assurance.AiCodeAssurance;
+import org.sonar.server.ai.code.assurance.AiCodeAssuranceVerifier;
 import org.sonar.server.component.ws.FilterParser.Criterion;
 import org.sonar.server.component.ws.SearchProjectsAction.SearchResults.SearchResultsBuilder;
 import org.sonar.server.es.Facets;
@@ -63,8 +67,10 @@ import org.sonar.server.es.SearchOptions;
 import org.sonar.server.measure.index.ProjectMeasuresIndex;
 import org.sonar.server.measure.index.ProjectMeasuresQuery;
 import org.sonar.server.project.Visibility;
+import org.sonar.server.user.TokenUserSession;
 import org.sonar.server.user.UserSession;
 import org.sonarqube.ws.Common;
+import org.sonarqube.ws.Components;
 import org.sonarqube.ws.Components.Component;
 import org.sonarqube.ws.Components.SearchProjectsWsResponse;
 
@@ -108,13 +114,15 @@ public class SearchProjectsAction implements ComponentsWsAction {
   private final ProjectMeasuresIndex index;
   private final UserSession userSession;
   private final PlatformEditionProvider editionProvider;
+  private final AiCodeAssuranceVerifier aiCodeAssuranceVerifier;
 
   public SearchProjectsAction(DbClient dbClient, ProjectMeasuresIndex index, UserSession userSession,
-    PlatformEditionProvider editionProvider) {
+    PlatformEditionProvider editionProvider, AiCodeAssuranceVerifier aiCodeAssuranceVerifier) {
     this.dbClient = dbClient;
     this.index = index;
     this.userSession = userSession;
     this.editionProvider = editionProvider;
+    this.aiCodeAssuranceVerifier = aiCodeAssuranceVerifier;
   }
 
   @Override
@@ -125,6 +133,9 @@ public class SearchProjectsAction implements ComponentsWsAction {
       .addPagingParams(DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
       .setInternal(true)
       .setChangelog(
+        new Change("10.8", "Field 'isAiCodeAssured' response field has been deprecated. Use 'aiCodeAssurance' instead."),
+        new Change("10.8", "Add 'aiCodeAssurance' response field"),
+        new Change("10.7", "Add 'isAiCodeAssured' response field"),
         new Change("10.3", "Add 'creationDate' sort parameter."),
         new Change("10.2", "Field 'needIssueSync' removed from response"),
         new Change("8.3", "Add 'qualifier' filter and facet"),
@@ -236,12 +247,15 @@ public class SearchProjectsAction implements ComponentsWsAction {
     ProjectMeasuresQueryValidator.validate(query);
 
     SearchIdResult<String> esResults = index.search(query, new SearchOptions()
-      .addFacets(request.getFacets())
+      // skip facets for project token authorization, avoid exposing unauthorized projects count
+      .addFacets(isProjectAnalysisToken() ? emptyList() : request.getFacets())
       .setPage(request.getPage(), request.getPageSize()));
 
     List<String> projectUuids = esResults.getUuids();
     Ordering<ProjectDto> ordering = Ordering.explicit(projectUuids).onResultOf(ProjectDto::getUuid);
     List<ProjectDto> projects = ordering.immutableSortedCopy(dbClient.projectDao().selectByUuids(dbSession, new HashSet<>(projectUuids)));
+    projects = userSession.keepAuthorizedEntities(UserRole.USER, projects);
+
     Map<String, BranchDto> mainBranchByUuid = dbClient.branchDao().selectMainBranchesByProjectUuids(dbSession, projectUuids)
       .stream()
       .collect(Collectors.toMap(BranchDto::getUuid, b -> b));
@@ -281,13 +295,13 @@ public class SearchProjectsAction implements ComponentsWsAction {
   private Set<String> getQualifiersFromEdition() {
     Optional<Edition> edition = editionProvider.get();
 
-    if (!edition.isPresent()) {
-      return Sets.newHashSet(Qualifiers.PROJECT);
+    if (edition.isEmpty()) {
+      return Sets.newHashSet(ComponentQualifiers.PROJECT);
     }
 
     return switch (edition.get()) {
-      case ENTERPRISE, DATACENTER, DEVELOPER -> Sets.newHashSet(Qualifiers.PROJECT, Qualifiers.APP);
-      default -> Sets.newHashSet(Qualifiers.PROJECT);
+      case ENTERPRISE, DATACENTER, DEVELOPER -> Sets.newHashSet(ComponentQualifiers.PROJECT, ComponentQualifiers.APP);
+      default -> Sets.newHashSet(ComponentQualifiers.PROJECT);
     };
   }
 
@@ -327,11 +341,11 @@ public class SearchProjectsAction implements ComponentsWsAction {
   }
 
   private Map<String, Long> getApplicationsLeakPeriod(DbSession dbSession, SearchProjectsRequest request, Set<String> qualifiers, Collection<String> mainBranchUuids) {
-    if (qualifiers.contains(Qualifiers.APP) && request.getAdditionalFields().contains(LEAK_PERIOD_DATE)) {
-      return dbClient.liveMeasureDao().selectByComponentUuidsAndMetricKeys(dbSession, mainBranchUuids, Collections.singleton(METRIC_LEAK_PROJECTS_KEY))
+    if (qualifiers.contains(ComponentQualifiers.APP) && request.getAdditionalFields().contains(LEAK_PERIOD_DATE)) {
+      return dbClient.measureDao().selectByComponentUuidsAndMetricKeys(dbSession, mainBranchUuids, Collections.singleton(METRIC_LEAK_PROJECTS_KEY))
         .stream()
-        .filter(lm -> !Objects.isNull(lm.getDataAsString()))
-        .map(lm -> Maps.immutableEntry(lm.getComponentUuid(), ApplicationLeakProjects.parse(lm.getDataAsString()).getOldestLeak()))
+        .filter(m -> !Objects.isNull(m.getString(METRIC_LEAK_PROJECTS_KEY)))
+        .map(m -> Maps.immutableEntry(m.getComponentUuid(), ApplicationLeakProjects.parse(m.getString(METRIC_LEAK_PROJECTS_KEY)).getOldestLeak()))
         .filter(entry -> entry.getValue().isPresent())
         .collect(Collectors.toMap(Entry::getKey, entry -> entry.getValue().get().getLeak()));
     }
@@ -367,7 +381,8 @@ public class SearchProjectsAction implements ComponentsWsAction {
       .map(response -> response.setPaging(Common.Paging.newBuilder()
         .setPageIndex(request.getPage())
         .setPageSize(request.getPageSize())
-        .setTotal(searchResults.total)))
+        // skip total for project token authorization, avoid exposing unauthorized projects count
+        .setTotal(isProjectAnalysisToken() ? searchResults.projects.size() : searchResults.total)))
       .map(response -> {
         searchResults.projects.stream()
           .map(dbToWsComponent)
@@ -453,7 +468,7 @@ public class SearchProjectsAction implements ComponentsWsAction {
     }
   }
 
-  private static class DbToWsComponent implements Function<ProjectDto, Component> {
+  private class DbToWsComponent implements Function<ProjectDto, Component> {
     private final SearchProjectsRequest request;
     private final Component.Builder wsComponent;
     private final Set<String> favoriteProjectUuids;
@@ -472,12 +487,16 @@ public class SearchProjectsAction implements ComponentsWsAction {
 
     @Override
     public Component apply(ProjectDto dbProject) {
+      AiCodeAssurance aiCodeAssurance = aiCodeAssuranceVerifier.getAiCodeAssurance(dbProject);
       wsComponent
         .clear()
         .setKey(dbProject.getKey())
         .setName(dbProject.getName())
         .setQualifier(dbProject.getQualifier())
-        .setVisibility(Visibility.getLabel(dbProject.isPrivate()));
+        .setVisibility(Visibility.getLabel(dbProject.isPrivate()))
+        .setIsAiCodeAssured(AiCodeAssurance.AI_CODE_ASSURED.equals(aiCodeAssurance))
+        .setAiCodeAssurance(Components.AiCodeAssurance.valueOf(aiCodeAssurance.name()))
+        .setIsAiCodeFixEnabled(dbProject.getAiCodeFixEnabled());
       wsComponent.getTagsBuilder().addAllTags(dbProject.getTags());
 
       SnapshotDto snapshotDto = analysisByProjectUuid.get(dbProject.getUuid());
@@ -486,7 +505,7 @@ public class SearchProjectsAction implements ComponentsWsAction {
           wsComponent.setAnalysisDate(formatDateTime(snapshotDto.getCreatedAt()));
         }
         if (request.getAdditionalFields().contains(LEAK_PERIOD_DATE)) {
-          if (Qualifiers.APP.equals(dbProject.getQualifier())) {
+          if (ComponentQualifiers.APP.equals(dbProject.getQualifier())) {
             ofNullable(applicationsLeakPeriod.get(dbProject.getUuid())).ifPresent(leakPeriodDate -> wsComponent.setLeakPeriodDate(formatDateTime(leakPeriodDate)));
           } else {
             ofNullable(snapshotDto.getPeriodDate()).ifPresent(leakPeriodDate -> wsComponent.setLeakPeriodDate(formatDateTime(leakPeriodDate)));
@@ -500,6 +519,7 @@ public class SearchProjectsAction implements ComponentsWsAction {
 
       return wsComponent.build();
     }
+
   }
 
   public static class SearchResults {
@@ -689,5 +709,12 @@ public class SearchProjectsAction implements ComponentsWsAction {
       checkArgument(pageSize <= MAX_PAGE_SIZE, "Page size must not be greater than %s", MAX_PAGE_SIZE);
       return new SearchProjectsRequest(this);
     }
+  }
+
+  private boolean isProjectAnalysisToken() {
+    if (userSession instanceof TokenUserSession tokenUserSession) {
+      return TokenType.PROJECT_ANALYSIS_TOKEN.equals(tokenUserSession.getTokenType());
+    }
+    return false;
   }
 }

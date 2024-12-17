@@ -23,11 +23,11 @@ import java.util.Optional;
 import org.sonar.ce.task.projectanalysis.component.Component;
 import org.sonar.ce.task.projectanalysis.component.PathAwareVisitorAdapter;
 import org.sonar.ce.task.projectanalysis.issue.ComponentIssuesRepository;
+import org.sonar.ce.task.projectanalysis.issue.NewIssueClassifier;
 import org.sonar.ce.task.projectanalysis.measure.Measure;
 import org.sonar.ce.task.projectanalysis.measure.MeasureRepository;
 import org.sonar.ce.task.projectanalysis.metric.Metric;
 import org.sonar.ce.task.projectanalysis.metric.MetricRepository;
-import org.sonar.ce.task.projectanalysis.issue.NewIssueClassifier;
 
 import static org.sonar.api.measures.CoreMetrics.NEW_SECURITY_HOTSPOTS_REVIEWED_KEY;
 import static org.sonar.api.measures.CoreMetrics.NEW_SECURITY_HOTSPOTS_REVIEWED_STATUS_KEY;

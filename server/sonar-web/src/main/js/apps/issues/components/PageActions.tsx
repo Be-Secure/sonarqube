@@ -17,8 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { KeyboardHint } from 'design-system';
-import * as React from 'react';
+
+import { KeyboardHint } from '~design-system';
 import HomePageSelect from '../../../components/controls/HomePageSelect';
 import { translate } from '../../../helpers/l10n';
 import { Paging } from '../../../types/types';
@@ -35,7 +35,7 @@ export default function PageActions(props: PageActionsProps) {
   const { canSetHome, effortTotal, paging } = props;
 
   return (
-    <div className="sw-body-sm sw-flex sw-items-center sw-gap-6 sw-justify-end sw-flex-1">
+    <div className="sw-typo-default sw-flex sw-items-center sw-gap-6 sw-justify-end sw-flex-1">
       <KeyboardHint title={translate('issues.to_select_issues')} command="ArrowUp ArrowDown" />
       <KeyboardHint title={translate('issues.to_navigate')} command="ArrowLeft ArrowRight" />
 

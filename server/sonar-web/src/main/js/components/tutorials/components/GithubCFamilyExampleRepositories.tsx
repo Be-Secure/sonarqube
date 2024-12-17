@@ -20,10 +20,9 @@
 
 import { LinkStandalone } from '@sonarsource/echoes-react';
 import classNames from 'classnames';
-import { Card, LightLabel } from 'design-system';
-import React from 'react';
+import { Card, LightLabel } from '~design-system';
+import { Image } from '~sonar-aligned/components/common/Image';
 import { translate } from '../../../helpers/l10n';
-import { Image } from '../../common/Image';
 import { OSs, TutorialModes } from '../types';
 
 export interface GithubCFamilyExampleRepositoriesProps {
@@ -66,7 +65,7 @@ export default function GithubCFamilyExampleRepositories(
           height={20}
           src="/images/alm/github.svg"
         />
-        <LinkStandalone target="_blank" to={link}>
+        <LinkStandalone shouldOpenInNewTab to={link}>
           sonarsource-cfamily-examples
         </LinkStandalone>
       </div>

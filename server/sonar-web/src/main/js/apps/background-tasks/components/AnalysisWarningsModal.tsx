@@ -17,12 +17,20 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { DangerButtonSecondary, FlagMessage, HtmlFormatter, Modal, Spinner } from 'design-system';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import {
+  FlagMessage,
+  HtmlFormatter,
+  Modal,
+  SafeHTMLInjection,
+  SanitizeLevel,
+  Spinner,
+} from '~design-system';
 import { dismissAnalysisWarning, getTask } from '../../../api/ce';
 import withCurrentUserContext from '../../../app/components/current-user/withCurrentUserContext';
 import { translate } from '../../../helpers/l10n';
-import { sanitizeStringRestricted } from '../../../helpers/sanitize';
 import { TaskWarning } from '../../../types/tasks';
 import { CurrentUser } from '../../../types/users';
 
@@ -111,38 +119,39 @@ export class AnalysisWarningsModal extends React.PureComponent<Props, State> {
 
     const body = (
       <Spinner loading={loading}>
-        {warnings.map(({ dismissable, key, message }) => (
-          <React.Fragment key={key}>
-            <div className="sw-flex sw-items-center sw-mt-2">
-              <FlagMessage variant="warning">
-                <HtmlFormatter>
-                  <span
-                    // eslint-disable-next-line react/no-danger
-                    dangerouslySetInnerHTML={{
-                      __html: sanitizeStringRestricted(message.trim().replace(/\n/g, '<br />')),
-                    }}
-                  />
-                </HtmlFormatter>
-              </FlagMessage>
-            </div>
-            <div>
-              {dismissable && currentUser.isLoggedIn && (
-                <div className="sw-mt-4">
-                  <DangerButtonSecondary
-                    disabled={Boolean(dismissedWarning)}
-                    onClick={() => {
-                      this.handleDismissMessage(key);
-                    }}
-                  >
-                    {translate('dismiss_permanently')}
-                  </DangerButtonSecondary>
+        <ul>
+          {warnings.map(({ dismissable, key, message }) => (
+            <li key={key}>
+              <div className="sw-flex sw-items-center sw-mt-2">
+                <FlagMessage variant="warning">
+                  <HtmlFormatter>
+                    <SafeHTMLInjection
+                      htmlAsString={message.trim().replace(/\n/g, '<br />')}
+                      sanitizeLevel={SanitizeLevel.RESTRICTED}
+                    />
+                  </HtmlFormatter>
+                </FlagMessage>
+              </div>
+              <div>
+                {dismissable && currentUser.isLoggedIn && (
+                  <div className="sw-mt-4">
+                    <Button
+                      isDisabled={Boolean(dismissedWarning)}
+                      onClick={() => {
+                        this.handleDismissMessage(key);
+                      }}
+                      variety={ButtonVariety.DangerOutline}
+                    >
+                      {translate('dismiss_permanently')}
+                    </Button>
 
-                  <Spinner className="sw-ml-2" loading={dismissedWarning === key} />
-                </div>
-              )}
-            </div>
-          </React.Fragment>
-        ))}
+                    <Spinner className="sw-ml-2" loading={dismissedWarning === key} />
+                  </div>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
       </Spinner>
     );
 

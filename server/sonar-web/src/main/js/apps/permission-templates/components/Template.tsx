@@ -17,21 +17,21 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { FlagMessage, LargeCenteredLayout, PageContentFontWrapper } from 'design-system';
+
 import { without } from 'lodash';
 import * as React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { LargeCenteredLayout, PageContentFontWrapper } from '~design-system';
 import * as api from '../../../api/permissions';
 import AllHoldersList from '../../../components/permissions/AllHoldersList';
 import { FilterOption } from '../../../components/permissions/SearchForm';
-import UseQuery from '../../../helpers/UseQuery';
 import { translate } from '../../../helpers/l10n';
 import {
   PERMISSIONS_ORDER_FOR_PROJECT_TEMPLATE,
   convertToPermissionDefinitions,
 } from '../../../helpers/permissions';
-import { useGithubProvisioningEnabledQuery } from '../../../queries/identity-provider/github';
 import { Paging, PermissionGroup, PermissionTemplate, PermissionUser } from '../../../types/types';
+import ProvisioningWarning from './ProvisioningWarning';
 import TemplateDetails from './TemplateDetails';
 import TemplateHeader from './TemplateHeader';
 
@@ -338,7 +338,7 @@ export default class Template extends React.PureComponent<Props, State> {
 
     return (
       <LargeCenteredLayout id="permission-template">
-        <PageContentFontWrapper className="sw-my-8 sw-body-sm">
+        <PageContentFontWrapper className="sw-my-8 sw-typo-default">
           <Helmet defer={false} title={template.name} />
 
           <TemplateHeader
@@ -348,15 +348,7 @@ export default class Template extends React.PureComponent<Props, State> {
           />
           <main>
             <TemplateDetails template={template} />
-            <UseQuery query={useGithubProvisioningEnabledQuery}>
-              {({ data: githubProvisioningStatus }) =>
-                githubProvisioningStatus ? (
-                  <FlagMessage variant="warning" className="sw-w-fit sw-mb-4">
-                    {translate('permission_templates.github_warning')}
-                  </FlagMessage>
-                ) : null
-              }
-            </UseQuery>
+            <ProvisioningWarning />
 
             <AllHoldersList
               filter={filter}

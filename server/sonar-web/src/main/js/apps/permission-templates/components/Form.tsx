@@ -17,8 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonPrimary, FormField, InputField, InputTextArea, Modal, Spinner } from 'design-system';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { FormField, InputField, InputTextArea, Modal, Spinner } from '~design-system';
 import MandatoryFieldsExplanation from '../../../components/ui/MandatoryFieldsExplanation';
 import { translate } from '../../../helpers/l10n';
 
@@ -144,14 +146,15 @@ export default class Form extends React.PureComponent<Props, State> {
         primaryButton={
           <>
             <Spinner loading={this.state.submitting} />
-            <ButtonPrimary
-              disabled={this.state.submitting}
+            <Button
+              isDisabled={this.state.submitting}
               type="submit"
               form="permission-template-form"
               id="permission-template-submit"
+              variety={ButtonVariety.Primary}
             >
               {this.props.confirmButtonText}
-            </ButtonPrimary>
+            </Button>
           </>
         }
       />

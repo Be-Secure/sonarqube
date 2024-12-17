@@ -17,17 +17,18 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import '@testing-library/jest-dom';
 import { configure, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 
 configure({
-  asyncUtilTimeout: 3000,
+  asyncUtilTimeout: 6000,
 });
 
 expect.extend({
   async toHaveATooltipWithContent(received: any, content: string) {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
 
     if (!(received instanceof Element)) {
       return {
@@ -52,9 +53,43 @@ expect.extend({
         };
 
     await user.keyboard('{Escape}');
+    await user.unhover(received);
 
     await waitFor(() => {
       expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    });
+
+    return result;
+  },
+  async toHaveAPopoverWithContent(received: any, content: string) {
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+
+    if (!(received instanceof Element)) {
+      return {
+        pass: false,
+        message: () => `Received object is not an HTMLElement, and cannot have a tooltip`,
+      };
+    }
+
+    await user.click(received);
+
+    const popover = await screen.findByRole('dialog');
+
+    const result = popover.textContent?.includes(content)
+      ? {
+          pass: true,
+          message: () => `Tooltip content "${popover.textContent}" contains expected "${content}"`,
+        }
+      : {
+          pass: false,
+          message: () =>
+            `Tooltip content "${popover.textContent}" does not contain expected "${content}"`,
+        };
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     return result;

@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import * as React from 'react';
 import { useParams } from 'react-router-dom';
 import { useRefreshBranches } from '../../../queries/branch';
@@ -29,7 +30,7 @@ export default function ProjectAdminPageExtension() {
   const { component, onComponentChange } = React.useContext(ComponentContext);
 
   // We keep that for compatibility but ideally should advocate to use tanstack query
-  const onBranchesChange = useRefreshBranches();
+  const onBranchesChange = useRefreshBranches(component?.key);
 
   const extension = component?.configuration?.extensions?.find(
     (p) => p.key === `${pluginKey}/${extensionKey}`,

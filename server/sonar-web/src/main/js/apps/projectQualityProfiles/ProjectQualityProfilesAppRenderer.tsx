@@ -18,6 +18,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import { groupBy, orderBy } from 'lodash';
+import { Helmet } from 'react-helmet-async';
 import {
   ActionCell,
   ButtonPrimary,
@@ -33,16 +35,13 @@ import {
   TableRow,
   TableRowInteractive,
   Title,
-} from 'design-system';
-import { groupBy, orderBy } from 'lodash';
-import * as React from 'react';
-import { Helmet } from 'react-helmet-async';
+} from '~design-system';
 import A11ySkipTarget from '~sonar-aligned/components/a11y/A11ySkipTarget';
 import HelpTooltip from '~sonar-aligned/components/controls/HelpTooltip';
 import { Profile } from '../../api/quality-profiles';
 import Suggestions from '../../components/embed-docs-modal/Suggestions';
 import { DocLink } from '../../helpers/doc-links';
-import { translate } from '../../helpers/l10n';
+import { translate, translateWithParameters } from '../../helpers/l10n';
 import { getRulesUrl } from '../../helpers/urls';
 import { Component } from '../../types/types';
 import BuiltInQualityProfileBadge from '../quality-profiles/components/BuiltInQualityProfileBadge';
@@ -92,7 +91,7 @@ export default function ProjectQualityProfilesAppRenderer(
 
   return (
     <LargeCenteredLayout id="project-quality-profiles">
-      <PageContentFontWrapper className="sw-my-8 sw-body-sm">
+      <PageContentFontWrapper className="sw-my-8 sw-typo-default">
         <Suggestions suggestion={DocLink.InstanceAdminQualityProfiles} />
         <Helmet defer={false} title={translate('project_quality_profiles.page')} />
         <A11ySkipTarget anchor="profiles_main" />
@@ -150,7 +149,10 @@ export default function ProjectQualityProfilesAppRenderer(
                         <ActionCell>
                           <InteractiveIcon
                             Icon={PencilIcon}
-                            aria-label={translate('project_quality_profile.change_profile')}
+                            aria-label={translateWithParameters(
+                              'project_quality_profile.change_profile_x',
+                              profile.languageName,
+                            )}
                             onClick={() => {
                               props.onOpenSetProfileModal(projectProfile);
                             }}

@@ -18,6 +18,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import { sortBy } from 'lodash';
+import * as React from 'react';
+import { OptionProps, SingleValueProps, components } from 'react-select';
 import {
   ButtonSecondary,
   Checkbox,
@@ -27,10 +30,7 @@ import {
   InputSearch,
   InputSelect,
   Spinner,
-} from 'design-system';
-import { sortBy } from 'lodash';
-import * as React from 'react';
-import { OptionProps, SingleValueProps, components } from 'react-select';
+} from '~design-system';
 import HelpTooltip from '~sonar-aligned/components/controls/HelpTooltip';
 import { Visibility } from '~sonar-aligned/types/component';
 import { Project } from '../../api/project-management';
@@ -115,9 +115,15 @@ class Search extends React.PureComponent<Props, State> {
   handleVisibilityChange = ({ value }: LabelValueSelectOption) =>
     this.props.onVisibilityChanged(value);
 
-  optionRenderer = (props: OptionProps<LabelValueSelectOption, false>) => (
-    <components.Option {...props}>{this.renderQualifierOption(props.data)}</components.Option>
-  );
+  optionRenderer = (props: OptionProps<LabelValueSelectOption, false>) => {
+    // For tests and a11y
+    props.innerProps.role = 'option';
+    props.innerProps['aria-selected'] = props.isSelected;
+
+    return (
+      <components.Option {...props}>{this.renderQualifierOption(props.data)}</components.Option>
+    );
+  };
 
   singleValueRenderer = (props: SingleValueProps<LabelValueSelectOption, false>) => (
     <components.SingleValue {...props}>

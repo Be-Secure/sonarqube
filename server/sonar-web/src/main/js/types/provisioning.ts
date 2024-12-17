@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { TaskStatuses } from './tasks';
 
 export type GithubStatusDisabled = {
@@ -78,9 +79,8 @@ export interface GitHubConfigurationStatus {
   }[];
 }
 
-export interface GitHubMapping {
+export interface DevopsRolesMapping {
   readonly baseRole?: boolean;
-  readonly githubRole: string;
   readonly id: string;
   permissions: {
     admin: boolean;
@@ -90,6 +90,7 @@ export interface GitHubMapping {
     securityHotspotAdmin: boolean;
     user: boolean;
   };
+  readonly role: string;
 }
 
 export interface GitLabConfigurationCreateBody

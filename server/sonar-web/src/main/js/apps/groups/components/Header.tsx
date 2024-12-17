@@ -18,9 +18,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { ButtonPrimary, FlagMessage, Title } from 'design-system';
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
+import { Title } from '~design-system';
 import DocumentationLink from '../../../components/common/DocumentationLink';
 import { DocLink } from '../../../helpers/doc-links';
 import { translate } from '../../../helpers/l10n';
@@ -39,34 +40,41 @@ export default function Header({ manageProvider }: Readonly<HeaderProps>) {
       <div id="groups-header">
         <div className="sw-flex sw-justify-between">
           <Title className="sw-mb-4">{translate('user_groups.page')}</Title>
-          <ButtonPrimary
+          <Button
             id="groups-create"
-            disabled={manageProvider !== undefined}
+            isDisabled={manageProvider !== undefined}
             onClick={() => setCreateModal(true)}
+            variety={ButtonVariety.Primary}
           >
             {translate('groups.create_group')}
-          </ButtonPrimary>
+          </Button>
         </div>
 
         {manageProvider === undefined ? (
           <p className="sw-mb-4">{translate('user_groups.page.description')}</p>
         ) : (
-          <FlagMessage className="sw-mb-4 sw-max-w-full sw-w-full" variant="info">
-            <div>
+          <div className="sw-max-w-3/4 sw-mb-4">
+            <FormattedMessage
+              defaultMessage={translate('user_groups.page.managed_description')}
+              id="user_groups.page.managed_description"
+              values={{
+                provider: translate(`managed.${manageProvider}`),
+              }}
+            />
+            <div className="sw-mt-2">
               <FormattedMessage
-                defaultMessage={translate('user_groups.page.managed_description')}
-                id="user_groups.page.managed_description"
+                defaultMessage={translate('user_groups.page.managed_description.recommendation')}
+                id="user_groups.page.managed_description.recommendation"
                 values={{
-                  provider: manageProvider,
                   link: (
                     <DocumentationLink to={DocLink.AuthOverview}>
-                      {translate('documentation')}
+                      {translate('user_groups.page.managing_groups')}
                     </DocumentationLink>
                   ),
                 }}
               />
             </div>
-          </FlagMessage>
+          </div>
         )}
       </div>
       {createModal && <GroupForm onClose={() => setCreateModal(false)} create />}

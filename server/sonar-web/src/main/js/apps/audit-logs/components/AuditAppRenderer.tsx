@@ -20,16 +20,15 @@
 
 import { Link, RadioButtonGroup } from '@sonarsource/echoes-react';
 import { subDays } from 'date-fns';
+import { Helmet } from 'react-helmet-async';
+import { FormattedMessage } from 'react-intl';
 import {
   DateRangePicker,
   LargeCenteredLayout,
   PageContentFontWrapper,
   PopupZLevel,
   Title,
-} from 'design-system';
-import * as React from 'react';
-import { Helmet } from 'react-helmet-async';
-import { FormattedMessage } from 'react-intl';
+} from '~design-system';
 import { queryToSearchString } from '~sonar-aligned/helpers/urls';
 import { now } from '../../../helpers/dates';
 import { translate } from '../../../helpers/l10n';
@@ -78,7 +77,7 @@ export default function AuditAppRenderer(props: Readonly<AuditAppRendererProps>)
 
   return (
     <LargeCenteredLayout as="main" id="audit-logs-page">
-      <PageContentFontWrapper className="sw-body-sm sw-my-8">
+      <PageContentFontWrapper className="sw-typo-default sw-my-8">
         <Helmet title={translate('audit_logs.page')} />
 
         <Title>{translate('audit_logs.page')}</Title>
@@ -107,9 +106,12 @@ export default function AuditAppRenderer(props: Readonly<AuditAppRendererProps>)
         </p>
 
         <div className="sw-mb-6">
-          <h3 className="sw-mb-4">{translate('audit_logs.download')}</h3>
+          <h3 className="sw-mb-4" id="audit-logs-housekeeping-radio-label">
+            {translate('audit_logs.download')}
+          </h3>
 
           <RadioButtonGroup
+            ariaLabelledBy="audit-logs-housekeeping-radio-label"
             id="audit-logs-housekeeping-radio"
             options={getRangeOptions(housekeepingPolicy).map((option) => ({
               label: translate('audit_logs.range_option', option),
@@ -121,7 +123,8 @@ export default function AuditAppRenderer(props: Readonly<AuditAppRendererProps>)
 
           <DateRangePicker
             className="sw-w-abs-350 sw-mt-4"
-            clearButtonLabel={translate('clear')}
+            startClearButtonLabel={translate('clear.start')}
+            endClearButtonLabel={translate('clear.end')}
             fromLabel={translate('start_date')}
             onChange={props.handleDateSelection}
             separatorText={translate('to_')}

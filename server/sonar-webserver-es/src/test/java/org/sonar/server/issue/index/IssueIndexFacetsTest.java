@@ -23,9 +23,12 @@ import java.time.ZoneId;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.elasticsearch.action.search.SearchResponse;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.sonar.api.issue.IssueStatus;
 import org.sonar.api.issue.impact.Severity;
 import org.sonar.api.rules.RuleType;
@@ -41,6 +44,7 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.IntStream.rangeClosed;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
+import static org.mockito.Mockito.doReturn;
 import static org.sonar.api.issue.Issue.RESOLUTION_FALSE_POSITIVE;
 import static org.sonar.api.issue.Issue.RESOLUTION_FIXED;
 import static org.sonar.api.issue.Issue.RESOLUTION_REMOVED;
@@ -50,8 +54,10 @@ import static org.sonar.api.issue.Issue.STATUS_CONFIRMED;
 import static org.sonar.api.issue.Issue.STATUS_OPEN;
 import static org.sonar.api.issue.Issue.STATUS_REOPENED;
 import static org.sonar.api.issue.Issue.STATUS_RESOLVED;
+import static org.sonar.api.issue.impact.Severity.HIGH;
 import static org.sonar.api.issue.impact.SoftwareQuality.MAINTAINABILITY;
 import static org.sonar.api.issue.impact.SoftwareQuality.RELIABILITY;
+import static org.sonar.api.issue.impact.SoftwareQuality.SECURITY;
 import static org.sonar.api.rule.Severity.BLOCKER;
 import static org.sonar.api.rule.Severity.CRITICAL;
 import static org.sonar.api.rule.Severity.INFO;
@@ -66,6 +72,7 @@ import static org.sonar.api.server.rule.RulesDefinition.OwaspTop10Version.Y2021;
 import static org.sonar.api.server.rule.RulesDefinition.PciDssVersion.V3_2;
 import static org.sonar.api.server.rule.RulesDefinition.PciDssVersion.V4_0;
 import static org.sonar.api.utils.DateUtils.parseDateTime;
+import static org.sonar.core.config.MQRModeConstants.MULTI_QUALITY_MODE_ENABLED;
 import static org.sonar.db.component.ComponentTesting.newDirectory;
 import static org.sonar.db.component.ComponentTesting.newFileDto;
 import static org.sonar.db.component.ComponentTesting.newPrivateProjectDto;
@@ -115,7 +122,8 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
       newDoc("I4", project.uuid(), file2),
       newDoc("I5", project.uuid(), file3));
 
-    assertThatFacetHasOnly(IssueQuery.builder(), "files", entry("src/NAME_ABCD", 1L), entry("src/NAME_BCDE", 2L), entry("src/NAME_CDEF", 1L));
+    assertThatFacetHasOnly(IssueQuery.builder(), "files", entry("src/NAME_ABCD", 1L), entry("src/NAME_BCDE", 2L), entry("src/NAME_CDEF",
+      1L));
   }
 
   @Test
@@ -147,23 +155,28 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
   void facet_on_directories_return_100_entries_plus_selected_values() {
     ComponentDto project = newPrivateProjectDto();
     indexIssues(
-      rangeClosed(1, 110).mapToObj(i -> newDoc(newFileDto(project, newDirectory(project, "dir" + i)), project.uuid()).setDirectoryPath("a" + i)).toArray(IssueDoc[]::new));
+      rangeClosed(1, 110).mapToObj(i -> newDoc(newFileDto(project, newDirectory(project, "dir" + i)), project.uuid()).setDirectoryPath("a"
+        + i)).toArray(IssueDoc[]::new));
     IssueDoc issue1 = newDoc(newFileDto(project, newDirectory(project, "path1")), project.uuid()).setDirectoryPath("directory1");
     IssueDoc issue2 = newDoc(newFileDto(project, newDirectory(project, "path2")), project.uuid()).setDirectoryPath("directory2");
     indexIssues(issue1, issue2);
 
     assertThatFacetHasSize(IssueQuery.builder().build(), "directories", 100);
-    assertThatFacetHasSize(IssueQuery.builder().directories(asList(issue1.directoryPath(), issue2.directoryPath())).build(), "directories", 102);
+    assertThatFacetHasSize(IssueQuery.builder().directories(asList(issue1.directoryPath(), issue2.directoryPath())).build(), "directories"
+      , 102);
   }
 
-  @Test
-  void facets_on_cwe() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void facets_on_cwe(boolean mqrMode) {
+    doReturn(Optional.of(mqrMode)).when(config).getBoolean(MULTI_QUALITY_MODE_ENABLED);
     ComponentDto project = newPrivateProjectDto();
     ComponentDto file = newFileDto(project);
 
     indexIssues(
-      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setCwe(asList("20", "564", "89", "943")),
-      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setCwe(asList("943")),
+      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setCwe(asList("20", "564",
+        "89", "943")),
+      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setCwe(asList("943")),
       newDoc("I3", project.uuid(), file));
 
     assertThatFacetHasOnly(IssueQuery.builder(), "cwe",
@@ -173,14 +186,16 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
       entry("89", 1L));
   }
 
-  @Test
-  void facets_on_pciDss32() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void facets_on_pciDss32(boolean mqrMode) {
+    doReturn(Optional.of(mqrMode)).when(config).getBoolean(MULTI_QUALITY_MODE_ENABLED);
     ComponentDto project = newPrivateProjectDto();
     ComponentDto file = newFileDto(project);
 
     indexIssues(
-      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setPciDss32(asList("1", "2")),
-      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setPciDss32(singletonList("3")),
+      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setPciDss32(asList("1", "2")),
+      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setPciDss32(singletonList("3")),
       newDoc("I3", project.uuid(), file));
 
     assertThatFacetHasOnly(IssueQuery.builder(), V3_2.prefix(),
@@ -189,14 +204,16 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
       entry("3", 1L));
   }
 
-  @Test
-  void facets_on_pciDss40() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void facets_on_pciDss40(boolean mqrMode) {
+    doReturn(Optional.of(mqrMode)).when(config).getBoolean(MULTI_QUALITY_MODE_ENABLED);
     ComponentDto project = newPrivateProjectDto();
     ComponentDto file = newFileDto(project);
 
     indexIssues(
-      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setPciDss40(asList("1", "2")),
-      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setPciDss40(singletonList("3")),
+      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setPciDss40(asList("1", "2")),
+      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setPciDss40(singletonList("3")),
       newDoc("I3", project.uuid(), file));
 
     assertThatFacetHasOnly(IssueQuery.builder(), V4_0.prefix(),
@@ -205,14 +222,18 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
       entry("3", 1L));
   }
 
-  @Test
-  void facets_on_owaspAsvs40() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void facets_on_owaspAsvs40(boolean mqrMode) {
+    doReturn(Optional.of(mqrMode)).when(config).getBoolean(MULTI_QUALITY_MODE_ENABLED);
     ComponentDto project = newPrivateProjectDto();
     ComponentDto file = newFileDto(project);
 
     indexIssues(
-      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setOwaspAsvs40(asList("1", "2")),
-      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setOwaspAsvs40(singletonList("3")),
+      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setOwaspAsvs40(asList("1", "2"
+      )),
+      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setOwaspAsvs40(singletonList(
+        "3")),
       newDoc("I3", project.uuid(), file));
 
     assertThatFacetHasOnly(IssueQuery.builder(), OwaspAsvsVersion.V4_0.prefix(),
@@ -221,14 +242,18 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
       entry("3", 1L));
   }
 
-  @Test
-  void facets_on_owaspTop10() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void facets_on_owaspTop10(boolean mqrMode) {
+    doReturn(Optional.of(mqrMode)).when(config).getBoolean(MULTI_QUALITY_MODE_ENABLED);
     ComponentDto project = newPrivateProjectDto();
     ComponentDto file = newFileDto(project);
 
     indexIssues(
-      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setOwaspTop10(asList("a1", "a2")),
-      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setOwaspTop10(singletonList("a3")),
+      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setOwaspTop10(asList("a1",
+        "a2")),
+      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setOwaspTop10(singletonList(
+        "a3")),
       newDoc("I3", project.uuid(), file));
 
     assertThatFacetHasOnly(IssueQuery.builder(), Y2017.prefix(),
@@ -237,14 +262,17 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
       entry("a3", 1L));
   }
 
-  @Test
-  void facets_on_owaspTop10_2021() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void facets_on_owaspTop10_2021(boolean mqrMode) {
+    doReturn(Optional.of(mqrMode)).when(config).getBoolean(MULTI_QUALITY_MODE_ENABLED);
     ComponentDto project = newPrivateProjectDto();
     ComponentDto file = newFileDto(project);
 
     indexIssues(
-      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setOwaspTop10For2021(asList("a1", "a2")),
-      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setOwaspTop10For2021(singletonList("a3")),
+      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setOwaspTop10For2021(asList(
+        "a1", "a2")),
+      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setOwaspTop10For2021(singletonList("a3")),
       newDoc("I3", project.uuid(), file));
 
     assertThatFacetHasExactly(IssueQuery.builder(), Y2021.prefix(),
@@ -253,14 +281,17 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
       entry("a3", 1L));
   }
 
-  @Test
-  void facets_on_owaspTop10_2021_stay_ordered() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void facets_on_owaspTop10_2021_stay_ordered(boolean mqrMode) {
+    doReturn(Optional.of(mqrMode)).when(config).getBoolean(MULTI_QUALITY_MODE_ENABLED);
     ComponentDto project = newPrivateProjectDto();
     ComponentDto file = newFileDto(project);
 
     indexIssues(
-      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setOwaspTop10For2021(asList("a1", "a2")),
-      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setOwaspTop10For2021(singletonList("a3")),
+      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setOwaspTop10For2021(asList(
+        "a1", "a2")),
+      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setOwaspTop10For2021(singletonList("a3")),
       newDoc("I3", project.uuid(), file));
 
     assertThatFacetHasExactly(IssueQuery.builder().owaspTop10For2021(Collections.singletonList("a3")), Y2021.prefix(),
@@ -269,14 +300,19 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
       entry("a3", 1L));
   }
 
-  @Test
-  void facets_on_sansTop25() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void facets_on_sansTop25(boolean mqrMode) {
+    doReturn(Optional.of(mqrMode)).when(config).getBoolean(MULTI_QUALITY_MODE_ENABLED);
     ComponentDto project = newPrivateProjectDto();
     ComponentDto file = newFileDto(project);
 
     indexIssues(
-      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setSansTop25(asList("porous-defenses", "risky-resource", "insecure-interaction")),
-      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setSansTop25(singletonList("porous-defenses")),
+      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setSansTop25(asList("porous" +
+          "-defenses", "risky-resource",
+        "insecure-interaction")),
+      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setSansTop25(singletonList(
+        "porous-defenses")),
       newDoc("I3", project.uuid(), file));
 
     assertThatFacetHasOnly(IssueQuery.builder(), "sansTop25",
@@ -285,14 +321,16 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
       entry("risky-resource", 1L));
   }
 
-  @Test
-  void facets_on_sonarSourceSecurity() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void facets_on_sonarSourceSecurity(boolean mqrMode) {
+    doReturn(Optional.of(mqrMode)).when(config).getBoolean(MULTI_QUALITY_MODE_ENABLED);
     ComponentDto project = newPrivateProjectDto();
     ComponentDto file = newFileDto(project);
 
     indexIssues(
-      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setSonarSourceSecurityCategory(SQCategory.BUFFER_OVERFLOW),
-      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setSonarSourceSecurityCategory(SQCategory.DOS),
+      newDoc("I1", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setSonarSourceSecurityCategory(SQCategory.BUFFER_OVERFLOW),
+      newDoc("I2", project.uuid(), file).setType(RuleType.VULNERABILITY).setImpacts(Map.of(SECURITY, HIGH)).setSonarSourceSecurityCategory(SQCategory.DOS),
       newDoc("I3", project.uuid(), file));
 
     assertThatFacetHasOnly(IssueQuery.builder(), "sonarsourceSecurity",
@@ -458,7 +496,8 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
     indexIssues(issue1, issue2);
 
     assertThatFacetHasSize(IssueQuery.builder().build(), "assignees", 100);
-    assertThatFacetHasSize(IssueQuery.builder().assigneeUuids(asList(issue1.assigneeUuid(), issue2.assigneeUuid())).build(), "assignees", 102);
+    assertThatFacetHasSize(IssueQuery.builder().assigneeUuids(asList(issue1.assigneeUuid(), issue2.assigneeUuid())).build(), "assignees",
+      102);
   }
 
   @Test
@@ -588,8 +627,8 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
     SearchOptions options = fixtureForCreatedAtFacet();
 
     SearchResponse result = underTest.search(IssueQuery.builder()
-      .createdAfter(parseDateTime("2014-09-01T00:00:00+0100"))
-      .createdBefore(parseDateTime("2014-09-21T00:00:00+0100")).build(),
+        .createdAfter(parseDateTime("2014-09-01T00:00:00+0100"))
+        .createdBefore(parseDateTime("2014-09-21T00:00:00+0100")).build(),
       options);
     Map<String, Long> createdAt = new Facets(result, system2.getDefaultTimeZone().toZoneId()).get("createdAt");
     assertThat(createdAt).containsOnly(
@@ -604,8 +643,8 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
     SearchOptions options = fixtureForCreatedAtFacet();
 
     SearchResponse result = underTest.search(IssueQuery.builder()
-      .createdAfter(parseDateTime("2014-09-01T00:00:00+0100"))
-      .createdBefore(parseDateTime("2015-01-19T00:00:00+0100")).build(),
+        .createdAfter(parseDateTime("2014-09-01T00:00:00+0100"))
+        .createdBefore(parseDateTime("2015-01-19T00:00:00+0100")).build(),
       options);
     Map<String, Long> createdAt = new Facets(result, system2.getDefaultTimeZone().toZoneId()).get("createdAt");
     assertThat(createdAt).containsOnly(
@@ -622,8 +661,8 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
     SearchOptions options = fixtureForCreatedAtFacet();
 
     SearchResponse result = underTest.search(IssueQuery.builder()
-      .createdAfter(parseDateTime("2011-01-01T00:00:00+0100"))
-      .createdBefore(parseDateTime("2016-01-01T00:00:00+0100")).build(),
+        .createdAfter(parseDateTime("2011-01-01T00:00:00+0100"))
+        .createdBefore(parseDateTime("2016-01-01T00:00:00+0100")).build(),
       options);
     Map<String, Long> createdAt = new Facets(result, system2.getDefaultTimeZone().toZoneId()).get("createdAt");
     assertThat(createdAt).containsOnly(
@@ -640,8 +679,8 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
     SearchOptions options = fixtureForCreatedAtFacet();
 
     SearchResponse result = underTest.search(IssueQuery.builder()
-      .createdAfter(parseDateTime("2014-09-01T00:00:00-0100"))
-      .createdBefore(parseDateTime("2014-09-02T00:00:00-0100")).build(),
+        .createdAfter(parseDateTime("2014-09-01T00:00:00-0100"))
+        .createdBefore(parseDateTime("2014-09-02T00:00:00-0100")).build(),
       options);
     Map<String, Long> createdAt = new Facets(result, system2.getDefaultTimeZone().toZoneId()).get("createdAt");
     assertThat(createdAt).containsOnly(
@@ -673,7 +712,7 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
     SearchOptions searchOptions = fixtureForCreatedAtFacet();
 
     SearchResponse result = underTest.search(IssueQuery.builder()
-      .createdBefore(parseDateTime("2016-01-01T00:00:00+0100")).build(),
+        .createdBefore(parseDateTime("2016-01-01T00:00:00+0100")).build(),
       searchOptions);
     Map<String, Long> createdAt = new Facets(result, system2.getDefaultTimeZone().toZoneId()).get("createdAt");
     assertThat(createdAt).containsOnly(
@@ -717,12 +756,12 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
 
     indexIssues(
       newDoc("I1", project.uuid(), file).setImpacts(Map.of(
-        MAINTAINABILITY, org.sonar.api.issue.impact.Severity.HIGH,
+        MAINTAINABILITY, HIGH,
         RELIABILITY, org.sonar.api.issue.impact.Severity.MEDIUM)),
       newDoc("I2", project.uuid(), file).setImpacts(Map.of(
         MAINTAINABILITY, org.sonar.api.issue.impact.Severity.LOW)),
       newDoc("I3", project.uuid(), file).setImpacts(Map.of(
-        RELIABILITY, org.sonar.api.issue.impact.Severity.HIGH)),
+        RELIABILITY, HIGH)),
       newDoc("I4", project.uuid(), file).setImpacts(Map.of(
         MAINTAINABILITY, org.sonar.api.issue.impact.Severity.LOW)));
 
@@ -739,13 +778,13 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
 
     indexIssues(
       newDoc("I1", project.uuid(), file).setImpacts(Map.of(
-        MAINTAINABILITY, org.sonar.api.issue.impact.Severity.HIGH,
-        RELIABILITY, org.sonar.api.issue.impact.Severity.MEDIUM))
+          MAINTAINABILITY, HIGH,
+          RELIABILITY, org.sonar.api.issue.impact.Severity.MEDIUM))
         .setTags(singletonList("my-tag")),
       newDoc("I2", project.uuid(), file).setImpacts(Map.of(
         MAINTAINABILITY, org.sonar.api.issue.impact.Severity.LOW)),
       newDoc("I3", project.uuid(), file).setImpacts(Map.of(
-        RELIABILITY, org.sonar.api.issue.impact.Severity.HIGH)),
+        RELIABILITY, HIGH)),
       newDoc("I4", project.uuid(), file).setImpacts(Map.of(
         MAINTAINABILITY, org.sonar.api.issue.impact.Severity.LOW)));
 
@@ -765,14 +804,15 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
       entry("RELIABILITY", 1L),
       entry("SECURITY", 0L));
 
-    assertThatFacetHasOnly(IssueQuery.builder().impactSeverities(Set.of(org.sonar.api.issue.impact.Severity.HIGH.name())), "impactSoftwareQualities",
+    assertThatFacetHasOnly(IssueQuery.builder().impactSeverities(Set.of(HIGH.name())),
+      "impactSoftwareQualities",
       entry("MAINTAINABILITY", 1L),
       entry("RELIABILITY", 1L),
       entry("SECURITY", 0L));
 
     assertThatFacetHasOnly(IssueQuery.builder()
-      .tags(singletonList("my-tag"))
-      .impactSeverities(Set.of(org.sonar.api.issue.impact.Severity.HIGH.name())), "impactSoftwareQualities",
+        .tags(singletonList("my-tag"))
+        .impactSeverities(Set.of(HIGH.name())), "impactSoftwareQualities",
       entry("MAINTAINABILITY", 1L),
       entry("RELIABILITY", 0L),
       entry("SECURITY", 0L));
@@ -786,23 +826,26 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
     indexIssues(
       newDoc("I1", project.uuid(), file).setImpacts(Map.of(
         MAINTAINABILITY, org.sonar.api.issue.impact.Severity.LOW,
-        RELIABILITY, org.sonar.api.issue.impact.Severity.LOW)));
+        RELIABILITY, org.sonar.api.issue.impact.Severity.LOW,
+        SECURITY, org.sonar.api.issue.impact.Severity.BLOCKER)));
 
     assertThatFacetHasOnly(IssueQuery.builder()
-      .impactSoftwareQualities(Set.of(MAINTAINABILITY.name()))
-      .impactSeverities(Set.of(org.sonar.api.issue.impact.Severity.LOW.name())),
+        .impactSoftwareQualities(Set.of(MAINTAINABILITY.name()))
+        .impactSeverities(Set.of(org.sonar.api.issue.impact.Severity.LOW.name())),
       "impactSoftwareQualities",
       entry("MAINTAINABILITY", 1L),
       entry("RELIABILITY", 1L),
       entry("SECURITY", 0L));
 
     assertThatFacetHasOnly(IssueQuery.builder()
-      .impactSoftwareQualities(Set.of(MAINTAINABILITY.name()))
-      .impactSeverities(Set.of(org.sonar.api.issue.impact.Severity.LOW.name())),
+        .impactSoftwareQualities(Set.of(MAINTAINABILITY.name()))
+        .impactSeverities(Set.of(org.sonar.api.issue.impact.Severity.LOW.name())),
       "impactSeverities",
       entry("HIGH", 0L),
       entry("MEDIUM", 0L),
-      entry("LOW", 1L));
+      entry("LOW", 1L),
+      entry("INFO", 0L),
+      entry("BLOCKER", 0L));
   }
 
   @Test
@@ -812,19 +855,23 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
 
     indexIssues(
       newDoc("I1", project.uuid(), file).setImpacts(Map.of(
-        MAINTAINABILITY, org.sonar.api.issue.impact.Severity.HIGH,
+        MAINTAINABILITY, HIGH,
         RELIABILITY, org.sonar.api.issue.impact.Severity.MEDIUM)),
       newDoc("I2", project.uuid(), file).setImpacts(Map.of(
         MAINTAINABILITY, org.sonar.api.issue.impact.Severity.LOW)),
       newDoc("I3", project.uuid(), file).setImpacts(Map.of(
-        RELIABILITY, org.sonar.api.issue.impact.Severity.HIGH)),
+        RELIABILITY, HIGH,
+        SECURITY, org.sonar.api.issue.impact.Severity.BLOCKER)),
       newDoc("I4", project.uuid(), file).setImpacts(Map.of(
-        MAINTAINABILITY, org.sonar.api.issue.impact.Severity.LOW)));
+        MAINTAINABILITY, org.sonar.api.issue.impact.Severity.LOW,
+        RELIABILITY, org.sonar.api.issue.impact.Severity.INFO)));
 
     assertThatFacetHasOnly(IssueQuery.builder(), "impactSeverities",
       entry("HIGH", 2L),
       entry("MEDIUM", 1L),
-      entry("LOW", 2L));
+      entry("LOW", 2L),
+      entry("BLOCKER", 1L),
+      entry("INFO", 1L));
   }
 
   @Test
@@ -834,19 +881,21 @@ class IssueIndexFacetsTest extends IssueIndexTestCommon {
 
     indexIssues(
       newDoc("I1", project.uuid(), file).setImpacts(Map.of(
-        MAINTAINABILITY, org.sonar.api.issue.impact.Severity.HIGH,
+        MAINTAINABILITY, HIGH,
         RELIABILITY, org.sonar.api.issue.impact.Severity.MEDIUM)),
       newDoc("I2", project.uuid(), file).setImpacts(Map.of(
         MAINTAINABILITY, org.sonar.api.issue.impact.Severity.LOW)),
       newDoc("I3", project.uuid(), file).setImpacts(Map.of(
-        RELIABILITY, org.sonar.api.issue.impact.Severity.HIGH)),
+        RELIABILITY, HIGH)),
       newDoc("I4", project.uuid(), file).setImpacts(Map.of(
         MAINTAINABILITY, org.sonar.api.issue.impact.Severity.LOW)));
 
     assertThatFacetHasOnly(IssueQuery.builder().impactSoftwareQualities(Set.of(MAINTAINABILITY.name())), "impactSeverities",
       entry("HIGH", 1L),
       entry("MEDIUM", 0L),
-      entry("LOW", 2L));
+      entry("LOW", 2L),
+      entry("BLOCKER", 0L),
+      entry("INFO", 0L));
   }
 
   @Test

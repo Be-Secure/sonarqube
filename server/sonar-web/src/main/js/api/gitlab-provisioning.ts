@@ -17,8 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import axios from 'axios';
 import {
+  DevopsRolesMapping,
   GitLabConfigurationCreateBody,
   GitLabConfigurationUpdateBody,
   GitlabConfiguration,
@@ -27,6 +29,7 @@ import {
 import { Paging } from '../types/types';
 
 const GITLAB_CONFIGURATIONS = '/api/v2/dop-translation/gitlab-configurations';
+const GITLAB_PERMISSION_MAPPINGS = '/api/v2/dop-translation/gitlab-permission-mappings';
 
 export function fetchGitLabConfigurations() {
   return axios.get<{ gitlabConfigurations: GitlabConfiguration[]; page: Paging }>(
@@ -63,4 +66,28 @@ export function deleteGitLabConfiguration(id: string): Promise<void> {
 
 export function syncNowGitLabProvisioning(): Promise<void> {
   return axios.post('/api/v2/dop-translation/gitlab-synchronization-runs');
+}
+
+export function fetchGitlabRolesMapping() {
+  return axios
+    .get<{ permissionMappings: DevopsRolesMapping[] }>(GITLAB_PERMISSION_MAPPINGS)
+    .then((data) => data.permissionMappings);
+}
+
+export function updateGitlabRolesMapping(
+  role: string,
+  data: Partial<Pick<DevopsRolesMapping, 'permissions'>>,
+) {
+  return axios.patch<DevopsRolesMapping>(
+    `${GITLAB_PERMISSION_MAPPINGS}/${encodeURIComponent(role)}`,
+    data,
+  );
+}
+
+export function addGitlabRolesMapping(data: Omit<DevopsRolesMapping, 'id'>) {
+  return axios.post<DevopsRolesMapping>(GITLAB_PERMISSION_MAPPINGS, data);
+}
+
+export function deleteGitlabRolesMapping(role: string) {
+  return axios.delete(`${GITLAB_PERMISSION_MAPPINGS}/${encodeURIComponent(role)}`);
 }

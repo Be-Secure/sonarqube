@@ -17,8 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonSecondary, DateRangePicker, PopupZLevel } from 'design-system';
+
+import { Button, ButtonGroup, Label } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { DateRangePicker, PopupZLevel } from '~design-system';
 import { translate } from '../../../helpers/l10n';
 import { Query } from '../utils';
 
@@ -39,10 +41,12 @@ export default class ProjectActivityDateInput extends React.PureComponent<Props>
 
   render() {
     return (
-      <div className="sw-flex">
+      <ButtonGroup>
+        <Label htmlFor="date-from">{translate('project_activity.filter_date_range')}</Label>
         <DateRangePicker
           className="sw-w-abs-350"
-          clearButtonLabel={translate('clear')}
+          startClearButtonLabel={translate('clear.start')}
+          endClearButtonLabel={translate('clear.end')}
           fromLabel={translate('start_date')}
           onChange={this.handleChange}
           separatorText={translate('to_')}
@@ -50,14 +54,14 @@ export default class ProjectActivityDateInput extends React.PureComponent<Props>
           value={{ from: this.props.from, to: this.props.to }}
           zLevel={PopupZLevel.Content}
         />
-        <ButtonSecondary
+        <Button
           className="sw-ml-2"
-          disabled={this.props.from === undefined && this.props.to === undefined}
+          isDisabled={this.props.from === undefined && this.props.to === undefined}
           onClick={this.handleResetClick}
         >
           {translate('project_activity.reset_dates')}
-        </ButtonSecondary>
-      </div>
+        </Button>
+      </ButtonGroup>
     );
   }
 }

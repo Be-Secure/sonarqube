@@ -18,9 +18,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { MainAppBar, SonarQubeLogo } from 'design-system';
+import { LogoSize } from '@sonarsource/echoes-react';
 import * as React from 'react';
-import { Image } from '../../../../components/common/Image';
+import { MainAppBar } from '~design-system';
+import { Image } from '~sonar-aligned/components/common/Image';
+import { SonarQubeProductLogo } from '../../../../components/branding/SonarQubeProductLogo';
 import { translate } from '../../../../helpers/l10n';
 import { GlobalSettingKeys } from '../../../../types/settings';
 import { AppStateContext } from '../../app-state/AppStateContext';
@@ -32,14 +34,16 @@ function LogoWithAriaText() {
   const customLogoUrl = settings[GlobalSettingKeys.LogoUrl];
   const customLogoWidth = settings[GlobalSettingKeys.LogoWidth] ?? DEFAULT_CUSTOM_LOGO_WIDTH_IN_PX;
 
-  const title = translate('layout.nav.home_logo_alt');
+  const title = customLogoUrl
+    ? translate('layout.nav.home_logo_alt')
+    : translate('layout.nav.home_sonarqube_logo_alt');
 
   return (
     <div aria-label={title} role="img">
       {customLogoUrl ? (
         <Image alt={title} src={customLogoUrl} width={customLogoWidth} />
       ) : (
-        <SonarQubeLogo />
+        <SonarQubeProductLogo hasText size={LogoSize.Large} />
       )}
     </div>
   );

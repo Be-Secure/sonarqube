@@ -17,14 +17,17 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { TopBar } from 'design-system';
+
 import * as React from 'react';
+import { TopBar } from '~design-system';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import NCDAutoUpdateMessage from '../../../../components/new-code-definition/NCDAutoUpdateMessage';
+import { ComponentMissingMqrMetricsMessage } from '../../../../components/shared/ComponentMissingMqrMetricsMessage';
+import { getBranchLikeDisplayName } from '../../../../helpers/branch-like';
 import { translate } from '../../../../helpers/l10n';
-import { withBranchLikes } from '../../../../queries/branch';
+import { isDefined } from '../../../../helpers/types';
+import { useCurrentBranchQuery } from '../../../../queries/branch';
 import { ProjectAlmBindingConfigurationErrors } from '../../../../types/alm-settings';
-import { Branch } from '../../../../types/branch-like';
 import { Feature } from '../../../../types/features';
 import { Component } from '../../../../types/types';
 import RecentHistory from '../../RecentHistory';
@@ -36,7 +39,6 @@ import Header from './Header';
 import Menu from './Menu';
 
 export interface ComponentNavProps extends WithAvailableFeaturesProps {
-  branchLike?: Branch;
   component: Component;
   isInProgress?: boolean;
   isPending?: boolean;
@@ -44,8 +46,9 @@ export interface ComponentNavProps extends WithAvailableFeaturesProps {
 }
 
 function ComponentNav(props: Readonly<ComponentNavProps>) {
-  const { branchLike, component, hasFeature, isInProgress, isPending, projectBindingErrors } =
-    props;
+  const { component, hasFeature, isInProgress, isPending, projectBindingErrors } = props;
+
+  const { data: branchLike } = useCurrentBranchQuery(component);
 
   React.useEffect(() => {
     const { breadcrumbs, key, name } = component;
@@ -61,6 +64,11 @@ function ComponentNav(props: Readonly<ComponentNavProps>) {
     }
   }, [component, component.key]);
 
+  const branchName =
+    hasFeature(Feature.BranchSupport) || !isDefined(branchLike)
+      ? undefined
+      : getBranchLikeDisplayName(branchLike);
+
   return (
     <>
       <TopBar id="context-navigation" aria-label={translate('qualifier', component.qualifier)}>
@@ -69,10 +77,8 @@ function ComponentNav(props: Readonly<ComponentNavProps>) {
         </div>
         <Menu component={component} isInProgress={isInProgress} isPending={isPending} />
       </TopBar>
-      <NCDAutoUpdateMessage
-        branchName={hasFeature(Feature.BranchSupport) ? undefined : branchLike?.name}
-        component={component}
-      />
+      <NCDAutoUpdateMessage branchName={branchName} component={component} />
+      <ComponentMissingMqrMetricsMessage component={component} />
       {projectBindingErrors !== undefined && (
         <ComponentNavProjectBindingErrorNotif component={component} />
       )}
@@ -80,4 +86,4 @@ function ComponentNav(props: Readonly<ComponentNavProps>) {
   );
 }
 
-export default withAvailableFeatures(withBranchLikes(ComponentNav));
+export default withAvailableFeatures(ComponentNav);

@@ -17,7 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { HotspotRatingEnum } from 'design-system';
+
+import { HotspotRatingEnum } from '~design-system';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import { MessageFormatting } from './issues';
 import { FlowLocation, IssueChangelog, IssueChangelogDiff, Paging, TextRange } from './types';
@@ -59,6 +60,7 @@ export interface RawHotspot {
   author?: string;
   component: string;
   creationDate: string;
+  cveId?: string;
   flows?: Array<{
     locations?: Array<Omit<FlowLocation, 'componentName'>>;
   }>;
@@ -86,6 +88,7 @@ export interface Hotspot {
   comment: HotspotComment[];
   component: HotspotComponent;
   creationDate: string;
+  cveId?: string;
   flows: { locations: FlowLocation[] }[];
   key: string;
   line?: number;

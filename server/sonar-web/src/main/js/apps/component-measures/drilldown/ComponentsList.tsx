@@ -17,9 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ContentCell, NumericalCell, Table, TableRow, TableRowInteractive } from 'design-system';
+
 import { times } from 'lodash';
-import * as React from 'react';
+import { ContentCell, NumericalCell, Table, TableRow, TableRowInteractive } from '~design-system';
 import { getLocalizedMetricName } from '../../../helpers/l10n';
 import { BranchLike } from '../../../types/branch-like';
 import { MeasurePageView } from '../../../types/measures';
@@ -55,9 +55,11 @@ export default function ComponentsList({ components, metric, metrics, ...props }
         otherMetrics.length > 0 && (
           <TableRow>
             <ContentCell />
-            <NumericalCell className="sw-body-sm">{getLocalizedMetricName(metric)}</NumericalCell>
+            <NumericalCell className="sw-typo-default">
+              {getLocalizedMetricName(metric)}
+            </NumericalCell>
             {otherMetrics.map((metric) => (
-              <NumericalCell className="sw-body-sm" key={metric.key}>
+              <NumericalCell className="sw-typo-default" key={metric.key}>
                 {getLocalizedMetricName(metric)}
               </NumericalCell>
             ))}
@@ -79,10 +81,11 @@ export default function ComponentsList({ components, metric, metrics, ...props }
             view={props.view}
           />
 
-          <MeasureCell component={component} metric={metric} />
+          <MeasureCell branchLike={branchLike} component={component} metric={metric} />
 
           {otherMetrics.map((metric) => (
             <MeasureCell
+              branchLike={branchLike}
               key={metric.key}
               component={component}
               measure={component.measures.find((measure) => measure.metric.key === metric.key)}

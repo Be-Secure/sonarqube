@@ -17,11 +17,12 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { cloneDeep } from 'lodash';
 import { mockTask } from '../../helpers/mocks/tasks';
 import {
+  DevopsRolesMapping,
   GitHubConfigurationStatus,
-  GitHubMapping,
   GitHubProvisioningStatus,
   ProvisioningType,
 } from '../../types/provisioning';
@@ -62,11 +63,11 @@ const defaultConfigurationStatus: GitHubConfigurationStatus = {
 
 const githubMappingMock = (
   id: string,
-  permissions: (keyof GitHubMapping['permissions'])[],
+  permissions: (keyof DevopsRolesMapping['permissions'])[],
   baseRole = false,
 ) => ({
   id,
-  githubRole: id,
+  role: id,
   baseRole,
   permissions: {
     user: permissions.includes('user'),
@@ -78,7 +79,7 @@ const githubMappingMock = (
   },
 });
 
-const defaultMapping: GitHubMapping[] = [
+const defaultMapping: DevopsRolesMapping[] = [
   githubMappingMock('read', ['user', 'codeViewer'], true),
   githubMappingMock(
     'write',
@@ -101,7 +102,7 @@ const defaultMapping: GitHubMapping[] = [
 export default class GithubProvisioningServiceMock {
   dopTranslationServiceMock?: DopTranslationServiceMock;
   githubConfigurationStatus: GitHubConfigurationStatus;
-  githubMapping: GitHubMapping[];
+  githubMapping: DevopsRolesMapping[];
   tasks: Task[];
 
   constructor(dopTranslationServiceMock?: DopTranslationServiceMock) {
@@ -185,12 +186,12 @@ export default class GithubProvisioningServiceMock {
     );
 
     return Promise.resolve(
-      this.githubMapping.find((mapping) => mapping.id === id) as GitHubMapping,
+      this.githubMapping.find((mapping) => mapping.id === id) as DevopsRolesMapping,
     );
   };
 
   handleAddGithubRolesMapping: typeof addGithubRolesMapping = (data) => {
-    const newRole = { ...data, id: data.githubRole };
+    const newRole = { ...data, id: data.role };
     this.githubMapping = [...this.githubMapping, newRole];
 
     return Promise.resolve(newRole);
@@ -201,7 +202,7 @@ export default class GithubProvisioningServiceMock {
     return Promise.resolve();
   };
 
-  addGitHubCustomRole = (id: string, permissions: (keyof GitHubMapping['permissions'])[]) => {
+  addGitHubCustomRole = (id: string, permissions: (keyof DevopsRolesMapping['permissions'])[]) => {
     this.githubMapping = [...this.githubMapping, githubMappingMock(id, permissions)];
   };
 

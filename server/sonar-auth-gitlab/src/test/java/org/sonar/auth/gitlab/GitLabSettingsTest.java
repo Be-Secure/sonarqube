@@ -35,6 +35,8 @@ import static org.sonar.auth.gitlab.GitLabSettings.GITLAB_AUTH_PROVISIONING_TOKE
 import static org.sonar.auth.gitlab.GitLabSettings.GITLAB_AUTH_SECRET;
 import static org.sonar.auth.gitlab.GitLabSettings.GITLAB_AUTH_SYNC_USER_GROUPS;
 import static org.sonar.auth.gitlab.GitLabSettings.GITLAB_AUTH_URL;
+import static org.sonar.auth.gitlab.GitLabSettings.GITLAB_USER_CONSENT_FOR_PERMISSION_PROVISIONING_REQUIRED;
+import static org.sonar.db.ce.CeTaskTypes.GITLAB_PROJECT_PERMISSIONS_PROVISIONING;
 
 public class GitLabSettingsTest {
 
@@ -115,6 +117,27 @@ public class GitLabSettingsTest {
     enableGitlabAuthentication();
     settings.setProperty(GITLAB_AUTH_PROVISIONING_ENABLED, true);
     assertThat(config.isProvisioningEnabled()).isTrue();
+  }
+
+  @Test
+  public void isProjectVisibilitySynchronizationActivated_alwaysReturnsTrue() {
+    assertThat(config.isProjectVisibilitySynchronizationActivated()).isTrue();
+  }
+
+  @Test
+  public void isUserConsentRequiredForPermissionProvisioning_returnsFalseByDefault() {
+    assertThat(config.isUserConsentRequiredAfterUpgrade()).isFalse();
+  }
+
+  @Test
+  public void isUserConsentRequiredForPermissionProvisioning_returnsTrueWhenPropertyPresent() {
+    settings.setProperty(GITLAB_USER_CONSENT_FOR_PERMISSION_PROVISIONING_REQUIRED, "");
+    assertThat(config.isUserConsentRequiredAfterUpgrade()).isTrue();
+  }
+
+  @Test
+  public void getProjectsPermissionsProvisioningTaskName_returnsCorrectTaskName() {
+    assertThat(config.getProjectsPermissionsProvisioningTaskName()).isEqualTo(GITLAB_PROJECT_PERMISSIONS_PROVISIONING);
   }
 
   private void enableGitlabAuthentication() {

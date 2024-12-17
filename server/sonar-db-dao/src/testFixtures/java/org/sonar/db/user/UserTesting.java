@@ -26,28 +26,60 @@ import javax.annotation.Nullable;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
-import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
+import static org.apache.commons.lang.math.RandomUtils.nextBoolean;
+import static org.apache.commons.lang.math.RandomUtils.nextInt;
+import static org.apache.commons.lang3.RandomStringUtils.secure;
 
 public class UserTesting {
 
   private static final Random RANDOM = new SecureRandom();
 
+  private static final String[] realisticIdentityProviders = {"github", "google", "microsoft"};
+
   public static UserDto newUserDto() {
     return new UserDto()
-      .setUuid(randomAlphanumeric(40))
+      .setUuid(secure().nextAlphanumeric(40))
       .setActive(true)
       .setLocal(RANDOM.nextBoolean())
-      .setLogin(randomAlphanumeric(30))
-      .setName(randomAlphanumeric(30))
-      .setEmail(randomAlphanumeric(30))
-      .setScmAccounts(singletonList(randomAlphanumeric(40).toLowerCase(Locale.ENGLISH)))
-      .setExternalId(randomAlphanumeric(40))
-      .setExternalLogin(randomAlphanumeric(40))
-      .setExternalIdentityProvider(randomAlphanumeric(40))
-      .setSalt(randomAlphanumeric(40))
-      .setCryptedPassword(randomAlphanumeric(40))
+      .setLogin(secure().nextAlphanumeric(30))
+      .setName(secure().nextAlphanumeric(30))
+      .setEmail(secure().nextAlphanumeric(30))
+      .setScmAccounts(singletonList(secure().nextAlphanumeric(40).toLowerCase(Locale.ENGLISH)))
+      .setExternalId(secure().nextAlphanumeric(40))
+      .setExternalLogin(secure().nextAlphanumeric(40))
+      .setExternalIdentityProvider(secure().nextAlphanumeric(40))
+      .setSalt(secure().nextAlphanumeric(40))
+      .setCryptedPassword(secure().nextAlphanumeric(40))
       .setCreatedAt(RANDOM.nextLong(Long.MAX_VALUE))
       .setUpdatedAt(RANDOM.nextLong(Long.MAX_VALUE));
+  }
+
+  public static UserDto newUserDtoRealistic() {
+    long timeNow = System.currentTimeMillis();
+    String loginAndAndId = secure().nextAlphanumeric(30);
+    String realisticIdentityProvider = realisticIdentityProviders[nextInt(realisticIdentityProviders.length)];
+    boolean isExternal = nextBoolean();
+    String externalIdAndLogin = isExternal ? loginAndAndId + "_" + realisticIdentityProvider : loginAndAndId;
+    return new UserDto().setUuid(secure().nextAlphanumeric(40))
+      .setActive(nextBoolean())
+      .setLocal(!isExternal)
+      .setLogin(loginAndAndId)
+      .setName(loginAndAndId + " " + loginAndAndId)
+      .setEmail(loginAndAndId + "@" + loginAndAndId + ".com")
+      .setScmAccounts(singletonList(loginAndAndId + "@github"))
+      .setExternalId(externalIdAndLogin)
+      .setExternalLogin(externalIdAndLogin)
+      .setExternalIdentityProvider(isExternal ? realisticIdentityProvider : "sonarqube")
+      .setSalt("ZLqSawNE/T7QNk+FLsSWiJ7D9qM=")
+      .setHashMethod("PBKDF2")
+      // password is "admin2"
+      .setCryptedPassword("100000$arHk2+TbNYyFeUgAsDBz7O5M+W0Y3NKJGgvz0KsURHzfXaTXlLT0WYI3DWwXOgHLgyFidVJ4HF22h7zbJoaa8g==")
+      .setCreatedAt(timeNow)
+      .setUpdatedAt(timeNow)
+      .setLastConnectionDate(nextBoolean() ? timeNow : null)
+      .setResetPassword(nextBoolean() && nextBoolean() && nextBoolean())
+      .setHomepageParameter(nextInt(10) + "")
+      .setHomepageType("projects");
   }
 
   public static UserDto newUserDto(String login, String name, @Nullable String email) {
@@ -74,9 +106,9 @@ public class UserTesting {
       .setName(name)
       .setEmail(email)
       .setLogin(login)
-      .setExternalId(randomAlphanumeric(40))
-      .setExternalLogin(randomAlphanumeric(40))
-      .setExternalIdentityProvider(randomAlphanumeric(40));
+      .setExternalId(secure().nextAlphanumeric(40))
+      .setExternalLogin(secure().nextAlphanumeric(40))
+      .setExternalIdentityProvider(secure().nextAlphanumeric(40));
   }
 
   public static UserDto newDisabledUser() {

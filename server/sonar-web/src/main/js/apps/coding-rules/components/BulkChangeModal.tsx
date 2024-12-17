@@ -17,8 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonPrimary, FlagMessage, FormField, Modal, Spinner } from 'design-system';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { FlagMessage, FormField, Modal, Spinner } from '~design-system';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricType } from '~sonar-aligned/types/metrics';
 import { Profile, bulkActivateRules, bulkDeactivateRules } from '../../../api/quality-profiles';
@@ -264,17 +266,18 @@ export class BulkChangeModal extends React.PureComponent<Props, State> {
         body={<Spinner loading={this.state.submitting}>{formBody}</Spinner>}
         primaryButton={
           !this.state.finished && (
-            <ButtonPrimary
-              autoFocus
+            <Button
+              hasAutoFocus
               type="submit"
-              disabled={
+              isDisabled={
                 this.state.submitting ||
                 (this.state.selectedProfiles.length === 0 && profile === undefined)
               }
               form={FORM_ID}
+              variety={ButtonVariety.Primary}
             >
               {translate('apply')}
-            </ButtonPrimary>
+            </Button>
           )
         }
         secondaryButtonLabel={this.state.finished ? translate('close') : translate('cancel')}

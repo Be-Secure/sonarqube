@@ -17,8 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonSecondary, InputField, InputTextArea } from 'design-system';
+
+import { Button } from '@sonarsource/echoes-react';
 import React, { useEffect } from 'react';
+import { InputField, InputTextArea } from '~design-system';
 import { translate } from '../../../../helpers/l10n';
 import { DefinitionV2, ExtendedSettingDefinition, SettingType } from '../../../../types/settings';
 import { isSecuredDefinition } from '../../utils';
@@ -33,13 +35,12 @@ interface SamlToggleFieldProps {
 
 export default function AuthenticationSecuredField(props: SamlToggleFieldProps) {
   const { settingValue, definition, optional = true, isNotSet } = props;
-  const [showSecretField, setShowSecretField] = React.useState(
-    !isNotSet && isSecuredDefinition(definition),
-  );
+  const isSecured = isSecuredDefinition(definition);
+  const [showSecretField, setShowSecretField] = React.useState(!isNotSet && isSecured);
 
   useEffect(() => {
-    setShowSecretField(!isNotSet && isSecuredDefinition(definition));
-  }, [isNotSet, definition]);
+    setShowSecretField(!isNotSet && isSecured);
+  }, [isNotSet, isSecured]);
 
   return (
     <>
@@ -68,13 +69,13 @@ export default function AuthenticationSecuredField(props: SamlToggleFieldProps) 
       {showSecretField && (
         <div className="sw-flex sw-items-center">
           <p className="sw-mr-2">{translate('settings.almintegration.form.secret.field')}</p>
-          <ButtonSecondary
+          <Button
             onClick={() => {
               setShowSecretField(false);
             }}
           >
             {translate('settings.almintegration.form.secret.update_field')}
-          </ButtonSecondary>
+          </Button>
         </div>
       )}
     </>

@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { getJSON } from '~sonar-aligned/helpers/request';
 import { BranchParameters } from '~sonar-aligned/types/branch-like';
@@ -34,6 +35,7 @@ import {
   SourceLine,
   SourceViewerFile,
 } from '../types/types';
+import { AiCodeAssuranceStatus } from './ai-code-assurance';
 
 export interface BaseSearchProjectsParameters {
   analyzedBefore?: string;
@@ -52,7 +54,9 @@ export interface ProjectBase {
 }
 
 export interface ComponentRaw {
+  aiCodeAssurance?: AiCodeAssuranceStatus;
   analysisDate?: string;
+  isAiCodeFixEnabled?: boolean;
   isFavorite?: boolean;
   key: string;
   leakPeriodDate?: string;
@@ -89,22 +93,6 @@ export function getComponentTree(
   const url = '/api/measures/component_tree';
   const data = { ...additional, component, metricKeys: metrics.join(','), strategy };
   return getJSON(url, data).catch(throwGlobalError);
-}
-
-export function getChildren(
-  component: string,
-  metrics: string[] = [],
-  additional: RequestData = {},
-) {
-  return getComponentTree('children', component, metrics, additional);
-}
-
-export function getComponentLeaves(
-  component: string,
-  metrics: string[] = [],
-  additional: RequestData = {},
-) {
-  return getComponentTree('leaves', component, metrics, additional);
 }
 
 export function getComponent(

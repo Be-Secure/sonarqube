@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { Query } from '../../apps/issues/utils';
 import { IssueChangelog, IssueChangelogDiff } from '../../types/types';
 
@@ -70,6 +71,8 @@ export function mockQuery(overrides: Partial<Query> = {}): Query {
     issues: [],
     languages: [],
     owaspTop10: [],
+    casa: [],
+    'stig-ASD_V5R3': [],
     'owaspTop10-2021': [],
     'pciDss-3.2': [],
     'pciDss-4.0': [],

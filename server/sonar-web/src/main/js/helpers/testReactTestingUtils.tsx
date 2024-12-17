@@ -18,11 +18,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { TooltipProvider } from '@sonarsource/echoes-react';
+import { EchoesProvider } from '@sonarsource/echoes-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Matcher, RenderResult, render, screen, within } from '@testing-library/react';
 import { UserEvent } from '@testing-library/user-event/dist/types/setup/setup';
-import { ToastMessageContainer } from 'design-system';
 import { omit } from 'lodash';
 import * as React from 'react';
 import { HelmetProvider } from 'react-helmet-async';
@@ -37,6 +36,7 @@ import {
   createRoutesFromElements,
   parsePath,
 } from 'react-router-dom';
+import { ToastMessageContainer } from '~design-system';
 import { useLocation } from '~sonar-aligned/components/hoc/withRouter';
 import AdminContext from '../app/components/AdminContext';
 import AppStateContextProvider from '../app/components/app-state/AppStateContextProvider';
@@ -127,13 +127,13 @@ export function renderComponent(
             <AvailableFeaturesContext.Provider value={featureList}>
               <CurrentUserContextProvider currentUser={currentUser}>
                 <AppStateContextProvider appState={appState}>
-                  <TooltipProvider delayDuration={0}>
+                  <EchoesProvider tooltipsDelayDuration={0}>
                     <MemoryRouter initialEntries={[pathname]}>
                       <Routes>
                         <Route path="*" element={children} />
                       </Routes>
                     </MemoryRouter>
-                  </TooltipProvider>
+                  </EchoesProvider>
                 </AppStateContextProvider>
               </CurrentUserContextProvider>
             </AvailableFeaturesContext.Provider>
@@ -221,10 +221,17 @@ function renderRoutedApp(
 
   const router = createMemoryRouter(
     createRoutesFromElements(
-      <>
+      <Route
+        element={
+          <>
+            <Outlet />
+            <ToastMessageContainer />
+          </>
+        }
+      >
         {children}
         <Route path="*" element={<CatchAll />} />
-      </>,
+      </Route>,
     ),
     { initialEntries: [path] },
   );
@@ -239,11 +246,9 @@ function renderRoutedApp(
                 <AppStateContextProvider appState={appState}>
                   <IndexationContextProvider>
                     <QueryClientProvider client={queryClient}>
-                      <ToastMessageContainer />
-
-                      <TooltipProvider delayDuration={0}>
+                      <EchoesProvider tooltipsDelayDuration={0}>
                         <RouterProvider router={router} />
-                      </TooltipProvider>
+                      </EchoesProvider>
                     </QueryClientProvider>
                   </IndexationContextProvider>
                 </AppStateContextProvider>

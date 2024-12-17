@@ -17,8 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { TableRow } from 'design-system';
+
 import * as React from 'react';
+import { TableRow } from '~design-system';
 import { AppStateContext } from '../../../app/components/app-state/AppStateContext';
 import { EditionKey } from '../../../types/editions';
 import { Task as ITask } from '../../../types/tasks';
@@ -35,10 +36,11 @@ interface Props {
   onCancelTask: (task: ITask) => Promise<void>;
   onFilterTask: (task: ITask) => void;
   task: ITask;
+  taskIndex: number;
 }
 
 export default function Task(props: Readonly<Props>) {
-  const { task, component, onCancelTask, onFilterTask } = props;
+  const { task, component, taskIndex, onCancelTask, onFilterTask } = props;
 
   const appState = React.useContext(AppStateContext);
   const isDataCenter = appState.edition === EditionKey.datacenter;
@@ -54,6 +56,7 @@ export default function Task(props: Readonly<Props>) {
       <TaskExecutionTime ms={task.executionTimeMs} />
       <TaskActions
         component={component}
+        taskIndex={taskIndex}
         onCancelTask={onCancelTask}
         onFilterTask={onFilterTask}
         task={task}

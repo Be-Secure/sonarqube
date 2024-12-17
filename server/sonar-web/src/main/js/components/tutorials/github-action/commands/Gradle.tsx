@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import * as React from 'react';
+
 import { Component } from '../../../../types/types';
 import CreateYmlFile from '../../components/CreateYmlFile';
 import GradleBuild from '../../components/GradleBuild';
@@ -34,17 +34,18 @@ export interface GradleProps {
 
 const GRADLE_YAML_STEPS = `
       - name: Set up JDK 17
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v4
         with:
           java-version: 17
+          distribution: 'zulu' # Alternative distribution options are available.
       - name: Cache SonarQube packages
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: ~/.sonar/cache
           key: \${{ runner.os }}-sonar
           restore-keys: \${{ runner.os }}-sonar
       - name: Cache Gradle packages
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: ~/.gradle/caches
           key: \${{ runner.os }}-gradle-\${{ hashFiles('**/*.gradle') }}

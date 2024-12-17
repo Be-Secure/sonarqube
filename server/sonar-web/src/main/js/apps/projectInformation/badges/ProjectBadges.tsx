@@ -19,6 +19,9 @@
  */
 
 import { Spinner } from '@sonarsource/echoes-react';
+import { isEmpty } from 'lodash';
+import { useState } from 'react';
+import { useIntl } from 'react-intl';
 import {
   BasicSeparator,
   ButtonSecondary,
@@ -29,22 +32,20 @@ import {
   InputSelect,
   SubTitle,
   ToggleButton,
-} from 'design-system';
-import { isEmpty } from 'lodash';
-import * as React from 'react';
-import { useState } from 'react';
+} from '~design-system';
+import { Image } from '~sonar-aligned/components/common/Image';
 import { getBranchLikeQuery } from '~sonar-aligned/helpers/branch-like';
 import { MetricKey } from '~sonar-aligned/types/metrics';
-import { Image } from '../../../components/common/Image';
-import { translate, translateWithParameters } from '../../../helpers/l10n';
-import { localizeMetric } from '../../../helpers/measures';
+import { useAvailableFeatures } from '../../../app/components/available-features/withAvailableFeatures';
+import { translate } from '../../../helpers/l10n';
 import {
-  DEPRECATED_METRIC_KEYS,
-  useBadgeMetricsQuery,
+  useBadgeMetrics,
   useBadgeTokenQuery,
   useRenewBagdeTokenMutation,
 } from '../../../queries/badges';
 import { BranchLike } from '../../../types/branch-like';
+import { isProject } from '../../../types/component';
+import { Feature } from '../../../types/features';
 import { Component } from '../../../types/types';
 import { BadgeFormats, BadgeOptions, BadgeType, getBadgeSnippet, getBadgeUrl } from './utils';
 
@@ -58,6 +59,7 @@ export default function ProjectBadges(props: ProjectBadgesProps) {
     branchLike,
     component: { key: project, qualifier, configuration },
   } = props;
+  const intl = useIntl();
   const [selectedType, setSelectedType] = useState(BadgeType.measure);
   const [selectedMetric, setSelectedMetric] = useState(MetricKey.alert_status);
   const [selectedFormat, setSelectedFormat] = useState<BadgeFormats>('md');
@@ -66,8 +68,9 @@ export default function ProjectBadges(props: ProjectBadgesProps) {
     isLoading: isLoadingToken,
     isFetching: isFetchingToken,
   } = useBadgeTokenQuery(project);
-  const { data: metricOptions, isLoading: isLoadingMetrics } = useBadgeMetricsQuery();
+  const { data: metricOptions, isLoading: isLoadingMetrics } = useBadgeMetrics();
   const { mutate: renewToken, isPending: isRenewing } = useRenewBagdeTokenMutation();
+  const { hasFeature } = useAvailableFeatures();
   const isLoading = isLoadingMetrics || isLoadingToken || isRenewing;
 
   const handleSelectType = (selectedType: BadgeType) => {
@@ -93,6 +96,8 @@ export default function ProjectBadges(props: ProjectBadgesProps) {
   };
   const canRenew = configuration?.showSettings;
 
+  const selectedMetricOption = metricOptions.find((m) => m.value === selectedMetric);
+
   return (
     <div>
       <SubTitle>{translate('overview.badges.get_badge')}</SubTitle>
@@ -106,8 +111,11 @@ export default function ProjectBadges(props: ProjectBadgesProps) {
             selected={BadgeType.measure === selectedType}
             image={
               <Image
-                alt={translate('overview.badges', BadgeType.measure, 'alt')}
-                src={getBadgeUrl(BadgeType.measure, fullBadgeOptions, token)}
+                alt={intl.formatMessage(
+                  { id: `overview.badges.${BadgeType.measure}.alt` },
+                  { metric: selectedMetricOption?.label },
+                )}
+                src={getBadgeUrl(BadgeType.measure, fullBadgeOptions, token, true)}
               />
             }
             description={translate('overview.badges', BadgeType.measure, 'description', qualifier)}
@@ -119,7 +127,7 @@ export default function ProjectBadges(props: ProjectBadgesProps) {
             image={
               <Image
                 alt={translate('overview.badges', BadgeType.qualityGate, 'alt')}
-                src={getBadgeUrl(BadgeType.qualityGate, fullBadgeOptions, token)}
+                src={getBadgeUrl(BadgeType.qualityGate, fullBadgeOptions, token, true)}
                 width="128px"
               />
             }
@@ -130,35 +138,42 @@ export default function ProjectBadges(props: ProjectBadgesProps) {
               qualifier,
             )}
           />
+          {hasFeature(Feature.AiCodeAssurance) && isProject(qualifier) && (
+            <IllustratedSelectionCard
+              className="sw-w-abs-300 it__badge-button"
+              onClick={() => handleSelectType(BadgeType.aiCodeAssurance)}
+              selected={BadgeType.aiCodeAssurance === selectedType}
+              image={
+                <Image
+                  alt={translate('overview.badges', BadgeType.aiCodeAssurance, 'alt')}
+                  src={getBadgeUrl(BadgeType.aiCodeAssurance, fullBadgeOptions, token, true)}
+                />
+              }
+              description={translate(
+                'overview.badges',
+                BadgeType.aiCodeAssurance,
+                'description',
+                qualifier,
+              )}
+            />
+          )}
         </div>
       </Spinner>
 
       {BadgeType.measure === selectedType && (
-        <>
-          <FormField htmlFor="badge-param-customize" label={translate('overview.badges.metric')}>
-            <InputSelect
-              className="sw-w-abs-300"
-              inputId="badge-param-customize"
-              options={metricOptions}
-              onChange={(option) => {
-                if (option) {
-                  setSelectedMetric(option.value);
-                }
-              }}
-              value={metricOptions.find((m) => m.value === selectedMetric)}
-            />
-          </FormField>
-
-          {DEPRECATED_METRIC_KEYS.includes(selectedMetric) && (
-            <FlagMessage className="sw-mb-4" variant="warning">
-              {translateWithParameters(
-                'overview.badges.deprecated_badge_x_y',
-                localizeMetric(selectedMetric),
-                translate('qualifier', qualifier),
-              )}
-            </FlagMessage>
-          )}
-        </>
+        <FormField htmlFor="badge-param-customize" label={translate('overview.badges.metric')}>
+          <InputSelect
+            className="sw-w-abs-300"
+            inputId="badge-param-customize"
+            options={metricOptions}
+            onChange={(option) => {
+              if (option) {
+                setSelectedMetric(option.value);
+              }
+            }}
+            value={selectedMetricOption}
+          />
+        </FormField>
       )}
 
       <BasicSeparator className="sw-mb-4" />
@@ -181,6 +196,7 @@ export default function ProjectBadges(props: ProjectBadgesProps) {
       <Spinner className="sw-my-2" isLoading={isFetchingToken || isRenewing}>
         {!isLoading && (
           <CodeSnippet
+            copyAriaLabel={translate('overview.badges.copy_snippet')}
             language="plaintext"
             className="sw-p-6 it__code-snippet"
             snippet={getBadgeSnippet(selectedType, fullBadgeOptions, token)}

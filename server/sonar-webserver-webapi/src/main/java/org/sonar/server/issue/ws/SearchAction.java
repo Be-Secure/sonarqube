@@ -77,6 +77,11 @@ import static org.sonar.api.issue.Issue.STATUS_OPEN;
 import static org.sonar.api.issue.Issue.STATUS_REOPENED;
 import static org.sonar.api.issue.Issue.STATUS_REVIEWED;
 import static org.sonar.api.issue.Issue.STATUS_TO_REVIEW;
+import static org.sonar.api.issue.impact.Severity.BLOCKER;
+import static org.sonar.api.issue.impact.Severity.HIGH;
+import static org.sonar.api.issue.impact.Severity.INFO;
+import static org.sonar.api.issue.impact.Severity.MEDIUM;
+import static org.sonar.api.issue.impact.Severity.values;
 import static org.sonar.api.server.ws.WebService.Param.FACETS;
 import static org.sonar.api.utils.Paging.forPageIndex;
 import static org.sonar.server.es.SearchOptions.MAX_PAGE_SIZE;
@@ -99,6 +104,7 @@ import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ASSIGNED;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_ASSIGNEES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_AUTHOR;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_BRANCH;
+import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_CASA;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_CLEAN_CODE_ATTRIBUTE_CATEGORIES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_CODE_VARIANTS;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_COMPONENTS;
@@ -135,6 +141,7 @@ import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_SCOPES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_SEVERITIES;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_SONARSOURCE_SECURITY;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_STATUSES;
+import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_STIG_ASD_V5R3;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_TAGS;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_TIMEZONE;
 import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_TYPES;
@@ -142,8 +149,7 @@ import static org.sonarqube.ws.client.issue.IssuesWsParameters.PARAM_TYPES;
 public class SearchAction implements IssuesWsAction {
   private static final String LOGIN_MYSELF = "__me__";
   private static final Set<String> ISSUE_SCOPES = Arrays.stream(IssueScope.values()).map(Enum::name).collect(Collectors.toSet());
-  private static final EnumSet<RuleType> ALL_RULE_TYPES_EXCEPT_SECURITY_HOTSPOTS =
-    EnumSet.complementOf(EnumSet.of(RuleType.SECURITY_HOTSPOT));
+  private static final EnumSet<RuleType> ALL_RULE_TYPES_EXCEPT_SECURITY_HOTSPOTS = EnumSet.complementOf(EnumSet.of(RuleType.SECURITY_HOTSPOT));
 
   static final List<String> SUPPORTED_FACETS = List.of(
     FACET_PROJECTS,
@@ -165,6 +171,8 @@ public class SearchAction implements IssuesWsAction {
     PARAM_OWASP_ASVS_40,
     PARAM_OWASP_TOP_10,
     PARAM_OWASP_TOP_10_2021,
+    PARAM_STIG_ASD_V5R3,
+    PARAM_CASA,
     PARAM_SANS_TOP_25,
     PARAM_CWE,
     PARAM_CREATED_AT,
@@ -214,6 +222,16 @@ public class SearchAction implements IssuesWsAction {
         + "<br/>When issue indexing is in progress returns 503 service unavailable HTTP code.")
       .setSince("3.6")
       .setChangelog(
+        new Change("10.8", "The response fields 'severity' and 'type' are not deprecated anymore.."),
+        new Change("10.8", "The fields 'severity' and 'type' are not deprecated anymore."),
+        new Change("10.8", format("The parameters '%s' and '%s' are not deprecated anymore.", PARAM_SEVERITIES, PARAM_TYPES)),
+        new Change("10.8", format("Possible values '%s' and '%s' for response field 'impactSeverities' of 'facets' have been added.", INFO.name(), BLOCKER.name())),
+        new Change("10.8", format("Possible values '%s' and '%s' for response field 'severity' of 'impacts' have been added.", INFO.name(), BLOCKER.name())),
+        new Change("10.8", format("Parameter '%s' now supports values: '%s','%s'.", PARAM_SEVERITIES, INFO.name(), BLOCKER.name())),
+        new Change("10.7", format(NEW_FACET_ADDED_MESSAGE, PARAM_CASA)),
+        new Change("10.7", format(NEW_PARAM_ADDED_MESSAGE, PARAM_CASA)),
+        new Change("10.7", format(NEW_FACET_ADDED_MESSAGE, PARAM_STIG_ASD_V5R3)),
+        new Change("10.7", format(NEW_PARAM_ADDED_MESSAGE, PARAM_STIG_ASD_V5R3)),
         new Change("10.6", format(NEW_FACET_ADDED_MESSAGE, PARAM_PRIORITIZED_RULE)),
         new Change("10.6", format(NEW_PARAM_ADDED_MESSAGE, PARAM_PRIORITIZED_RULE)),
         new Change("10.4", "Added new param '%s'".formatted(PARAM_FIXED_IN_PULL_REQUEST)),
@@ -303,8 +321,7 @@ public class SearchAction implements IssuesWsAction {
     action.createParam(PARAM_SEVERITIES)
       .setDescription("Comma-separated list of severities")
       .setExampleValue(Severity.BLOCKER + "," + Severity.CRITICAL)
-      .setPossibleValues(Severity.ALL)
-      .setDeprecatedSince("10.4");
+      .setPossibleValues(Severity.ALL);
     action.createParam(PARAM_IMPACT_SOFTWARE_QUALITIES)
       .setSince("10.2")
       .setDescription("Comma-separated list of Software Qualities")
@@ -313,8 +330,8 @@ public class SearchAction implements IssuesWsAction {
     action.createParam(PARAM_IMPACT_SEVERITIES)
       .setSince("10.2")
       .setDescription("Comma-separated list of Software Quality Severities")
-      .setExampleValue(org.sonar.api.issue.impact.Severity.HIGH + "," + org.sonar.api.issue.impact.Severity.MEDIUM)
-      .setPossibleValues(org.sonar.api.issue.impact.Severity.values());
+      .setExampleValue(HIGH + "," + MEDIUM)
+      .setPossibleValues(values());
     action.createParam(PARAM_CLEAN_CODE_ATTRIBUTE_CATEGORIES)
       .setSince("10.2")
       .setDescription("Comma-separated list of Clean Code Attribute Categories")
@@ -328,8 +345,7 @@ public class SearchAction implements IssuesWsAction {
     action.createParam(PARAM_RESOLUTIONS)
       .setDescription("Comma-separated list of resolutions")
       .setExampleValue(RESOLUTION_FIXED + "," + RESOLUTION_REMOVED)
-      .setPossibleValues(RESOLUTIONS)
-      .setDeprecatedSince("10.4");
+      .setPossibleValues(RESOLUTIONS);
     action.createParam(PARAM_RESOLVED)
       .setDescription("To match resolved or unresolved issues")
       .setBooleanPossibleValues();
@@ -345,7 +361,6 @@ public class SearchAction implements IssuesWsAction {
     action.createParam(PARAM_TYPES)
       .setDescription("Comma-separated list of types.")
       .setSince("5.5")
-      .setDeprecatedSince("10.4")
       .setPossibleValues(ALL_RULE_TYPES_EXCEPT_SECURITY_HOTSPOTS)
       .setExampleValue(format("%s,%s", RuleType.CODE_SMELL, RuleType.BUG));
     action.createParam(PARAM_OWASP_ASVS_LEVEL)
@@ -372,6 +387,12 @@ public class SearchAction implements IssuesWsAction {
       .setDescription("Comma-separated list of OWASP Top 10 2021 lowercase categories.")
       .setSince("9.4")
       .setPossibleValues("a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10");
+    action.createParam(PARAM_STIG_ASD_V5R3)
+      .setDescription("Comma-separated list of STIG V5R3 categories.")
+      .setSince("10.7");
+    action.createParam(PARAM_CASA)
+      .setDescription("Comma-separated list of CASA categories.")
+      .setSince("10.7");
     action.createParam(PARAM_SANS_TOP_25)
       .setDescription("Comma-separated list of SANS Top 25 categories.")
       .setDeprecatedSince("10.0")
@@ -516,7 +537,7 @@ public class SearchAction implements IssuesWsAction {
       .filter(FACETS_REQUIRING_PROJECT::contains)
       .collect(Collectors.toSet());
     checkArgument(facetsRequiringProjectParameter.isEmpty() ||
-        (!query.projectUuids().isEmpty()), "Facet(s) '%s' require to also filter by project",
+      (!query.projectUuids().isEmpty()), "Facet(s) '%s' require to also filter by project",
       String.join(",", facetsRequiringProjectParameter));
 
     // execute request
@@ -544,7 +565,7 @@ public class SearchAction implements IssuesWsAction {
 
     // FIXME allow long in Paging
     Paging paging = forPageIndex(options.getPage()).withPageSize(options.getLimit()).andTotal((int) getTotalHits(result).value);
-    return searchResponseFormat.formatSearch(additionalFields, data, paging, facets);
+    return searchResponseFormat.formatSearch(additionalFields, data, paging, facets, userSession.isLoggedIn());
   }
 
   private static TotalHits getTotalHits(SearchResponse response) {
@@ -552,15 +573,21 @@ public class SearchAction implements IssuesWsAction {
       "results"));
   }
 
-  private static SearchOptions createSearchOptionsFromRequest(SearchRequest request) {
+  private SearchOptions createSearchOptionsFromRequest(SearchRequest request) {
     SearchOptions options = new SearchOptions();
     options.setPage(request.getPage(), request.getPageSize());
 
     List<String> facets = request.getFacets();
-    if (facets != null && !facets.isEmpty()) {
-      options.addFacets(facets);
+
+    if (facets == null || facets.isEmpty()) {
+      return options;
     }
 
+    List<String> requestedFacets = new ArrayList<>(facets);
+    if (!userSession.isLoggedIn()) {
+      requestedFacets.remove(PARAM_AUTHOR);
+    }
+    options.addFacets(requestedFacets);
     return options;
   }
 
@@ -568,7 +595,7 @@ public class SearchAction implements IssuesWsAction {
     addMandatoryValuesToFacet(facets, PARAM_SEVERITIES, Severity.ALL);
     addMandatoryValuesToFacet(facets, PARAM_STATUSES, ISSUE_STATUSES);
     addMandatoryValuesToFacet(facets, PARAM_IMPACT_SOFTWARE_QUALITIES, enumToStringCollection(SoftwareQuality.values()));
-    addMandatoryValuesToFacet(facets, PARAM_IMPACT_SEVERITIES, enumToStringCollection(org.sonar.api.issue.impact.Severity.values()));
+    addMandatoryValuesToFacet(facets, PARAM_IMPACT_SEVERITIES, enumToStringCollection(values()));
     addMandatoryValuesToFacet(facets, PARAM_CLEAN_CODE_ATTRIBUTE_CATEGORIES, enumToStringCollection(CleanCodeAttributeCategory.values()));
 
     addMandatoryValuesToFacet(facets, PARAM_RESOLUTIONS, concat(singletonList(""), RESOLUTIONS));
@@ -595,6 +622,8 @@ public class SearchAction implements IssuesWsAction {
     addMandatoryValuesToFacet(facets, PARAM_OWASP_ASVS_40, request.getOwaspAsvs40());
     addMandatoryValuesToFacet(facets, PARAM_OWASP_TOP_10, request.getOwaspTop10());
     addMandatoryValuesToFacet(facets, PARAM_OWASP_TOP_10_2021, request.getOwaspTop10For2021());
+    addMandatoryValuesToFacet(facets, PARAM_STIG_ASD_V5R3, request.getStigAsdV5R3());
+    addMandatoryValuesToFacet(facets, PARAM_CASA, request.getCasa());
     addMandatoryValuesToFacet(facets, PARAM_SANS_TOP_25, request.getSansTop25());
     addMandatoryValuesToFacet(facets, PARAM_CWE, request.getCwe());
     addMandatoryValuesToFacet(facets, PARAM_SONARSOURCE_SECURITY, request.getSonarsourceSecurity());
@@ -682,6 +711,8 @@ public class SearchAction implements IssuesWsAction {
       .setOwaspAsvs40(request.paramAsStrings(PARAM_OWASP_ASVS_40))
       .setOwaspTop10(request.paramAsStrings(PARAM_OWASP_TOP_10))
       .setOwaspTop10For2021(request.paramAsStrings(PARAM_OWASP_TOP_10_2021))
+      .setStigAsdV5R3(request.paramAsStrings(PARAM_STIG_ASD_V5R3))
+      .setCasa(request.paramAsStrings(PARAM_CASA))
       .setSansTop25(request.paramAsStrings(PARAM_SANS_TOP_25))
       .setCwe(request.paramAsStrings(PARAM_CWE))
       .setSonarsourceSecurity(request.paramAsStrings(PARAM_SONARSOURCE_SECURITY))

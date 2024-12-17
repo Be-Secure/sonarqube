@@ -10,12 +10,12 @@ dependencies {
   api 'org.codehaus.sonar:sonar-channel'
   api 'org.sonarsource.api.plugin:sonar-plugin-api'
 
-  compileOnlyApi 'com.google.code.findbugs:jsr305'
+  compileOnlyApi 'com.github.spotbugs:spotbugs-annotations'
 
   testImplementation 'ch.qos.logback:logback-classic'
   testImplementation 'commons-io:commons-io'
   testImplementation 'junit:junit'
   testImplementation 'org.assertj:assertj-core'
-  testImplementation 'org.hamcrest:hamcrest-core'
+  testImplementation 'org.hamcrest:hamcrest'
   testImplementation 'org.mockito:mockito-core'
 }

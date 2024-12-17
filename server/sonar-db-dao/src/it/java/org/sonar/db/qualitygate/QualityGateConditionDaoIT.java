@@ -31,7 +31,7 @@ import org.sonar.db.DbSession;
 import org.sonar.db.DbTester;
 import org.sonar.db.metric.MetricDto;
 
-import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
+import static org.apache.commons.lang3.RandomStringUtils.secure;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.tuple;
 
@@ -165,12 +165,25 @@ class QualityGateConditionDaoIT {
     assertThat(underTest.selectByUuid(condition3.getUuid(), dbSession)).isNull();
   }
 
+  @Test
+  void countByQualityGateUuid_shouldReturnCorrectCount() {
+    insertQGCondition("1", "1");
+    insertQGCondition("1", "3");
+    insertQGCondition("1", "299");
+
+    dbTester.commit();
+
+
+    assertThat(underTest.countByQualityGateUuid(dbSession,"1")).isEqualTo(3);
+    assertThat(underTest.countByQualityGateUuid(dbSession,"unknown")).isZero();
+  }
+
   private QualityGateConditionDto insertQGCondition(String qualityGateUuid) {
-    return insertQGCondition(qualityGateUuid, randomAlphabetic(2));
+    return insertQGCondition(qualityGateUuid, secure().nextAlphabetic(2));
   }
 
   private QualityGateConditionDto insertQGCondition(String qualityGateUuid, String metricUuid) {
-    return insertQGCondition(qualityGateUuid, metricUuid, randomAlphabetic(2), randomAlphabetic(3));
+    return insertQGCondition(qualityGateUuid, metricUuid, secure().nextAlphabetic(2), secure().nextAlphabetic(3));
   }
 
   private QualityGateConditionDto insertQGCondition(String qualityGateUuid, String metricUuid, String operator, String threshold) {

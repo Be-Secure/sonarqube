@@ -17,8 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonSecondary, PageTitle } from 'design-system';
+
+import { Button } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { PageTitle } from '~design-system';
 import {
   commentSecurityHotspot,
   deleteSecurityHotspotComment,
@@ -82,14 +84,14 @@ export default class HotspotReviewHistoryAndComments extends React.PureComponent
       <div className="it__hs-review-history">
         <PageTitle
           as="h2"
-          className="sw-body-md-highlight"
+          className="sw-typo-lg-semibold"
           text={translate('hotspot.section.activity')}
         />
 
         {isLoggedIn(currentUser) && (
-          <ButtonSecondary className="sw-mt-4 sw-mb-2" onClick={this.handleShowCommentModal}>
+          <Button className="sw-mt-4 sw-mb-2" onClick={this.handleShowCommentModal}>
             {translate('hotspots.status.add_comment')}
-          </ButtonSecondary>
+          </Button>
         )}
 
         <HotspotReviewHistory

@@ -25,16 +25,15 @@ import javax.annotation.Nullable;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.sonar.api.resources.Qualifiers;
+import org.sonar.db.component.ComponentQualifiers;
 import org.sonar.api.server.ws.Change;
 import org.sonar.api.server.ws.WebService;
 import org.sonar.api.utils.System2;
 import org.sonar.db.DbTester;
-import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.ComponentDto;
 import org.sonar.db.component.ComponentTesting;
 import org.sonar.db.component.ProjectData;
-import org.sonar.db.component.ResourceTypesRule;
+import org.sonar.server.component.ComponentTypesRule;
 import org.sonar.db.project.ProjectDto;
 import org.sonar.server.component.index.ComponentIndex;
 import org.sonar.server.component.index.EntityDefinitionIndexer;
@@ -56,17 +55,17 @@ import static java.util.Collections.singletonList;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.IntStream.range;
-import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
+import static org.apache.commons.lang3.RandomStringUtils.secure;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
-import static org.sonar.api.resources.Qualifiers.APP;
-import static org.sonar.api.resources.Qualifiers.FILE;
-import static org.sonar.api.resources.Qualifiers.PROJECT;
-import static org.sonar.api.resources.Qualifiers.SUBVIEW;
-import static org.sonar.api.resources.Qualifiers.UNIT_TEST_FILE;
-import static org.sonar.api.resources.Qualifiers.VIEW;
+import static org.sonar.db.component.ComponentQualifiers.APP;
+import static org.sonar.db.component.ComponentQualifiers.FILE;
+import static org.sonar.db.component.ComponentQualifiers.PROJECT;
+import static org.sonar.db.component.ComponentQualifiers.SUBVIEW;
+import static org.sonar.db.component.ComponentQualifiers.UNIT_TEST_FILE;
+import static org.sonar.db.component.ComponentQualifiers.VIEW;
 import static org.sonar.api.web.UserRole.USER;
 import static org.sonar.db.component.ComponentTesting.newFileDto;
 import static org.sonar.server.component.ws.SuggestionsAction.PARAM_MORE;
@@ -86,7 +85,7 @@ public class SuggestionsActionIT {
   public final EsTester es = EsTester.create();
   @Rule
   public final UserSessionRule userSessionRule = UserSessionRule.standalone();
-  public final ResourceTypesRule resourceTypes = new ResourceTypesRule();
+  public final ComponentTypesRule resourceTypes = new ComponentTypesRule();
 
   private final EntityDefinitionIndexer entityDefinitionIndexer = new EntityDefinitionIndexer(db.getDbClient(), es.client());
   private final FavoriteFinder favoriteFinder = mock(FavoriteFinder.class);
@@ -270,7 +269,7 @@ public class SuggestionsActionIT {
     assertThat(response.getResultsList())
       .filteredOn(q -> q.getItemsCount() > 0)
       .extracting(Category::getQ)
-      .containsExactly(Qualifiers.PROJECT);
+      .containsExactly(ComponentQualifiers.PROJECT);
 
     // assert correct id to be found
     assertThat(response.getResultsList())
@@ -529,7 +528,7 @@ public class SuggestionsActionIT {
 
   @Test
   public void should_only_provide_project_for_certain_qualifiers() {
-    String query = randomAlphabetic(10);
+    String query = secure().nextAlphabetic(10);
 
     ProjectData appData = db.components().insertPublicApplication(v -> v.setName(query));
     ComponentDto app = appData.getMainBranchComponent();

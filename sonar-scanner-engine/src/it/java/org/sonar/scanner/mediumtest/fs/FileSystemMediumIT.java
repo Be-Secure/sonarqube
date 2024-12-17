@@ -229,7 +229,7 @@ public class FileSystemMediumIT {
       .execute();
 
     assertThat(logTester.logs()).contains("1 file indexed");
-    assertThat(logTester.logs()).contains("'src" + File.separator + "sample.unknown' indexed with no language");
+    assertThat(logTester.logs()).contains("'src/sample.unknown' indexed with no language");
     assertThat(logTester.logs()).contains("'src/sample.unknown' generated metadata with charset 'UTF-8'");
     DefaultInputFile inputFile = (DefaultInputFile) result.inputFile("src/sample.unknown");
     assertThat(result.getReportComponent(inputFile)).isNotNull();
@@ -261,7 +261,7 @@ public class FileSystemMediumIT {
         .build())
       .execute();
 
-    assertThat(logTester.logs()).containsOnlyOnce("'src" + File.separator + "myfile.binary' indexed with no language");
+    assertThat(logTester.logs()).containsOnlyOnce("'src/myfile.binary' indexed with no language");
     assertThat(logTester.logs()).doesNotContain("Evaluate issue exclusions for 'src/myfile.binary'");
     assertThat(logTester.logs()).containsOnlyOnce("Evaluate issue exclusions for 'src/sample.xoo'");
   }
@@ -337,9 +337,10 @@ public class FileSystemMediumIT {
 
     int nbFiles = 100;
     int ruleCount = 100000;
+    String fileContent = StringUtils.repeat(StringUtils.repeat("a", 100) + "\n", ruleCount / 1000);
     for (int nb = 1; nb <= nbFiles; nb++) {
       File xooFile = new File(srcDir, "sample" + nb + ".xoo");
-      FileUtils.write(xooFile, StringUtils.repeat(StringUtils.repeat("a", 100) + "\n", ruleCount / 1000));
+      FileUtils.write(xooFile, fileContent);
     }
 
     AnalysisResult result = tester.newAnalysis()

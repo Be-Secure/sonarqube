@@ -17,6 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+import * as React from 'react';
+import { FormattedMessage } from 'react-intl';
 import {
   Avatar,
   DangerButtonPrimary,
@@ -24,9 +27,7 @@ import {
   Modal,
   Note,
   TrashIcon,
-} from 'design-system';
-import * as React from 'react';
-import { FormattedMessage } from 'react-intl';
+} from '~design-system';
 import { removeUser } from '../../../api/quality-profiles';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { UserSelected } from '../../../types/types';
@@ -62,7 +63,7 @@ export default function ProfilePermissionsGroup(props: Readonly<Props>) {
           size="xs"
         />
         <div className="sw-truncate fs-mask">
-          <strong className="sw-body-sm-highlight">{user.name}</strong>
+          <strong className="sw-typo-semibold">{user.name}</strong>
           <Note className="sw-block">{user.login}</Note>
         </div>
       </div>

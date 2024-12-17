@@ -18,7 +18,6 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import React from 'react';
 import { useIntl } from 'react-intl';
 import DateFromNow from '../../../components/intl/DateFromNow';
 
@@ -36,7 +35,7 @@ export default function LastAnalysisLabel({ analysisDate }: Readonly<Props>) {
           id: 'overview.last_analysis_x',
         },
         {
-          date: <DateFromNow className="sw-body-sm-highlight" date={analysisDate} />,
+          date: <DateFromNow className="sw-typo-semibold" date={analysisDate} />,
         },
       )}
     </span>

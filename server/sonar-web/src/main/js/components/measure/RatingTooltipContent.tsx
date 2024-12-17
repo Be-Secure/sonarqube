@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import * as React from 'react';
+
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricKey, MetricType } from '~sonar-aligned/types/metrics';
 import withAppStateContext from '../../app/components/app-state/withAppStateContext';
@@ -57,7 +57,11 @@ export function RatingTooltipContent(props: Readonly<RatingTooltipContentProps>)
   const rating = Number(value);
   const ratingLetter = formatMeasure(value, MetricType.Rating);
 
-  if (finalMetricKey !== MetricKey.sqale_rating && finalMetricKey !== 'maintainability_rating') {
+  if (
+    finalMetricKey !== MetricKey.sqale_rating &&
+    finalMetricKey !== 'maintainability_rating' &&
+    finalMetricKey !== MetricKey.software_quality_maintainability_rating
+  ) {
     return <>{translate('metric', finalMetricKey, 'tooltip', ratingLetter)}</>;
   }
 
@@ -65,17 +69,20 @@ export function RatingTooltipContent(props: Readonly<RatingTooltipContentProps>)
   const maintainabilityRatingThreshold =
     maintainabilityGrid[Math.floor(rating) - GRID_INDEX_OFFSET];
 
+  const metricForTooltipText =
+    finalMetricKey === 'maintainability_rating' ? MetricKey.sqale_rating : finalMetricKey;
+
   return (
     // Required to correctly satisfy the context typing
     // eslint-disable-next-line react/jsx-no-useless-fragment
     <>
       {rating === 1
         ? translateWithParameters(
-            'metric.sqale_rating.tooltip.A',
+            `metric.${metricForTooltipText}.tooltip.A`,
             formatMeasure(maintainabilityGrid[0] * PERCENT_MULTIPLIER, MetricType.Percent),
           )
         : translateWithParameters(
-            'metric.sqale_rating.tooltip',
+            `metric.${metricForTooltipText}.tooltip`,
             ratingLetter,
             formatMeasure(maintainabilityRatingThreshold * PERCENT_MULTIPLIER, MetricType.Percent),
           )}

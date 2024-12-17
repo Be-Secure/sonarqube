@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.sonar.api.rules.CleanCodeAttribute;
 import org.sonar.api.server.ServerSide;
+import org.sonar.core.rule.ImpactFormatter;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.component.ComponentDto;
@@ -108,7 +109,7 @@ public class PullTaintActionProtobufObjectGenerator implements ProtobufObjectGen
     taintBuilder.addAllImpacts(issueDto.getEffectiveImpacts().entrySet()
       .stream().map(entry -> Common.Impact.newBuilder()
         .setSoftwareQuality(Common.SoftwareQuality.valueOf(entry.getKey().name()))
-        .setSeverity(Common.ImpactSeverity.valueOf(entry.getValue().name()))
+        .setSeverity(ImpactFormatter.mapImpactSeverity(entry.getValue()))
         .build())
       .toList());
 

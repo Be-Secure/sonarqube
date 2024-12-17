@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { cloneDeep, times } from 'lodash';
 import {
   mockHotspot,
@@ -256,6 +257,7 @@ export default class SecurityHotspotServiceMock {
     return [
       mockRawHotspot({ assignee: 'John Doe', key: 'test-1' }),
       mockRawHotspot({ assignee: 'John Doe', key: 'test-2' }),
+      mockRawHotspot({ assignee: 'John Doe', key: 'test-cve', cveId: 'CVE-2021-12345' }),
     ];
   };
 
@@ -330,6 +332,13 @@ export default class SecurityHotspotServiceMock {
         status: HotspotStatus.TO_REVIEW,
         message: "'2' is a magic number.",
         codeVariants: ['variant 1', 'variant 2'],
+      }),
+      mockHotspot({
+        rule: mockHotspotRule({ key: 'rule2' }),
+        key: 'test-cve',
+        status: HotspotStatus.TO_REVIEW,
+        message: 'CVE on jackson',
+        cveId: 'CVE-2021-12345',
       }),
     ];
     this.canChangeStatus = true;

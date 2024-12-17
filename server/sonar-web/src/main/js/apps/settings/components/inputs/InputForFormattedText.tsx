@@ -19,21 +19,25 @@
  */
 
 import styled from '@emotion/styled';
+import * as React from 'react';
 import {
   ButtonSecondary,
   HtmlFormatter,
   InputTextArea,
   PencilIcon,
+  SafeHTMLInjection,
+  SanitizeLevel,
   themeBorder,
   themeColor,
-} from 'design-system';
-import * as React from 'react';
+} from '~design-system';
 import FormattingTipsWithLink from '../../../../components/common/FormattingTipsWithLink';
 import { translate } from '../../../../helpers/l10n';
-import { sanitizeUserInput } from '../../../../helpers/sanitize';
 import { DefaultSpecializedInputProps, getPropertyName } from '../../utils';
 
-export default function InputForFormattedText(props: DefaultSpecializedInputProps) {
+function InputForFormattedText(
+  props: DefaultSpecializedInputProps,
+  ref: React.ForwardedRef<HTMLTextAreaElement>,
+) {
   const { isEditing, setting, name, value } = props;
   const { values, hasValue } = setting;
   const editMode = !hasValue || isEditing;
@@ -52,6 +56,7 @@ export default function InputForFormattedText(props: DefaultSpecializedInputProp
         className="settings-large-input sw-mr-2"
         name={name}
         onChange={handleInputChange}
+        ref={ref}
         rows={5}
         value={value || ''}
       />
@@ -60,10 +65,12 @@ export default function InputForFormattedText(props: DefaultSpecializedInputProp
   ) : (
     <>
       <HtmlFormatter>
-        <FormattedPreviewBox
-          // eslint-disable-next-line react/no-danger
-          dangerouslySetInnerHTML={{ __html: sanitizeUserInput(formattedValue ?? '') }}
-        />
+        <SafeHTMLInjection
+          htmlAsString={formattedValue ?? ''}
+          sanitizeLevel={SanitizeLevel.USER_INPUT}
+        >
+          <FormattedPreviewBox />
+        </SafeHTMLInjection>
       </HtmlFormatter>
 
       <ButtonSecondary className="sw-mt-2" onClick={props.onEditing} icon={<PencilIcon />}>
@@ -82,3 +89,5 @@ const FormattedPreviewBox = styled.div`
   overflow-wrap: break-word;
   line-height: 1.5;
 `;
+
+export default React.forwardRef(InputForFormattedText);

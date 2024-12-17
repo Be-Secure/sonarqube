@@ -17,10 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { withTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import * as React from 'react';
 import {
-  BareButton,
   LAYOUT_FOOTER_HEIGHT,
   LAYOUT_GLOBAL_NAV_HEIGHT,
   LAYOUT_PROJECT_NAV_HEIGHT,
@@ -28,17 +29,18 @@ import {
   SubnavigationItem,
   themeBorder,
   themeColor,
-} from 'design-system';
-import * as React from 'react';
+} from '~design-system';
 import A11ySkipTarget from '~sonar-aligned/components/a11y/A11ySkipTarget';
 import { translate } from '../../../helpers/l10n';
 import useFollowScroll from '../../../hooks/useFollowScroll';
+import { useStandardExperienceModeQuery } from '../../../queries/mode';
 import { Domain } from '../../../types/measures';
 import { MeasureEnhanced } from '../../../types/types';
-import { PROJECT_OVERVEW, Query, isProjectOverview, populateDomainsFromMeasures } from '../utils';
+import { PROJECT_OVERVIEW, Query, isProjectOverview, populateDomainsFromMeasures } from '../utils';
 import DomainSubnavigation from './DomainSubnavigation';
 
 interface Props {
+  componentKey: string;
   measures: MeasureEnhanced[];
   selectedMetric: string;
   showFullMeasures: boolean;
@@ -46,9 +48,10 @@ interface Props {
 }
 
 export default function Sidebar(props: Readonly<Props>) {
-  const { showFullMeasures, updateQuery, selectedMetric, measures } = props;
+  const { showFullMeasures, updateQuery, componentKey, selectedMetric, measures } = props;
   const { top: topScroll, scrolledOnce } = useFollowScroll();
-  const domains = populateDomainsFromMeasures(measures);
+  const { data: isStandardMode } = useStandardExperienceModeQuery();
+  const domains = populateDomainsFromMeasures(measures, isStandardMode);
 
   const handleChangeMetric = React.useCallback(
     (metric: string) => {
@@ -58,7 +61,7 @@ export default function Sidebar(props: Readonly<Props>) {
   );
 
   const handleProjectOverviewClick = () => {
-    handleChangeMetric(PROJECT_OVERVEW);
+    handleChangeMetric(PROJECT_OVERVIEW);
   };
 
   const distanceFromBottom = topScroll + window.innerHeight - document.body.scrollHeight;
@@ -91,19 +94,20 @@ export default function Sidebar(props: Readonly<Props>) {
         <SubnavigationGroup>
           <SubnavigationItem
             active={isProjectOverview(selectedMetric)}
+            ariaCurrent={isProjectOverview(selectedMetric)}
             onClick={handleProjectOverviewClick}
           >
-            <BareButton aria-current={isProjectOverview(selectedMetric)}>
-              {translate('component_measures.overview', PROJECT_OVERVEW, 'subnavigation')}
-            </BareButton>
+            {translate('component_measures.overview', PROJECT_OVERVIEW, 'subnavigation')}
           </SubnavigationItem>
         </SubnavigationGroup>
 
         {domains.map((domain: Domain) => (
           <DomainSubnavigation
+            componentKey={componentKey}
             domain={domain}
             key={domain.name}
             onChange={handleChangeMetric}
+            measures={measures}
             open={isDomainSelected(selectedMetric, domain)}
             selected={selectedMetric}
             showFullMeasures={showFullMeasures}

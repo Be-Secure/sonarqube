@@ -38,7 +38,7 @@ import org.mockito.Mockito;
 import org.slf4j.event.Level;
 import org.sonar.api.issue.impact.Severity;
 import org.sonar.api.issue.impact.SoftwareQuality;
-import org.sonar.api.resources.Qualifiers;
+import org.sonar.db.component.ComponentQualifiers;
 import org.sonar.api.testfixtures.log.LogTester;
 import org.sonar.db.DatabaseUtils;
 import org.sonar.db.DbSession;
@@ -48,6 +48,7 @@ import org.sonar.db.component.ComponentDto;
 import org.sonar.db.component.ComponentTesting;
 import org.sonar.db.component.ProjectData;
 import org.sonar.db.es.EsQueueDto;
+import org.sonar.db.issue.ImpactDto;
 import org.sonar.db.issue.IssueDto;
 import org.sonar.db.issue.IssueTesting;
 import org.sonar.db.project.ProjectDto;
@@ -151,8 +152,8 @@ public class IssueIndexerIT {
     assertThat(scope.getIndexType().getType()).isEqualTo(TYPE_AUTHORIZATION);
 
     Predicate<IndexPermissions> projectPredicate = scope.getEntityPredicate();
-    IndexPermissions project = new IndexPermissions("P1", Qualifiers.PROJECT);
-    IndexPermissions file = new IndexPermissions("F1", Qualifiers.FILE);
+    IndexPermissions project = new IndexPermissions("P1", ComponentQualifiers.PROJECT);
+    IndexPermissions file = new IndexPermissions("F1", ComponentQualifiers.FILE);
     assertThat(projectPredicate.test(project)).isTrue();
     assertThat(projectPredicate.test(file)).isFalse();
   }
@@ -174,7 +175,9 @@ public class IssueIndexerIT {
     ComponentDto project = projectData.getMainBranchComponent();
     ComponentDto dir = db.components().insertComponent(ComponentTesting.newDirectory(project, "src/main/java/foo"));
     ComponentDto file = db.components().insertComponent(newFileDto(project, dir, "F1"));
-    IssueDto issue = db.issues().insert(rule, project, file);
+    IssueDto issue = db.issues().insert(rule, project, file,
+      i -> i.replaceAllImpacts(List.of(new ImpactDto().setSoftwareQuality(SoftwareQuality.MAINTAINABILITY).setSeverity(Severity.HIGH),
+        new ImpactDto().setSoftwareQuality(SoftwareQuality.SECURITY).setSeverity(Severity.INFO))));
 
     underTest.indexAllIssues();
 
@@ -197,19 +200,25 @@ public class IssueIndexerIT {
     assertThat(doc.updateDate()).isEqualToIgnoringMillis(new Date(issue.getIssueUpdateTime()));
     assertThat(doc.getCwe()).containsExactlyInAnyOrder(SecurityStandards.UNKNOWN_STANDARD);
     assertThat(doc.getOwaspTop10()).isEmpty();
+    assertThat(doc.getStigAsdV5R3()).isEmpty();
+    assertThat(doc.getCasa()).isEmpty();
     assertThat(doc.getSansTop25()).isEmpty();
     assertThat(doc.getSonarSourceSecurityCategory()).isEqualTo(SQCategory.OTHERS);
     assertThat(doc.getVulnerabilityProbability()).isEqualTo(VulnerabilityProbability.LOW);
     assertThat(doc.impacts())
       .containsExactlyInAnyOrder(Map.of(
         SUB_FIELD_SOFTWARE_QUALITY, SoftwareQuality.MAINTAINABILITY.name(),
-        SUB_FIELD_SEVERITY, Severity.HIGH.name()));
+        SUB_FIELD_SEVERITY, Severity.HIGH.name()),
+        Map.of(
+          SUB_FIELD_SOFTWARE_QUALITY, SoftwareQuality.SECURITY.name(),
+          SUB_FIELD_SEVERITY, Severity.INFO.name()));
     assertThat(doc.issueStatus()).isEqualTo(issue.getIssueStatus().name());
   }
 
   @Test
   public void indexAllIssues_shouldIndexSecurityStandards() {
-    RuleDto rule = db.rules().insert(r -> r.setSecurityStandards(new HashSet<>(Arrays.asList("cwe:123", "owaspTop10:a3", "cwe:863", "owaspAsvs-4.0:2.1.1"))));
+    RuleDto rule = db.rules()
+      .insert(r -> r.setSecurityStandards(new HashSet<>(Arrays.asList("stig-ASD_V5R3:V-222400", "cwe:123", "owaspTop10:a3", "cwe:863", "cwe:326", "owaspAsvs-4.0:2.1.1"))));
     ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
     ComponentDto dir = db.components().insertComponent(ComponentTesting.newDirectory(project, "src/main/java/foo"));
     ComponentDto file = db.components().insertComponent(newFileDto(project, dir, "F1"));
@@ -218,10 +227,12 @@ public class IssueIndexerIT {
     underTest.indexAllIssues();
 
     IssueDoc doc = es.getDocuments(TYPE_ISSUE, IssueDoc.class).get(0);
-    assertThat(doc.getCwe()).containsExactlyInAnyOrder("123", "863");
+    assertThat(doc.getCwe()).containsExactlyInAnyOrder("123", "863", "326");
     assertThat(doc.getOwaspTop10()).containsExactlyInAnyOrder("a3");
     assertThat(doc.getOwaspAsvs40()).containsExactlyInAnyOrder("2.1.1");
     assertThat(doc.getSansTop25()).containsExactlyInAnyOrder(SANS_TOP_25_POROUS_DEFENSES);
+    assertThat(doc.getStigAsdV5R3()).containsExactlyInAnyOrder("V-222400");
+    assertThat(doc.getCasa()).containsExactly("6.2.3", "9.1.2", "6.2.7", "6.2.4");
   }
 
   @Test

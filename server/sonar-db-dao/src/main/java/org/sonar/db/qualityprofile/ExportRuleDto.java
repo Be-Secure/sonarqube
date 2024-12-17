@@ -24,6 +24,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import javax.annotation.CheckForNull;
 import org.sonar.api.rule.RuleKey;
 import org.sonar.api.rules.RuleType;
 import org.sonar.db.rule.SeverityUtil;
@@ -37,7 +38,9 @@ public class ExportRuleDto {
   private String extendedDescription = null;
   private String template = null;
   private Integer severity = null;
+  private String impacts = null;
   private Integer type = null;
+  private Boolean prioritizedRule;
   private Set<String> tags = new HashSet<>();
 
   private List<ExportRuleParamDto> params = null;
@@ -68,6 +71,15 @@ public class ExportRuleDto {
 
   public RuleType getRuleType() {
     return RuleType.valueOf(type);
+  }
+
+  @CheckForNull
+  public Boolean getPrioritizedRule() {
+    return prioritizedRule;
+  }
+
+  public String getImpacts() {
+    return impacts;
   }
 
   public Set<String> getTags() {

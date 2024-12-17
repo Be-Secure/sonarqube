@@ -17,16 +17,21 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { InputField } from 'design-system';
+
 import * as React from 'react';
+import { InputField } from '~design-system';
 import { KeyboardKeys } from '../../../../helpers/keycodes';
 import { DefaultSpecializedInputProps, getPropertyName } from '../../utils';
 
-export interface SimpleInputProps extends DefaultSpecializedInputProps {
+interface SimpleInputProps extends DefaultSpecializedInputProps {
   value: string | number;
 }
 
-export default class SimpleInput extends React.PureComponent<SimpleInputProps> {
+type InternalProps = SimpleInputProps & {
+  innerRef: React.ForwardedRef<HTMLInputElement>;
+};
+
+class SimpleInput extends React.PureComponent<InternalProps> {
   handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     this.props.onChange(event.currentTarget.value);
   };
@@ -41,9 +46,12 @@ export default class SimpleInput extends React.PureComponent<SimpleInputProps> {
 
   render() {
     const {
+      ariaDescribedBy,
       autoComplete,
       autoFocus,
       className,
+      index,
+      innerRef,
       isInvalid,
       name,
       value = '',
@@ -51,8 +59,16 @@ export default class SimpleInput extends React.PureComponent<SimpleInputProps> {
       size,
       type,
     } = this.props;
+
+    let label = getPropertyName(setting.definition);
+    if (typeof index === 'number') {
+      label = label.concat(` - ${index + 1}`);
+    }
+
     return (
       <InputField
+        aria-describedby={ariaDescribedBy}
+        id={`input-${name}-${index}`}
         isInvalid={isInvalid}
         autoComplete={autoComplete}
         autoFocus={autoFocus}
@@ -60,11 +76,18 @@ export default class SimpleInput extends React.PureComponent<SimpleInputProps> {
         name={name}
         onChange={this.handleInputChange}
         onKeyDown={this.handleKeyDown}
+        ref={innerRef}
         type={type}
         value={value}
         size={size}
-        aria-label={getPropertyName(setting.definition)}
+        aria-label={label}
       />
     );
   }
 }
+
+export default React.forwardRef(
+  (props: SimpleInputProps, ref: React.ForwardedRef<HTMLInputElement>) => (
+    <SimpleInput innerRef={ref} {...props} />
+  ),
+);

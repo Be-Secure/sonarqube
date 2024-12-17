@@ -17,14 +17,15 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { UserEvent } from '@testing-library/user-event/dist/types/setup/setup';
-import React from 'react';
 import { byLabelText, byRole, byText } from '~sonar-aligned/helpers/testSelector';
 import ComputeEngineServiceMock from '../../../../../api/mocks/ComputeEngineServiceMock';
 import DopTranslationServiceMock from '../../../../../api/mocks/DopTranslationServiceMock';
 import GithubProvisioningServiceMock from '../../../../../api/mocks/GithubProvisioningServiceMock';
+import GitlabProvisioningServiceMock from '../../../../../api/mocks/GitlabProvisioningServiceMock';
 import SettingsServiceMock from '../../../../../api/mocks/SettingsServiceMock';
 import SystemServiceMock from '../../../../../api/mocks/SystemServiceMock';
 import { AvailableFeaturesContext } from '../../../../../app/components/available-features/AvailableFeaturesContext';
@@ -42,6 +43,7 @@ let system: SystemServiceMock;
 let settingsHandler: SettingsServiceMock;
 let computeEngineHandler: ComputeEngineServiceMock;
 let dopTranslationHandler: DopTranslationServiceMock;
+let gitlabHandler: GitlabProvisioningServiceMock;
 
 const mockedGitHubConfigurationResponse = mockGitHubConfiguration({
   apiUrl: 'API url',
@@ -56,6 +58,7 @@ beforeEach(() => {
   system = new SystemServiceMock();
   settingsHandler = new SettingsServiceMock();
   computeEngineHandler = new ComputeEngineServiceMock();
+  gitlabHandler = new GitlabProvisioningServiceMock();
 });
 
 afterEach(() => {
@@ -64,6 +67,7 @@ afterEach(() => {
   system.reset();
   computeEngineHandler.reset();
   dopTranslationHandler.reset();
+  gitlabHandler.reset();
 });
 
 const ghContainer = byRole('tabpanel', { name: 'github GitHub' });
@@ -76,7 +80,7 @@ const ui = {
   textbox1: byRole('textbox', { name: 'test1' }),
   textbox2: byRole('textbox', { name: 'test2' }),
   tab: byRole('tab', { name: 'github GitHub' }),
-  cancelDialogButton: byRole('dialog').byRole('button', { name: 'cancel' }),
+  cancelDialogButton: byRole('alertdialog').byRole('button', { name: 'cancel' }),
   noGithubConfiguration: byText('settings.authentication.github.form.not_configured'),
   createConfigButton: ghContainer.byRole('button', {
     name: 'settings.authentication.form.create',
@@ -94,10 +98,10 @@ const ui = {
   githubApiUrl: byRole('textbox', { name: 'property.apiUrl.name' }),
   githubWebUrl: byRole('textbox', { name: 'property.webUrl.name' }),
   allowUsersToSignUp: byRole('switch', {
-    name: 'property.allowUsersToSignUp.name',
+    description: 'property.allowUsersToSignUp.description',
   }),
   projectVisibility: byRole('switch', {
-    name: 'property.projectVisibility.name',
+    description: 'property.projectVisibility.description',
   }),
   organizations: byRole('textbox', {
     name: 'property.allowedOrganizations.name',
@@ -120,31 +124,31 @@ const ui = {
     name: 'settings.authentication.form.edit',
   }),
   editMappingButton: ghContainer.byRole('button', {
-    name: 'settings.authentication.github.configuration.roles_mapping.button_label',
+    name: 'settings.authentication.configuration.roles_mapping.button_label',
   }),
   mappingRow: byRole('dialog', {
-    name: 'settings.authentication.github.configuration.roles_mapping.dialog.title',
+    name: 'settings.authentication.configuration.roles_mapping.dialog.title.alm.github',
   }).byRole('row'),
   customRoleInput: byRole('textbox', {
-    name: 'settings.authentication.github.configuration.roles_mapping.dialog.add_custom_role',
+    name: 'settings.authentication.configuration.roles_mapping.dialog.add_custom_role',
   }),
   customRoleAddBtn: byRole('dialog', {
-    name: 'settings.authentication.github.configuration.roles_mapping.dialog.title',
+    name: 'settings.authentication.configuration.roles_mapping.dialog.title.alm.github',
   }).byRole('button', { name: 'add_verb' }),
   roleExistsError: byRole('dialog', {
-    name: 'settings.authentication.github.configuration.roles_mapping.dialog.title',
-  }).byText('settings.authentication.github.configuration.roles_mapping.role_exists'),
+    name: 'settings.authentication.configuration.roles_mapping.dialog.title.alm.github',
+  }).byText('settings.authentication.configuration.roles_mapping.role_exists'),
   emptyRoleError: byRole('dialog', {
-    name: 'settings.authentication.github.configuration.roles_mapping.dialog.title',
-  }).byText('settings.authentication.github.configuration.roles_mapping.empty_custom_role'),
+    name: 'settings.authentication.configuration.roles_mapping.dialog.title.alm.github',
+  }).byText('settings.authentication.configuration.roles_mapping.empty_custom_role'),
   deleteCustomRoleCustom2: byRole('button', {
-    name: 'settings.authentication.github.configuration.roles_mapping.dialog.delete_custom_role.custom2',
+    name: 'settings.authentication.configuration.roles_mapping.dialog.delete_custom_role.custom2',
   }),
   getMappingRowByRole: (text: string) =>
     ui.mappingRow.getAll().find((row) => within(row).queryByText(text) !== null),
   mappingCheckbox: byRole('checkbox'),
   mappingDialogClose: byRole('dialog', {
-    name: 'settings.authentication.github.configuration.roles_mapping.dialog.title',
+    name: 'settings.authentication.configuration.roles_mapping.dialog.title.alm.github',
   }).byRole('button', {
     name: 'close',
   }),
@@ -153,7 +157,7 @@ const ui = {
       name: `settings.definition.delete_value.property.allowedOrganizations.name.${org}`,
     }),
   enableFirstMessage: ghContainer.byText('settings.authentication.github.enable_first'),
-  insecureConfigWarning: byRole('dialog').byText(
+  insecureConfigWarning: byRole('alertdialog').byText(
     'settings.authentication.github.provisioning_change.insecure_config',
   ),
   jitProvisioningButton: ghContainer.byRole('radio', {
@@ -195,14 +199,17 @@ const ui = {
   configDetailsDialog: byRole('dialog', {
     name: 'settings.authentication.github.configuration.validation.details.title',
   }),
-  continueAutoButton: byRole('button', {
-    name: 'settings.authentication.github.confirm_auto_provisioning.continue',
+  autoRadioButton: byRole('radio', {
+    name: 'settings.authentication.confirm_auto_provisioning.auto.label',
   }),
-  switchJitButton: byRole('button', {
-    name: 'settings.authentication.github.confirm_auto_provisioning.switch_jit',
+  jitRadioButton: byRole('radio', {
+    name: 'settings.authentication.confirm_auto_provisioning.jit.label',
+  }),
+  confirmChoiceButton: byRole('button', {
+    name: 'settings.authentication.confirm_auto_provisioning.confirm_choice',
   }),
   consentDialog: byRole('dialog', {
-    name: 'settings.authentication.github.confirm_auto_provisioning.header',
+    name: 'settings.authentication.confirm_auto_provisioning.header',
   }),
   getConfigDetailsTitle: () => ui.configDetailsDialog.byRole('heading').get(),
   getOrgs: () => ui.configDetailsDialog.byRole('listitem').getAll(),
@@ -277,6 +284,7 @@ describe('Github tab', () => {
     await user.click(ui.deleteOrg('organization1').get());
 
     await user.click(ui.saveConfigButton.get());
+    await user.click(ui.confirmProvisioningButton.get());
 
     await user.click(await ui.editConfigButton.find());
 
@@ -739,7 +747,8 @@ describe('Github tab', () => {
       await user.click(await ui.tab.find());
 
       expect(await ui.consentDialog.find()).toBeInTheDocument();
-      await user.click(ui.continueAutoButton.get());
+      await user.click(ui.autoRadioButton.get());
+      await user.click(ui.confirmChoiceButton.get());
 
       expect(await ui.githubProvisioningButton.find()).toBeChecked();
       expect(ui.consentDialog.query()).not.toBeInTheDocument();
@@ -756,7 +765,8 @@ describe('Github tab', () => {
       await user.click(await ui.tab.find());
 
       expect(await ui.consentDialog.find()).toBeInTheDocument();
-      await user.click(ui.switchJitButton.get());
+      await user.click(ui.jitRadioButton.get());
+      await user.click(ui.confirmChoiceButton.get());
 
       expect(await ui.jitProvisioningButton.find()).toBeChecked();
       expect(ui.consentDialog.query()).not.toBeInTheDocument();
@@ -985,7 +995,7 @@ describe('Github tab', () => {
       await user.click(ui.saveGithubProvisioning.get());
 
       expect(ui.insecureConfigWarning.get()).toBeInTheDocument();
-      await user.click(ui.confirmProvisioningButton.get());
+      await user.click(await ui.confirmProvisioningButton.find());
 
       await user.click(ui.projectVisibility.get());
       await user.click(ui.saveGithubProvisioning.get());

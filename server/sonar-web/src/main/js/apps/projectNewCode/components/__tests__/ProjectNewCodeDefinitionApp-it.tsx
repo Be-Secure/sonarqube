@@ -17,9 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import userEvent from '@testing-library/user-event';
 import { last } from 'lodash';
-import selectEvent from 'react-select-event';
 import { byLabelText, byRole, byText } from '~sonar-aligned/helpers/testSelector';
 import { MessageTypes } from '../../../../api/messages';
 import BranchesServiceMock from '../../../../api/mocks/BranchesServiceMock';
@@ -163,7 +163,7 @@ it('cannot set specific analysis setting', async () => {
   await ui.appIsLoaded();
 
   expect(await ui.specificAnalysisRadio.find()).toBeChecked();
-  expect(ui.baselineSpecificAnalysisDate.get()).toBeInTheDocument();
+  expect(await ui.baselineSpecificAnalysisDate.find()).toBeInTheDocument();
 
   expect(ui.specificAnalysisRadio.get()).toHaveClass('disabled');
   expect(ui.specificAnalysisWarning.get()).toBeInTheDocument();
@@ -394,6 +394,7 @@ function getPageObjects() {
     branchNCDsBanner: byText(/new_code_definition.auto_update.branch.message/),
     dismissButton: byLabelText('dismiss'),
     baselineSpecificAnalysisDate: byText(/January 10, 2018/),
+    missingReferenceBranchWarning: byText('baseline.reference_branch.does_not_exist'),
   };
 
   async function appIsLoaded() {
@@ -429,13 +430,18 @@ function getPageObjects() {
   async function setReferenceBranchSetting(branch: string) {
     await user.click(ui.specificSettingRadio.get());
     await user.click(ui.referenceBranchRadio.get());
-    await selectEvent.select(ui.chooseBranchSelect.get(), branch);
+
+    await user.click(ui.chooseBranchSelect.get());
+    await user.click(byRole('option', { name: new RegExp(branch) }).get());
   }
 
   async function setBranchReferenceToBranchSetting(branch: string, branchRef: string) {
     await openBranchSettingModal(branch);
     await user.click(last(ui.referenceBranchRadio.getAll()) as HTMLElement);
-    await selectEvent.select(ui.chooseBranchSelect.get(), branchRef);
+
+    await user.click(ui.chooseBranchSelect.get());
+    await user.click(byRole('option', { name: new RegExp(branchRef) }).get());
+
     await user.click(last(ui.saveButton.getAll()) as HTMLElement);
   }
 

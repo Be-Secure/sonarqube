@@ -25,6 +25,8 @@ import {
   CleanCodeAttribute,
   CleanCodeAttributeCategory,
   SoftwareImpact,
+  SoftwareImpactSeverity,
+  SoftwareQuality,
 } from './clean-code-taxonomy';
 import { MessageFormatting, RawIssue } from './issues';
 import { NewCodeDefinitionType } from './new-code-definition';
@@ -76,6 +78,7 @@ export interface Component extends ComponentBase {
   canBrowseAllChildProjects?: boolean;
   configuration?: ComponentConfiguration;
   extensions?: Extension[];
+  isAiCodeFixEnabled?: boolean;
   needIssueSync?: boolean;
 }
 
@@ -338,6 +341,7 @@ export interface Metric {
   domain?: string;
   hidden?: boolean;
   higherValuesAreBetter?: boolean;
+  id?: string;
   key: string;
   name: string;
   qualitative?: boolean;
@@ -473,12 +477,16 @@ export interface QualityGate extends QualityGatePreview {
     copy?: boolean;
     delegate?: boolean;
     delete?: boolean;
+    manageAiCodeAssurance?: boolean;
     manageConditions?: boolean;
     rename?: boolean;
     setAsDefault?: boolean;
   };
   caycStatus?: CaycStatus;
   conditions?: Condition[];
+  hasMQRConditions?: boolean;
+  hasStandardConditions?: boolean;
+  isAiCodeSupported?: boolean;
   isBuiltIn?: boolean;
 }
 
@@ -518,6 +526,7 @@ export interface RestRule {
 
 export interface RuleActivation {
   createdAt: string;
+  impacts: { severity: SoftwareImpactSeverity; softwareQuality: SoftwareQuality }[];
   inherit: RuleInheritance;
   params: { key: string; value: string }[];
   prioritizedRule: boolean;
@@ -526,6 +535,8 @@ export interface RuleActivation {
 }
 
 export interface RulesUpdateRequest {
+  cleanCodeAttribute?: CleanCodeAttribute;
+  impacts?: SoftwareImpact[];
   key: string;
   markdownDescription?: string;
   markdown_note?: string;
@@ -534,8 +545,10 @@ export interface RulesUpdateRequest {
   remediation_fn_base_effort?: string;
   remediation_fn_type?: string;
   remediation_fy_gap_multiplier?: string;
+  severity?: string;
   status?: string;
   tags?: string;
+  type?: RuleType;
 }
 
 export interface RuleDetails extends Rule {
@@ -597,7 +610,19 @@ export interface RuleParameter {
 
 export type RuleScope = 'MAIN' | 'TEST' | 'ALL';
 
-export type RuleType = 'BUG' | 'VULNERABILITY' | 'CODE_SMELL' | 'SECURITY_HOTSPOT' | 'UNKNOWN';
+export const RuleTypes = [
+  'BUG',
+  'VULNERABILITY',
+  'CODE_SMELL',
+  'SECURITY_HOTSPOT',
+  'UNKNOWN',
+] as const;
+export type RuleType = (typeof RuleTypes)[number];
+
+export enum CustomRuleType {
+  ISSUE = 'ISSUE',
+  SECURITY_HOTSPOT = 'SECURITY_HOTSPOT',
+}
 
 export interface Snippet {
   end: number;

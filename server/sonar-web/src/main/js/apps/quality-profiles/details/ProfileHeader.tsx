@@ -17,9 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Badge, Breadcrumbs, HoverLink, Link, PageContentFontWrapper } from 'design-system';
-import * as React from 'react';
+
 import { Helmet } from 'react-helmet-async';
+import { Badge, Breadcrumbs, HoverLink, Link, PageContentFontWrapper } from '~design-system';
 import { useLocation } from '~sonar-aligned/components/hoc/withRouter';
 import DateFromNow from '../../../components/intl/DateFromNow';
 import { AdminPageHeader } from '../../../components/ui/AdminPageHeader';
@@ -80,17 +80,15 @@ export default function ProfileHeader(props: Props) {
       >
         <div className="sw-flex sw-items-center sw-gap-3 sw-self-start">
           {!isProfileComparePath(location.pathname) && (
-            <PageContentFontWrapper className="sw-body-sm sw-flex sw-gap-3">
+            <PageContentFontWrapper className="sw-typo-default sw-flex sw-gap-3">
               <div>
-                <strong className="sw-body-sm-highlight">
+                <strong className="sw-typo-semibold">
                   {translate('quality_profiles.updated_')}
                 </strong>{' '}
                 <DateFromNow date={profile.rulesUpdatedAt} />
               </div>
               <div>
-                <strong className="sw-body-sm-highlight">
-                  {translate('quality_profiles.used_')}
-                </strong>{' '}
+                <strong className="sw-typo-semibold">{translate('quality_profiles.used_')}</strong>{' '}
                 <DateFromNow date={profile.lastUsed} />
               </div>
 

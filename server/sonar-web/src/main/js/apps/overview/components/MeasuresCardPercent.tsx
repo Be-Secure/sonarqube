@@ -17,17 +17,19 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { LinkHighlight, LinkStandalone } from '@sonarsource/echoes-react';
 import classNames from 'classnames';
-import { CoverageIndicator, DuplicationsIndicator, LightLabel, TextError } from 'design-system';
 import * as React from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { To } from 'react-router-dom';
+import { CoverageIndicator, DuplicationsIndicator, LightLabel, TextError } from '~design-system';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricKey, MetricType } from '~sonar-aligned/types/metrics';
 import { duplicationRatingConverter, getLeakValue } from '../../../components/measure/utils';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { findMeasure, localizeMetric } from '../../../helpers/measures';
+import { isDefined } from '../../../helpers/types';
 import { getComponentDrilldownUrl } from '../../../helpers/urls';
 import { isPullRequest } from '../../../sonar-aligned/helpers/branch-like';
 import { BranchLike } from '../../../types/branch-like';
@@ -58,7 +60,7 @@ interface Props {
 }
 
 export default function MeasuresCardPercent(
-  props: React.PropsWithChildren<Props & React.HTMLAttributes<HTMLDivElement>>,
+  props: Readonly<React.PropsWithChildren<Props & React.HTMLAttributes<HTMLDivElement>>>,
 ) {
   const {
     componentKey,
@@ -97,6 +99,8 @@ export default function MeasuresCardPercent(
 
   const shouldRenderRequiredLabel = showRequired && condition;
 
+  const formattedMeasure = formatMeasure(linesValue ?? '0', MetricType.ShortInteger);
+
   return (
     <MeasuresCard
       value={formatMeasure(value, MetricType.Percent)}
@@ -107,7 +111,7 @@ export default function MeasuresCardPercent(
       icon={renderIcon(measurementType, value)}
     >
       {shouldRenderRequiredLabel && (
-        <span className="sw-body-xs sw-mt-3">
+        <span className="sw-typo-sm sw-mt-3">
           {conditionFailed ? (
             <TextError
               className="sw-font-regular sw-inline"
@@ -119,7 +123,7 @@ export default function MeasuresCardPercent(
         </span>
       )}
       <div
-        className={classNames('sw-flex sw-body-xs sw-justify-between sw-items-center', {
+        className={classNames('sw-flex sw-typo-sm sw-justify-between sw-items-center', {
           'sw-mt-1': shouldRenderRequiredLabel,
           'sw-mt-3': !shouldRenderRequiredLabel,
         })}
@@ -134,13 +138,13 @@ export default function MeasuresCardPercent(
                   highlight={LinkHighlight.Default}
                   aria-label={translateWithParameters(
                     'overview.see_more_details_on_x_y',
-                    linesValue ?? '0',
+                    isDefined(linesValue) ? `${formattedMeasure} (${linesValue})` : '0',
                     localizeMetric(linesMetric),
                   )}
-                  className="sw-body-sm-highlight sw--mt-[3px]"
+                  className="sw-typo-semibold sw--mt-[3px]"
                   to={linesUrl}
                 >
-                  {formatMeasure(linesValue ?? '0', MetricType.ShortInteger)}
+                  {formattedMeasure}
                 </LinkStandalone>
               ),
             }}
@@ -156,9 +160,9 @@ export default function MeasuresCardPercent(
 
 function renderIcon(type: MeasurementType, value?: string) {
   if (type === MeasurementType.Coverage) {
-    return <CoverageIndicator value={value} size="md" />;
+    return <CoverageIndicator aria-hidden="true" value={value} size="md" />;
   }
 
   const rating = duplicationRatingConverter(Number(value));
-  return <DuplicationsIndicator rating={rating} size="md" />;
+  return <DuplicationsIndicator aria-hidden="true" rating={rating} size="md" />;
 }

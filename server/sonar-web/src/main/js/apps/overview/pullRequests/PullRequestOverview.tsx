@@ -17,14 +17,13 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { BasicSeparator, CenteredLayout, PageContentFontWrapper, Spinner } from 'design-system';
+
 import { uniq } from 'lodash';
-import * as React from 'react';
-import { getBranchLikeQuery } from '~sonar-aligned/helpers/branch-like';
+import { BasicSeparator, CenteredLayout, PageContentFontWrapper, Spinner } from '~design-system';
 import { enhanceConditionWithMeasure, enhanceMeasuresWithMetrics } from '../../../helpers/measures';
 import { isDefined } from '../../../helpers/types';
 import { useBranchStatusQuery } from '../../../queries/branch';
-import { useComponentMeasuresWithMetricsQuery } from '../../../queries/component';
+import { useMeasuresComponentQuery } from '../../../queries/measures';
 import { useComponentQualityGateQuery } from '../../../queries/quality-gates';
 import { PullRequest } from '../../../types/branch-like';
 import { Component } from '../../../types/types';
@@ -55,13 +54,14 @@ export default function PullRequestOverview(props: Readonly<Readonly<Props>>) {
     component.key,
   );
 
-  const { data: componentMeasures, isLoading: isLoadingMeasures } =
-    useComponentMeasuresWithMetricsQuery(
-      component.key,
-      uniq([...PR_METRICS, ...(conditions?.map((c) => c.metric) ?? [])]),
-      getBranchLikeQuery(pullRequest),
-      !isLoadingBranchStatusesData,
-    );
+  const { data: componentMeasures, isLoading: isLoadingMeasures } = useMeasuresComponentQuery(
+    {
+      componentKey: component.key,
+      metricKeys: uniq([...PR_METRICS, ...(conditions?.map((c) => c.metric) ?? [])]),
+      branchLike: pullRequest,
+    },
+    { enabled: !isLoadingBranchStatusesData },
+  );
 
   const measures = componentMeasures
     ? enhanceMeasuresWithMetrics(
@@ -92,7 +92,7 @@ export default function PullRequestOverview(props: Readonly<Readonly<Props>>) {
 
   return (
     <CenteredLayout>
-      <PageContentFontWrapper className="it__pr-overview sw-mt-12 sw-mb-8 sw-grid sw-grid-cols-12 sw-body-sm">
+      <PageContentFontWrapper className="it__pr-overview sw-mt-12 sw-mb-8 sw-grid sw-grid-cols-12 sw-typo-default">
         <div className="sw-col-start-2 sw-col-span-10">
           <PullRequestMetaTopBar pullRequest={pullRequest} measures={measures} />
           <BasicSeparator className="sw-my-4" />
@@ -100,7 +100,7 @@ export default function PullRequestOverview(props: Readonly<Readonly<Props>>) {
           {ignoredConditions && <IgnoredConditionWarning />}
 
           <div className="sw-flex sw-justify-between sw-items-start sw-my-6">
-            <QGStatus status={status} titleSize="extra-large" />
+            <QGStatus status={status} />
             <LastAnalysisLabel analysisDate={pullRequest.analysisDate} />
           </div>
 

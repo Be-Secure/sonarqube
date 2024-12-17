@@ -17,10 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { last } from 'lodash';
-import React from 'react';
 import { byRole, byText } from '~sonar-aligned/helpers/testSelector';
 import SettingsServiceMock, {
   DEFAULT_DEFINITIONS_MOCK,
@@ -53,14 +53,14 @@ const ui = {
   jsFileSuffixesHeading: byRole('heading', {
     name: 'property.sonar.javascript.file.suffixes.name',
   }),
-  jsGlobalVariablesInput: byRole('textbox', { name: 'property.sonar.javascript.globals.name' }),
+  jsGlobalVariablesInput: byRole('textbox', { name: /property.sonar.javascript.globals.name -/ }),
   jsResetGlobalVariablesButton: byRole('button', {
     name: 'settings.definition.reset.property.sonar.javascript.globals.name',
   }),
 
   validationMsg: byText('settings.state.validation_failed.A non empty value must be provided'),
-  saveButton: byRole('button', { name: 'save' }),
-  cancelButton: byRole('button', { name: 'cancel' }),
+  saveButton: byRole('button', { name: 'save property.sonar.javascript.globals.name' }),
+  cancelButton: byRole('button', { name: 'cancel property.sonar.javascript.globals.name' }),
   resetButton: byRole('button', { name: 'reset_verb' }),
 };
 

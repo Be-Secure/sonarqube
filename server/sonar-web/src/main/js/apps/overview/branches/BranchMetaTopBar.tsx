@@ -17,10 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { IconSlideshow } from '@sonarsource/echoes-react';
-import { ButtonSecondary, SeparatorCircleIcon } from 'design-system';
-import React from 'react';
+
+import { Button, IconSlideshow } from '@sonarsource/echoes-react';
 import { useIntl } from 'react-intl';
+import { SeparatorCircleIcon } from '~design-system';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricKey, MetricType } from '~sonar-aligned/types/metrics';
 import { getCurrentPage } from '../../../app/components/nav/component/utils';
@@ -54,7 +54,7 @@ export default function BranchMetaTopBar({
   const locMeasure = findMeasure(measures, MetricKey.ncloc);
 
   const leftSection = (
-    <h1 className="sw-flex sw-gap-2 sw-items-center sw-heading-md">{branch.name}</h1>
+    <h1 className="sw-flex sw-gap-2 sw-items-center sw-heading-lg">{branch.name}</h1>
   );
   const rightSection = (
     <div className="sw-flex sw-gap-2 sw-items-center">
@@ -79,21 +79,21 @@ export default function BranchMetaTopBar({
       <ComponentReportActions component={component} branch={branch} />
       {showTakeTheTourButton && (
         <Tooltip content={translate('overview.promoted_section.button_tooltip')}>
-          <ButtonSecondary
+          <Button
             className="sw-pl-4 sw-shrink-0"
             data-spotlight-id="take-tour-1"
             onClick={startTour}
           >
             <IconSlideshow className="sw-mr-1" />
             {translate('overview.promoted_section.button_primary')}
-          </ButtonSecondary>
+          </Button>
         </Tooltip>
       )}
     </div>
   );
 
   return (
-    <div className="sw-flex sw-justify-between sw-whitespace-nowrap sw-body-sm sw-mb-2">
+    <div className="sw-flex sw-justify-between sw-whitespace-nowrap sw-typo-default sw-mb-2">
       {leftSection}
       {rightSection}
     </div>

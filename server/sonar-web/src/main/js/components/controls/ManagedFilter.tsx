@@ -17,9 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ToggleButton } from 'design-system';
-import * as React from 'react';
-import { translate } from '../../helpers/l10n';
+
+import { ToggleButton } from '~design-system';
+import { translate, translateWithParameters } from '../../helpers/l10n';
 import { Provider } from '../../types/types';
 
 interface ManagedFilterProps {
@@ -43,7 +43,10 @@ export function ManagedFilter(props: Readonly<ManagedFilterProps>) {
         disabled={loading}
         options={[
           { label: translate('all'), value: 'all' },
-          { label: translate('managed'), value: true },
+          {
+            label: translateWithParameters('managed', translate(`managed.${manageProvider}`)),
+            value: true,
+          },
           { label: translate('local'), value: false },
         ]}
         onChange={(filterOption) => {

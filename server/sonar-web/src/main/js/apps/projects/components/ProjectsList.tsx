@@ -18,57 +18,42 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import classNames from 'classnames';
-import { Spinner } from 'design-system';
-import * as React from 'react';
 import { AutoSizer } from 'react-virtualized/dist/commonjs/AutoSizer';
 import { List, ListRowProps } from 'react-virtualized/dist/commonjs/List';
-import EmptySearch from '../../../components/common/EmptySearch';
 import ListFooter from '../../../components/controls/ListFooter';
 import { translate } from '../../../helpers/l10n';
-import { CurrentUser } from '../../../types/users';
+import { isDiffMetric } from '../../../helpers/measures';
+import { MeasuresForProjects } from '../../../types/measures';
 import { Query } from '../query';
 import { Project } from '../types';
-import EmptyFavoriteSearch from './EmptyFavoriteSearch';
-import EmptyInstance from './EmptyInstance';
-import NoFavoriteProjects from './NoFavoriteProjects';
 import ProjectCard from './project-card/ProjectCard';
 
 const PROJECT_CARD_HEIGHT = 181;
 const PROJECT_CARD_MARGIN = 20;
-const PROJECT_LIST_FOOTER_HEIGHT = 90;
 
 interface Props {
   cardType?: string;
-  currentUser: CurrentUser;
-  handleFavorite: (component: string, isFavorite: boolean) => void;
   isFavorite: boolean;
   isFiltered: boolean;
   loadMore: () => void;
   loading: boolean;
-  projects: Project[];
+  measures: MeasuresForProjects[];
+  projects: Omit<Project, 'measures'>[];
   query: Query;
   total?: number;
 }
 
-export default class ProjectsList extends React.PureComponent<Props> {
-  renderNoProjects() {
-    const { currentUser, isFavorite, isFiltered, query } = this.props;
-    if (isFiltered) {
-      return isFavorite ? <EmptyFavoriteSearch query={query} /> : <EmptySearch />;
-    }
-    return isFavorite ? <NoFavoriteProjects /> : <EmptyInstance currentUser={currentUser} />;
-  }
+export default function ProjectsList(props: Readonly<Props>) {
+  const { cardType, measures, loading, projects, total, loadMore } = props;
 
-  renderRow = ({ index, key, style }: ListRowProps) => {
-    const { loading, projects, total } = this.props;
+  const renderRow = ({ index, key, style }: ListRowProps) => {
     if (index === projects.length) {
       return (
         <div key="footer" style={{ ...style }}>
           <ListFooter
             loadMoreAriaLabel={translate('projects.show_more')}
             count={projects !== undefined ? projects.length : 0}
-            loadMore={this.props.loadMore}
+            loadMore={loadMore}
             loading={loading}
             ready={!loading}
             total={total ?? 0}
@@ -78,63 +63,53 @@ export default class ProjectsList extends React.PureComponent<Props> {
     }
 
     const project = projects[index];
+    const componentMeasures =
+      measures
+        ?.filter((measure) => measure.component === project.key)
+        .reduce(
+          (acc, measure) => {
+            const value = isDiffMetric(measure.metric) ? measure.period?.value : measure.value;
+            if (value !== undefined) {
+              acc[measure.metric] = value;
+            }
+            return acc;
+          },
+          {} as Record<string, string>,
+        ) ?? {};
 
     return (
       <div
-        className={classNames({ 'sw-mt-4': index === 0 })}
         key={key}
         role="row"
         style={{ ...style, height: PROJECT_CARD_HEIGHT }}
+        className="sw-pt-4"
       >
         <div className="sw-h-full" role="gridcell">
           <ProjectCard
-            currentUser={this.props.currentUser}
-            handleFavorite={this.props.handleFavorite}
             key={project.key}
-            project={project}
-            type={this.props.cardType}
+            project={{ ...project, measures: componentMeasures }}
+            type={cardType}
           />
         </div>
       </div>
     );
   };
 
-  renderList() {
-    return this.props.loading ? (
-      <Spinner />
-    ) : (
-      <AutoSizer>
-        {({ height, width }) => (
-          <List
-            aria-label={translate('project_plural')}
-            height={height}
-            overscanRowCount={2}
-            rowCount={this.props.projects.length + 1}
-            rowHeight={({ index }) => {
-              if (index === 0) {
-                // first card, double top and bottom margin
-                return PROJECT_CARD_HEIGHT + PROJECT_CARD_MARGIN * 2;
-              }
-              if (index === this.props.projects.length) {
-                // Footer card, no margin
-                return PROJECT_LIST_FOOTER_HEIGHT;
-              }
-              // all other cards, only bottom margin
-              return PROJECT_CARD_HEIGHT + PROJECT_CARD_MARGIN;
-            }}
-            rowRenderer={this.renderRow}
-            style={{ outline: 'none' }}
-            tabIndex={-1}
-            width={width}
-          />
-        )}
-      </AutoSizer>
-    );
-  }
-
-  render() {
-    const { projects } = this.props;
-
-    return projects.length > 0 ? this.renderList() : this.renderNoProjects();
-  }
+  return (
+    <AutoSizer>
+      {({ height, width }) => (
+        <List
+          aria-label={translate('project_plural')}
+          height={height}
+          overscanRowCount={2}
+          rowCount={projects.length + 1}
+          rowHeight={PROJECT_CARD_HEIGHT + PROJECT_CARD_MARGIN}
+          rowRenderer={renderRow}
+          style={{ outline: 'none' }}
+          tabIndex={-1}
+          width={width}
+        />
+      )}
+    </AutoSizer>
+  );
 }

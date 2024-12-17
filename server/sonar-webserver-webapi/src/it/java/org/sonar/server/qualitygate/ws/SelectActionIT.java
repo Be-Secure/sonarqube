@@ -20,8 +20,8 @@
 package org.sonar.server.qualitygate.ws;
 
 import java.util.Optional;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbTester;
 import org.sonar.db.component.ComponentDto;
@@ -42,11 +42,11 @@ import static org.sonar.api.web.UserRole.ISSUE_ADMIN;
 import static org.sonar.db.permission.GlobalPermission.ADMINISTER_QUALITY_GATES;
 import static org.sonar.server.qualitygate.ws.QualityGatesWsParameters.PARAM_GATE_NAME;
 
-public class SelectActionIT {
+class SelectActionIT {
 
-  @Rule
+  @RegisterExtension
   public UserSessionRule userSession = UserSessionRule.standalone();
-  @Rule
+  @RegisterExtension
   public DbTester db = DbTester.create();
 
   private final DbClient dbClient = db.getDbClient();
@@ -56,7 +56,7 @@ public class SelectActionIT {
   private final WsActionTester ws = new WsActionTester(underTest);
 
   @Test
-  public void select_by_key() {
+  void select_by_key() {
     userSession.addPermission(ADMINISTER_QUALITY_GATES);
     QualityGateDto qualityGate = db.qualityGates().insertQualityGate();
     ProjectDto project = db.components().insertPrivateProject().getProjectDto();
@@ -70,7 +70,7 @@ public class SelectActionIT {
   }
 
   @Test
-  public void change_quality_gate_for_project() {
+  void change_quality_gate_for_project() {
     userSession.addPermission(ADMINISTER_QUALITY_GATES);
     QualityGateDto initialQualityGate = db.qualityGates().insertQualityGate();
     QualityGateDto secondQualityGate = db.qualityGates().insertQualityGate();
@@ -90,7 +90,7 @@ public class SelectActionIT {
   }
 
   @Test
-  public void select_same_quality_gate_for_project_twice() {
+  void select_same_quality_gate_for_project_twice() {
     userSession.addPermission(ADMINISTER_QUALITY_GATES);
     QualityGateDto initialQualityGate = db.qualityGates().insertQualityGate();
     ProjectDto project = db.components().insertPrivateProject().getProjectDto();
@@ -109,7 +109,7 @@ public class SelectActionIT {
   }
 
   @Test
-  public void project_admin() {
+  void project_admin() {
     QualityGateDto qualityGate = db.qualityGates().insertQualityGate();
     ProjectDto project = db.components().insertPrivateProject().getProjectDto();
     userSession.logIn().addProjectPermission(ADMIN, project);
@@ -123,7 +123,7 @@ public class SelectActionIT {
   }
 
   @Test
-  public void gate_administrator_can_associate_a_gate_to_a_project() {
+  void gate_administrator_can_associate_a_gate_to_a_project() {
     userSession.addPermission(ADMINISTER_QUALITY_GATES);
     QualityGateDto qualityGate = db.qualityGates().insertQualityGate();
     ProjectDto project = db.components().insertPrivateProject().getProjectDto();
@@ -137,7 +137,7 @@ public class SelectActionIT {
   }
 
   @Test
-  public void fail_when_no_quality_gate() {
+  void fail_when_no_quality_gate() {
     userSession.addPermission(ADMINISTER_QUALITY_GATES);
     ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
 
@@ -149,7 +149,7 @@ public class SelectActionIT {
   }
 
   @Test
-  public void fail_when_no_project_key() {
+  void fail_when_no_project_key() {
     userSession.addPermission(ADMINISTER_QUALITY_GATES);
     QualityGateDto qualityGate = db.qualityGates().insertQualityGate();
 
@@ -161,7 +161,7 @@ public class SelectActionIT {
   }
 
   @Test
-  public void fail_when_anonymous() {
+  void fail_when_anonymous() {
     QualityGateDto qualityGate = db.qualityGates().insertQualityGate();
     ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
     userSession.anonymous();
@@ -174,7 +174,7 @@ public class SelectActionIT {
   }
 
   @Test
-  public void fail_when_not_project_admin() {
+  void fail_when_not_project_admin() {
     QualityGateDto qualityGate = db.qualityGates().insertQualityGate();
     ProjectData project = db.components().insertPrivateProject();
     userSession.logIn().addProjectPermission(ISSUE_ADMIN, project.getProjectDto());
@@ -187,7 +187,7 @@ public class SelectActionIT {
   }
 
   @Test
-  public void fail_when_not_quality_gates_admin() {
+  void fail_when_not_quality_gates_admin() {
     QualityGateDto qualityGate = db.qualityGates().insertQualityGate();
     ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
     userSession.logIn();

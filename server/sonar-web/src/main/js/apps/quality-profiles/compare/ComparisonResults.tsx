@@ -17,15 +17,18 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ActionCell, ContentCell, Link, Table, TableRowInteractive } from 'design-system';
+
+import { LinkStandalone } from '@sonarsource/echoes-react';
 import { isEqual } from 'lodash';
-import * as React from 'react';
 import { useIntl } from 'react-intl';
+import { ActionCell, ContentCell, Table, TableRowInteractive } from '~design-system';
 import { CompareResponse, Profile, RuleCompare } from '../../../api/quality-profiles';
 import IssueSeverityIcon from '../../../components/icon-mappers/IssueSeverityIcon';
 import { CleanCodeAttributePill } from '../../../components/shared/CleanCodeAttributePill';
 import SoftwareImpactPillList from '../../../components/shared/SoftwareImpactPillList';
 import { getRulesUrl } from '../../../helpers/urls';
+import { useStandardExperienceModeQuery } from '../../../queries/mode';
+import { SoftwareImpact } from '../../../types/clean-code-taxonomy';
 import { IssueSeverity } from '../../../types/issues';
 import { Dict } from '../../../types/types';
 import ComparisonResultActivation from './ComparisonResultActivation';
@@ -184,13 +187,13 @@ export default function ComparisonResults(props: Readonly<Props>) {
           <TableRowInteractive key={`modified-${rule.key}`}>
             <ContentCell>
               <div>
-                <RuleCell rule={rule} severity={rule.left.severity} />
+                <RuleCell rule={rule} severity={rule.left.severity} impacts={rule.left.impacts} />
                 <Parameters params={rule.left.params} />
               </div>
             </ContentCell>
             <ContentCell className="sw-pl-4">
               <div>
-                <RuleCell rule={rule} severity={rule.right.severity} />
+                <RuleCell rule={rule} severity={rule.right.severity} impacts={rule.right.impacts} />
                 <Parameters params={rule.right.params} />
               </div>
             </ContentCell>
@@ -221,17 +224,31 @@ export default function ComparisonResults(props: Readonly<Props>) {
   );
 }
 
-function RuleCell({ rule, severity }: Readonly<{ rule: RuleCompare; severity?: string }>) {
+type RuleCellProps = {
+  impacts?: SoftwareImpact[];
+  rule: RuleCompare;
+  severity?: string;
+};
+
+function RuleCell({ rule, severity, impacts }: Readonly<RuleCellProps>) {
+  const { data: isStandardMode } = useStandardExperienceModeQuery();
   const shouldRenderSeverity =
-    Boolean(severity) && rule.left && rule.right && isEqual(rule.left.params, rule.right.params);
+    isStandardMode &&
+    Boolean(severity) &&
+    rule.left?.severity &&
+    rule.right?.severity &&
+    !isEqual(rule.left.severity, rule.right.severity);
+  const shouldRenderImpacts =
+    rule.impacts ||
+    (rule.left?.impacts && rule.right?.impacts && !isEqual(rule.left.impacts, rule.right.impacts));
 
   return (
     <div>
       {shouldRenderSeverity && <IssueSeverityIcon severity={severity as IssueSeverity} />}
-      <Link className="sw-ml-1" to={getRulesUrl({ rule_key: rule.key, open: rule.key })}>
+      <LinkStandalone className="sw-ml-1" to={getRulesUrl({ rule_key: rule.key, open: rule.key })}>
         {rule.name}
-      </Link>
-      {(rule.cleanCodeAttributeCategory || rule.impacts.length > 0) && (
+      </LinkStandalone>
+      {!isStandardMode && (rule.cleanCodeAttributeCategory || shouldRenderImpacts) && (
         <ul className="sw-mt-3 sw-flex sw-items-center">
           {rule.cleanCodeAttributeCategory && (
             <li>
@@ -240,9 +257,12 @@ function RuleCell({ rule, severity }: Readonly<{ rule: RuleCompare; severity?: s
               />
             </li>
           )}
-          {rule.impacts.length > 0 && (
+          {((impacts && impacts.length > 0) || rule.impacts) && (
             <li>
-              <SoftwareImpactPillList className="sw-ml-2" softwareImpacts={rule.impacts} />
+              <SoftwareImpactPillList
+                className="sw-ml-2"
+                softwareImpacts={impacts ?? rule.impacts ?? []}
+              />
             </li>
           )}
         </ul>
@@ -260,7 +280,7 @@ function Parameters({ params }: Readonly<{ params?: Params }>) {
     <ul>
       {Object.keys(params).map((key) => (
         <li className="sw-mt-2 sw-break-all" key={key}>
-          <code className="sw-body-sm">
+          <code className="sw-typo-default">
             {key}
             {': '}
             {params[key]}

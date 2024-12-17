@@ -17,6 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+import { FormEvent, ReactElement } from 'react';
 import {
   BasicSeparator,
   ButtonPrimary,
@@ -25,8 +27,7 @@ import {
   RadioButton,
   Spinner,
   SubHeading,
-} from 'design-system';
-import React, { FormEvent, ReactElement } from 'react';
+} from '~design-system';
 import { translate } from '../../../../helpers/l10n';
 import { ProvisioningType } from '../../../../types/provisioning';
 
@@ -94,7 +95,7 @@ export default function ProvisioningSection(props: Readonly<Props>) {
                   value={ProvisioningType.jit}
                 >
                   <div>
-                    <div className="sw-body-sm-highlight">{jitTitle}</div>
+                    <div className="sw-typo-semibold">{jitTitle}</div>
 
                     <div className="sw-mt-1">{jitDescription}</div>
                   </div>
@@ -114,12 +115,12 @@ export default function ProvisioningSection(props: Readonly<Props>) {
                   disabled={!hasFeatureEnabled || hasDifferentProvider}
                 >
                   <div>
-                    <div className="sw-body-sm-highlight">{autoTitle}</div>
+                    <div className="sw-typo-semibold">{autoTitle}</div>
                     <div className="sw-mt-1">
                       {hasFeatureEnabled ? (
                         <>
                           {hasDifferentProvider && (
-                            <p className="sw-mb-2 sw-body-sm-highlight">
+                            <p className="sw-mb-2 sw-typo-semibold">
                               {translate('settings.authentication.form.other_provisioning_enabled')}
                             </p>
                           )}

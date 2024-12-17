@@ -16,9 +16,11 @@ dependencies {
   api project(':server:sonar-process')
   api project(':sonar-core')
 
-  compileOnlyApi 'com.google.code.findbugs:jsr305'
+  implementation project(':server:sonar-telemetry-core')
 
-  testImplementation 'com.google.code.findbugs:jsr305'
+  compileOnlyApi 'com.github.spotbugs:spotbugs-annotations'
+
+  testImplementation 'com.github.spotbugs:spotbugs-annotations'
   testImplementation 'com.tngtech.java:junit-dataprovider'
   testImplementation 'commons-dbutils:commons-dbutils'
   testImplementation 'com.squareup.okhttp3:mockwebserver'

@@ -24,6 +24,7 @@ import org.sonar.api.platform.Server;
 import org.sonar.api.resources.Languages;
 import org.sonar.db.Database;
 import org.sonar.db.DbClient;
+import org.sonar.server.common.email.config.EmailConfigurationService;
 import org.sonar.server.common.github.config.GithubConfigurationService;
 import org.sonar.server.common.gitlab.config.GitlabConfigurationService;
 import org.sonar.server.common.group.service.GroupMembershipService;
@@ -41,11 +42,14 @@ import org.sonar.server.common.rule.service.RuleService;
 import org.sonar.server.common.text.MacroInterpreter;
 import org.sonar.server.common.user.service.UserService;
 import org.sonar.server.health.HealthChecker;
+import org.sonar.server.notification.NotificationManager;
 import org.sonar.server.platform.NodeInformation;
 import org.sonar.server.platform.ServerFileSystem;
 import org.sonar.server.platform.db.migration.DatabaseMigrationState;
 import org.sonar.server.platform.db.migration.version.DatabaseVersion;
+import org.sonar.server.qualitygate.QualityGateConditionsValidator;
 import org.sonar.server.rule.RuleDescriptionFormatter;
+import org.sonar.server.setting.SettingsChangeNotifier;
 import org.sonar.server.user.SystemPasscode;
 import org.sonar.server.user.UserSession;
 import org.sonar.server.v2.api.analysis.controller.DefaultJresController;
@@ -60,6 +64,8 @@ import org.sonar.server.v2.api.analysis.service.ScannerEngineHandler;
 import org.sonar.server.v2.api.analysis.service.ScannerEngineHandlerImpl;
 import org.sonar.server.v2.api.dop.controller.DefaultDopSettingsController;
 import org.sonar.server.v2.api.dop.controller.DopSettingsController;
+import org.sonar.server.v2.api.email.config.controller.DefaultEmailConfigurationController;
+import org.sonar.server.v2.api.email.config.controller.EmailConfigurationController;
 import org.sonar.server.v2.api.github.config.controller.DefaultGithubConfigurationController;
 import org.sonar.server.v2.api.github.config.controller.GithubConfigurationController;
 import org.sonar.server.v2.api.gitlab.config.controller.DefaultGitlabConfigurationController;
@@ -68,6 +74,8 @@ import org.sonar.server.v2.api.group.controller.DefaultGroupController;
 import org.sonar.server.v2.api.group.controller.GroupController;
 import org.sonar.server.v2.api.membership.controller.DefaultGroupMembershipController;
 import org.sonar.server.v2.api.membership.controller.GroupMembershipController;
+import org.sonar.server.v2.api.mode.controller.DefaultModeController;
+import org.sonar.server.v2.api.mode.controller.ModeController;
 import org.sonar.server.v2.api.projectbindings.controller.DefaultProjectBindingsController;
 import org.sonar.server.v2.api.projectbindings.controller.ProjectBindingsController;
 import org.sonar.server.v2.api.projects.controller.BoundProjectsController;
@@ -86,6 +94,7 @@ import org.sonar.server.v2.common.DeprecatedHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 @Configuration
@@ -149,7 +158,8 @@ public class PlatformLevel4WebConfig {
     return new DefaultRuleController(userSession, ruleService, ruleRestResponseGenerator);
   }
 
-  @Bean
+  @Primary
+  @Bean("org.sonar.server.v2.config.PlatformLevel4WebConfig.requestMappingHandlerMapping")
   public RequestMappingHandlerMapping requestMappingHandlerMapping(UserSession userSession) {
     RequestMappingHandlerMapping handlerMapping = new RequestMappingHandlerMapping();
     handlerMapping.setInterceptors(new DeprecatedHandler(userSession));
@@ -204,6 +214,17 @@ public class PlatformLevel4WebConfig {
   @Bean
   public ScannerEngineController scannerEngineController(ScannerEngineHandler scannerEngineHandler) {
     return new DefaultScannerEngineController(scannerEngineHandler);
+  }
+
+  @Bean
+  public EmailConfigurationController emailConfigurationController(UserSession userSession, EmailConfigurationService emailConfigurationService) {
+    return new DefaultEmailConfigurationController(userSession, emailConfigurationService);
+  }
+
+  @Bean
+  public ModeController modeController(UserSession userSession, org.sonar.api.config.Configuration configuration, DbClient dbClient,
+    SettingsChangeNotifier settingsChangeNotifier, NotificationManager notificationManager, QualityGateConditionsValidator qualityGateConditionsValidator) {
+    return new DefaultModeController(userSession, dbClient, configuration, settingsChangeNotifier, notificationManager, qualityGateConditionsValidator);
   }
 
 }

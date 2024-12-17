@@ -17,18 +17,24 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Note } from 'design-system';
-import React from 'react';
+
+import { Note } from '~design-system';
 import Measure from '~sonar-aligned/components/measure/Measure';
+import { useComponent } from '../../../app/components/componentContext/withComponentContext';
 import { isDiffMetric } from '../../../helpers/measures';
+import { useCurrentBranchQuery } from '../../../queries/branch';
 import { MeasureEnhanced } from '../../../types/types';
 
 interface Props {
+  componentKey: string;
   measure: MeasureEnhanced;
 }
 
-export default function SubnavigationMeasureValue({ measure }: Readonly<Props>) {
+export default function SubnavigationMeasureValue({ measure, componentKey }: Readonly<Props>) {
+  const { component } = useComponent();
+
   const isDiff = isDiffMetric(measure.metric.key);
+  const { data: branchLike } = useCurrentBranchQuery(component);
   const value = isDiff ? measure.leak : measure.value;
 
   return (
@@ -37,6 +43,8 @@ export default function SubnavigationMeasureValue({ measure }: Readonly<Props>) 
       id={`measure-${measure.metric.key}-${isDiff ? 'leak' : 'value'}`}
     >
       <Measure
+        branchLike={branchLike}
+        componentKey={componentKey}
         badgeSize="xs"
         metricKey={measure.metric.key}
         metricType={measure.metric.type}

@@ -33,6 +33,7 @@ import org.sonar.db.alm.setting.ALM;
 import static java.lang.String.valueOf;
 import static org.sonar.api.PropertyType.BOOLEAN;
 import static org.sonar.api.PropertyType.PASSWORD;
+import static org.sonar.db.ce.CeTaskTypes.GITLAB_PROJECT_PERMISSIONS_PROVISIONING;
 
 @ComputeEngineSide
 public class GitLabSettings implements DevOpsPlatformSettings {
@@ -46,6 +47,7 @@ public class GitLabSettings implements DevOpsPlatformSettings {
   public static final String GITLAB_AUTH_SYNC_USER_GROUPS = "sonar.auth.gitlab.groupsSync";
   public static final String GITLAB_AUTH_PROVISIONING_TOKEN = "provisioning.gitlab.token.secured";
   public static final String GITLAB_AUTH_PROVISIONING_ENABLED = "provisioning.gitlab.enabled";
+  public static final String GITLAB_USER_CONSENT_FOR_PERMISSION_PROVISIONING_REQUIRED = "sonar.auth.gitlab.userConsentForPermissionProvisioningRequired";
 
   private static final String CATEGORY = "authentication";
   private static final String SUBCATEGORY = "gitlab";
@@ -108,7 +110,25 @@ public class GitLabSettings implements DevOpsPlatformSettings {
 
   @Override
   public boolean isProjectVisibilitySynchronizationActivated() {
-    return false;
+    return true;
+  }
+
+  @Override
+  public boolean isUserConsentRequiredAfterUpgrade() {
+    return configuration.getBoolean(GITLAB_USER_CONSENT_FOR_PERMISSION_PROVISIONING_REQUIRED).isPresent();
+  }
+
+  @Override
+  public String getProjectsPermissionsProvisioningTaskName() {
+    return GITLAB_PROJECT_PERMISSIONS_PROVISIONING;
+  }
+
+  public boolean isAllowedGroup(String group) {
+    return allowedGroups().stream().anyMatch(allowedGroup -> isExactGroupOrParentGroup(group, allowedGroup));
+  }
+
+  private static boolean isExactGroupOrParentGroup(String group, String allowedGroup) {
+    return group.equals(allowedGroup) || group.startsWith(allowedGroup + "/");
   }
 
   static List<PropertyDefinition> definitions() {

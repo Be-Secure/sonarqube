@@ -17,25 +17,24 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+import { LinkStandalone } from '@sonarsource/echoes-react';
 import classNames from 'classnames';
 import { isSameMinute } from 'date-fns';
+import { sortBy } from 'lodash';
+import { FormattedMessage, useIntl } from 'react-intl';
 import {
   CellComponent,
   ContentCell,
   FlagMessage,
-  Link,
   Note,
   Table,
   TableRow,
   TableRowInteractive,
-} from 'design-system';
-import { sortBy } from 'lodash';
-import * as React from 'react';
-import { FormattedMessage, useIntl } from 'react-intl';
+} from '~design-system';
 import DateTimeFormatter from '../../../components/intl/DateTimeFormatter';
-import { CleanCodeAttributePill } from '../../../components/shared/CleanCodeAttributePill';
-import SoftwareImpactPillList from '../../../components/shared/SoftwareImpactPillList';
 import { parseDate } from '../../../helpers/dates';
+import { isDefined } from '../../../helpers/types';
 import { getRulesUrl } from '../../../helpers/urls';
 import { ProfileChangelogEvent } from '../types';
 import ChangesList from './ChangesList';
@@ -44,7 +43,7 @@ interface Props {
   events: ProfileChangelogEvent[];
 }
 
-export default function Changelog(props: Props) {
+export default function Changelog(props: Readonly<Props>) {
   const intl = useIntl();
 
   const sortedRows = sortBy(
@@ -128,17 +127,11 @@ export default function Changelog(props: Props) {
         <CellComponent
           className={classNames('sw-align-top', { 'sw-border-transparent': !shouldDisplayDate })}
         >
-          {event.ruleName && (
-            <Link to={getRulesUrl({ rule_key: event.ruleKey })}>{event.ruleName}</Link>
+          {isDefined(event.ruleName) && (
+            <LinkStandalone to={getRulesUrl({ rule_key: event.ruleKey })}>
+              {event.ruleName}
+            </LinkStandalone>
           )}
-          <div className="sw-mt-3 sw-flex sw-gap-2">
-            {event.cleanCodeAttributeCategory && (
-              <CleanCodeAttributePill
-                cleanCodeAttributeCategory={event.cleanCodeAttributeCategory}
-              />
-            )}
-            {event.impacts && <SoftwareImpactPillList softwareImpacts={event.impacts} />}
-          </div>
         </CellComponent>
 
         <ContentCell

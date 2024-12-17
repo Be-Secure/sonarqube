@@ -17,14 +17,13 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import {
-  BareButton,
   HelperHintIcon,
   SubnavigationAccordion,
   SubnavigationItem,
   SubnavigationSubheading,
-} from 'design-system';
-import React from 'react';
+} from '~design-system';
 import HelpTooltip from '~sonar-aligned/components/controls/HelpTooltip';
 import {
   getLocalizedCategoryMetricName,
@@ -33,7 +32,9 @@ import {
   hasMessage,
   translate,
 } from '../../../helpers/l10n';
+import { useStandardExperienceModeQuery } from '../../../queries/mode';
 import { MeasureEnhanced } from '../../../types/types';
+import { useBubbleChartMetrics } from '../hooks';
 import {
   addMeasureCategories,
   getMetricSubnavigationName,
@@ -43,7 +44,9 @@ import {
 import DomainSubnavigationItem from './DomainSubnavigationItem';
 
 interface Props {
+  componentKey: string;
   domain: { measures: MeasureEnhanced[]; name: string };
+  measures: MeasureEnhanced[];
   onChange: (metric: string) => void;
   open: boolean;
   selected: string;
@@ -51,16 +54,18 @@ interface Props {
 }
 
 export default function DomainSubnavigation(props: Readonly<Props>) {
-  const { domain, onChange, open, selected, showFullMeasures } = props;
+  const { componentKey, domain, onChange, open, selected, showFullMeasures, measures } = props;
+  const { data: isStandardMode = false } = useStandardExperienceModeQuery();
   const helperMessageKey = `component_measures.domain_subnavigation.${domain.name}.help`;
   const helper = hasMessage(helperMessageKey) ? translate(helperMessageKey) : undefined;
   const items = addMeasureCategories(domain.name, domain.measures);
+  const bubbles = useBubbleChartMetrics(measures);
   const hasCategories = items.some((item) => typeof item === 'string');
   const translateMetric = hasCategories ? getLocalizedCategoryMetricName : getLocalizedMetricName;
   let sortedItems = sortMeasures(domain.name, items);
 
   const hasOverview = (domain: string) => {
-    return showFullMeasures && hasBubbleChart(domain);
+    return showFullMeasures && hasBubbleChart(bubbles, domain);
   };
 
   // sortedItems contains both measures (type object) and categories (type string)
@@ -75,7 +80,7 @@ export default function DomainSubnavigation(props: Readonly<Props>) {
     <SubnavigationAccordion
       header={
         <div className="sw-flex sw-items-center sw-gap-3">
-          <strong className="sw-body-sm-highlight">{getLocalizedMetricDomain(domain.name)}</strong>
+          <strong className="sw-typo-semibold">{getLocalizedMetricDomain(domain.name)}</strong>
           {helper && (
             <HelpTooltip overlay={helper}>
               <HelperHintIcon aria-hidden="false" description={helper} />
@@ -87,10 +92,13 @@ export default function DomainSubnavigation(props: Readonly<Props>) {
       id={`measure-${domain.name}`}
     >
       {hasOverview(domain.name) && (
-        <SubnavigationItem active={domain.name === selected} onClick={onChange} value={domain.name}>
-          <BareButton aria-current={domain.name === selected}>
-            {translate('component_measures.domain_overview')}
-          </BareButton>
+        <SubnavigationItem
+          active={domain.name === selected}
+          ariaCurrent={domain.name === selected}
+          onClick={onChange}
+          value={domain.name}
+        >
+          {translate('component_measures.domain_overview')}
         </SubnavigationItem>
       )}
 
@@ -104,8 +112,9 @@ export default function DomainSubnavigation(props: Readonly<Props>) {
         ) : (
           <DomainSubnavigationItem
             key={item.metric.key}
+            componentKey={componentKey}
             measure={item}
-            name={getMetricSubnavigationName(item.metric, translateMetric)}
+            name={getMetricSubnavigationName(item.metric, translateMetric, false, isStandardMode)}
             onChange={onChange}
             selected={selected}
           />

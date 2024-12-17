@@ -17,8 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { Dictionary } from 'lodash';
-import * as React from 'react';
 import withAvailableFeatures, {
   WithAvailableFeaturesProps,
 } from '../../../app/components/available-features/withAvailableFeatures';
@@ -26,11 +26,11 @@ import { Feature } from '../../../types/features';
 import { Component } from '../../../types/types';
 import { CompilationInfo } from '../components/CompilationInfo';
 import CreateYmlFile from '../components/CreateYmlFile';
-import { JreRequiredWarning } from '../components/JreRequiredWarning';
-import { Arch, AutoConfig, BuildTools, TutorialConfig } from '../types';
+import { Arch, BuildTools, TutorialConfig } from '../types';
 import { isCFamily } from '../utils';
 import { PreambuleYaml } from './PreambuleYaml';
 import cFamilyExample from './commands/CFamily';
+import dartExample from './commands/Dart';
 import dotNetExample from './commands/DotNet';
 import gradleExample from './commands/Gradle';
 import mavenExample from './commands/Maven';
@@ -58,17 +58,8 @@ const YamlTemplate: Dictionary<BuildToolExampleBuilder> = {
   [BuildTools.DotNet]: dotNetExample,
   [BuildTools.Cpp]: cFamilyExample,
   [BuildTools.ObjectiveC]: cFamilyExample,
+  [BuildTools.Dart]: dartExample,
   [BuildTools.Other]: othersExample,
-};
-
-const showJreWarning = (config: TutorialConfig, arch: Arch) => {
-  if (!isCFamily(config.buildTool)) {
-    return false;
-  }
-  if (config.autoConfig === AutoConfig.Automatic) {
-    return false;
-  }
-  return arch === Arch.Arm64;
 };
 
 export function AnalysisCommand(props: Readonly<AnalysisCommandProps>) {
@@ -91,11 +82,7 @@ export function AnalysisCommand(props: Readonly<AnalysisCommandProps>) {
   return (
     <>
       <PreambuleYaml buildTool={config.buildTool} component={component} />
-      <CreateYmlFile
-        yamlFileName="bitbucket-pipelines.yml"
-        yamlTemplate={yamlTemplate}
-        warning={showJreWarning(config, arch) && <JreRequiredWarning />}
-      />
+      <CreateYmlFile yamlFileName="bitbucket-pipelines.yml" yamlTemplate={yamlTemplate} />
       {isCFamily(config.buildTool) && <CompilationInfo />}
     </>
   );

@@ -17,14 +17,15 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+import { memo, useCallback, useState } from 'react';
 import {
   LineMeta,
   LineSCMStyled,
   LineSCMStyledDiv,
   OutsideClickHandler,
   PopupPlacement,
-} from 'design-system';
-import React, { memo, useCallback, useState } from 'react';
+} from '~design-system';
 import { translateWithParameters } from '../../../helpers/l10n';
 import { SourceLine } from '../../../types/types';
 import Tooltip from '../../controls/Tooltip';
@@ -73,7 +74,7 @@ function LineSCM({ line, previousLine }: Props) {
           classNameInner="sw-max-w-abs-600"
         >
           <LineSCMStyled aria-label={ariaLabel} onClick={handleToggle} role="button">
-            {isSCMChanged(line, previousLine) ? line.scmAuthor ?? '…' : ' '}
+            {isSCMChanged(line, previousLine) ? (line.scmAuthor ?? '…') : ' '}
           </LineSCMStyled>
         </Tooltip>
       </OutsideClickHandler>

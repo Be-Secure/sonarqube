@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import {
   CoverageIndicator,
   DiscreetInteractiveIcon,
@@ -29,8 +30,7 @@ import {
   ItemHeader,
   PopupZLevel,
   Spinner,
-} from 'design-system';
-import * as React from 'react';
+} from '~design-system';
 import HelpTooltip from '~sonar-aligned/components/controls/HelpTooltip';
 import Measure from '~sonar-aligned/components/measure/Measure';
 import { isBranch } from '~sonar-aligned/helpers/branch-like';
@@ -81,19 +81,23 @@ function HotspotSidebarHeader(props: SecurityHotspotsAppRendererProps) {
           <CoverageIndicator value={hotspotsReviewedMeasure} />
         )}
 
-        <Measure
-          className="it__hs-review-percentage sw-body-sm-highlight sw-ml-2"
-          metricKey={
-            isBranch(branchLike) && !filters.inNewCodePeriod
-              ? MetricKey.security_hotspots_reviewed
-              : MetricKey.new_security_hotspots_reviewed
-          }
-          metricType={MetricType.Percent}
-          value={hotspotsReviewedMeasure}
-        />
+        {component && (
+          <Measure
+            branchLike={branchLike}
+            className="it__hs-review-percentage sw-typo-semibold sw-ml-2"
+            componentKey={component.key}
+            metricKey={
+              isBranch(branchLike) && !filters.inNewCodePeriod
+                ? MetricKey.security_hotspots_reviewed
+                : MetricKey.new_security_hotspots_reviewed
+            }
+            metricType={MetricType.Percent}
+            value={hotspotsReviewedMeasure}
+          />
+        )}
       </Spinner>
 
-      <span className="sw-body-sm sw-ml-1">
+      <span className="sw-typo-default sw-ml-1">
         {translate('metric.security_hotspots_reviewed.name')}
       </span>
 

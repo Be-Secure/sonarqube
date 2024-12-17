@@ -20,18 +20,19 @@ jobs:
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
       - name: Set up JDK 17
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v4
         with:
           java-version: 17
+          distribution: 'zulu' # Alternative distribution options are available.
       - name: Cache SonarQube packages
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: ~\\.sonar\\cache
           key: \${{ runner.os }}-sonar
           restore-keys: \${{ runner.os }}-sonar
       - name: Cache SonarQube scanner
         id: cache-sonar-scanner
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: .\\.sonar\\scanner
           key: \${{ runner.os }}-sonar-scanner
@@ -48,6 +49,105 @@ jobs:
           .\\.sonar\\scanner\\dotnet-sonarscanner begin /k:"my-project" /d:sonar.token="\${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="\${{ secrets.SONAR_HOST_URL }}"
           dotnet build
           .\\.sonar\\scanner\\dotnet-sonarscanner end /d:sonar.token="\${{ secrets.SONAR_TOKEN }}""
+`;
+
+exports[`should follow and complete all steps: C++ (automatic) and other Linux: .github/workflows/build.yml 1`] = `
+"name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    name: Build and analyze
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - uses: sonarsource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: \${{ secrets.SONAR_HOST_URL }}
+      # If you wish to fail your job when the Quality Gate is red, uncomment the
+      # following lines. This would typically be used to fail a deployment.
+      # We do not recommend to use this in a pull request. Prefer using pull request
+      # decoration instead.
+      # - uses: sonarsource/sonarqube-quality-gate-action@v1
+      #   timeout-minutes: 5
+      #   env:
+      #     SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}"
+`;
+
+exports[`should follow and complete all steps: C++ (automatic) and other MacOS: .github/workflows/build.yml 1`] = `
+"name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    name: Build and analyze
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - uses: sonarsource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: \${{ secrets.SONAR_HOST_URL }}
+      # If you wish to fail your job when the Quality Gate is red, uncomment the
+      # following lines. This would typically be used to fail a deployment.
+      # We do not recommend to use this in a pull request. Prefer using pull request
+      # decoration instead.
+      # - uses: sonarsource/sonarqube-quality-gate-action@v1
+      #   timeout-minutes: 5
+      #   env:
+      #     SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}"
+`;
+
+exports[`should follow and complete all steps: C++ (automatic) and other Windows: .github/workflows/build.yml 1`] = `
+"name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    name: Build and analyze
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - uses: sonarsource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: \${{ secrets.SONAR_HOST_URL }}
+      # If you wish to fail your job when the Quality Gate is red, uncomment the
+      # following lines. This would typically be used to fail a deployment.
+      # We do not recommend to use this in a pull request. Prefer using pull request
+      # decoration instead.
+      # - uses: sonarsource/sonarqube-quality-gate-action@v1
+      #   timeout-minutes: 5
+      #   env:
+      #     SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}"
 `;
 
 exports[`should follow and complete all steps: C++ (automatic) and other: .github/workflows/build.yml 1`] = `
@@ -69,7 +169,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - uses: sonarsource/sonarqube-scan-action@master
+      - uses: sonarsource/sonarqube-scan-action@v4
         env:
           SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: \${{ secrets.SONAR_HOST_URL }}
@@ -77,40 +177,7 @@ jobs:
       # following lines. This would typically be used to fail a deployment.
       # We do not recommend to use this in a pull request. Prefer using pull request
       # decoration instead.
-      # - uses: sonarsource/sonarqube-quality-gate-action@master
-      #   timeout-minutes: 5
-      #   env:
-      #     SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}"
-`;
-
-exports[`should follow and complete all steps: C++ (automatic) and other: .github/workflows/build.yml 2`] = `
-"name: Build
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    types: [opened, synchronize, reopened]
-
-jobs:
-  build:
-    name: Build and analyze
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - uses: sonarsource/sonarqube-scan-action@master
-        env:
-          SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: \${{ secrets.SONAR_HOST_URL }}
-      # If you wish to fail your job when the Quality Gate is red, uncomment the
-      # following lines. This would typically be used to fail a deployment.
-      # We do not recommend to use this in a pull request. Prefer using pull request
-      # decoration instead.
-      # - uses: sonarsource/sonarqube-quality-gate-action@master
+      # - uses: sonarsource/sonarqube-quality-gate-action@v1
       #   timeout-minutes: 5
       #   env:
       #     SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}"
@@ -143,7 +210,7 @@ jobs:
       - name: Install sonar-scanner and build-wrapper
         env:
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
-        uses: SonarSource/sonarqube-github-c-cpp@v1
+        uses: SonarSource/sonarqube-github-c-cpp@v2
       - name: Run build-wrapper
         run: |
           build-wrapper-linux-aarch64 --out-dir \${{ env.BUILD_WRAPPER_OUT_DIR }} <insert_your_clean_build_command>
@@ -153,7 +220,7 @@ jobs:
           SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
         run: |
-          sonar-scanner --define sonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json""
+          sonar-scanner -Dsonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json""
 `;
 
 exports[`should follow and complete all steps: C++ Linux: .github/workflows/build.yml 1`] = `
@@ -179,7 +246,7 @@ jobs:
       - name: Install sonar-scanner and build-wrapper
         env:
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
-        uses: SonarSource/sonarqube-github-c-cpp@v1
+        uses: SonarSource/sonarqube-github-c-cpp@v2
       - name: Run build-wrapper
         run: |
           build-wrapper-linux-x86-64 --out-dir \${{ env.BUILD_WRAPPER_OUT_DIR }} <insert_your_clean_build_command>
@@ -189,7 +256,7 @@ jobs:
           SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
         run: |
-          sonar-scanner --define sonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json""
+          sonar-scanner -Dsonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json""
 `;
 
 exports[`should follow and complete all steps: C++ MacOS: .github/workflows/build.yml 1`] = `
@@ -215,7 +282,7 @@ jobs:
       - name: Install sonar-scanner and build-wrapper
         env:
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
-        uses: SonarSource/sonarqube-github-c-cpp@v1
+        uses: SonarSource/sonarqube-github-c-cpp@v2
       - name: Run build-wrapper
         run: |
           build-wrapper-macosx-x86 --out-dir \${{ env.BUILD_WRAPPER_OUT_DIR }} <insert_your_clean_build_command>
@@ -225,7 +292,7 @@ jobs:
           SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
         run: |
-          sonar-scanner --define sonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json""
+          sonar-scanner -Dsonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json""
 `;
 
 exports[`should follow and complete all steps: C++ Windows: .github/workflows/build.yml 1`] = `
@@ -251,7 +318,7 @@ jobs:
       - name: Install sonar-scanner and build-wrapper
         env:
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
-        uses: SonarSource/sonarqube-github-c-cpp@v1
+        uses: SonarSource/sonarqube-github-c-cpp@v2
       - name: Run build-wrapper
         run: |
           build-wrapper-win-x86-64 --out-dir \${{ env.BUILD_WRAPPER_OUT_DIR }} <insert_your_clean_build_command>
@@ -261,10 +328,120 @@ jobs:
           SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
         run: |
-          sonar-scanner --define sonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json""
+          sonar-scanner -Dsonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json""
 `;
 
 exports[`should follow and complete all steps: C++: sonar-project.properties 1`] = `"sonar.projectKey=my-project"`;
+
+exports[`should follow and complete all steps: Dart Linux: .github/workflows/build.yml 1`] = `
+"name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    name: Build and analyze
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      # The analysis requires to retrieve dependencies and build successfully
+      - name: Build project
+        run: <commands to build your project>
+      - uses: sonarsource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: \${{ secrets.SONAR_HOST_URL }}
+      # If you wish to fail your job when the Quality Gate is red, uncomment the
+      # following lines. This would typically be used to fail a deployment.
+      # We do not recommend to use this in a pull request. Prefer using pull request
+      # decoration instead.
+      # - uses: sonarsource/sonarqube-quality-gate-action@v1
+      #   timeout-minutes: 5
+      #   env:
+      #     SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}"
+`;
+
+exports[`should follow and complete all steps: Dart MacOS: .github/workflows/build.yml 1`] = `
+"name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    name: Build and analyze
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      # The analysis requires to retrieve dependencies and build successfully
+      - name: Build project
+        run: <commands to build your project>
+      - uses: sonarsource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: \${{ secrets.SONAR_HOST_URL }}
+      # If you wish to fail your job when the Quality Gate is red, uncomment the
+      # following lines. This would typically be used to fail a deployment.
+      # We do not recommend to use this in a pull request. Prefer using pull request
+      # decoration instead.
+      # - uses: sonarsource/sonarqube-quality-gate-action@v1
+      #   timeout-minutes: 5
+      #   env:
+      #     SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}"
+`;
+
+exports[`should follow and complete all steps: Dart Windows: .github/workflows/build.yml 1`] = `
+"name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    name: Build and analyze
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      # The analysis requires to retrieve dependencies and build successfully
+      - name: Build project
+        run: <commands to build your project>
+      - uses: sonarsource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: \${{ secrets.SONAR_HOST_URL }}
+      # If you wish to fail your job when the Quality Gate is red, uncomment the
+      # following lines. This would typically be used to fail a deployment.
+      # We do not recommend to use this in a pull request. Prefer using pull request
+      # decoration instead.
+      # - uses: sonarsource/sonarqube-quality-gate-action@v1
+      #   timeout-minutes: 5
+      #   env:
+      #     SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}"
+`;
+
+exports[`should follow and complete all steps: Dart: sonar-project.properties 1`] = `"sonar.projectKey=my-project"`;
 
 exports[`should follow and complete all steps: Gradle: .github/workflows/build.yml 1`] = `
 "name: Build
@@ -286,17 +463,18 @@ jobs:
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
       - name: Set up JDK 17
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v4
         with:
           java-version: 17
+          distribution: 'zulu' # Alternative distribution options are available.
       - name: Cache SonarQube packages
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: ~/.sonar/cache
           key: \${{ runner.os }}-sonar
           restore-keys: \${{ runner.os }}-sonar
       - name: Cache Gradle packages
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: ~/.gradle/caches
           key: \${{ runner.os }}-gradle-\${{ hashFiles('**/*.gradle') }}
@@ -310,7 +488,7 @@ jobs:
 
 exports[`should follow and complete all steps: Groovy: build.gradle 1`] = `
 "plugins {
-  id "org.sonarqube" version "5.0.0.4638"
+  id "org.sonarqube" version "6.0.1.5171"
 }
 
 sonar {
@@ -323,7 +501,7 @@ sonar {
 
 exports[`should follow and complete all steps: Kotlin: build.gradle.kts 1`] = `
 "plugins {
-  id("org.sonarqube") version "5.0.0.4638"
+  id("org.sonarqube") version "6.0.1.5171"
 }
     
 sonar {
@@ -354,17 +532,18 @@ jobs:
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
       - name: Set up JDK 17
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v4
         with:
           java-version: 17
+          distribution: 'zulu' # Alternative distribution options are available.
       - name: Cache SonarQube packages
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: ~/.sonar/cache
           key: \${{ runner.os }}-sonar
           restore-keys: \${{ runner.os }}-sonar
       - name: Cache Maven packages
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: ~/.m2
           key: \${{ runner.os }}-m2-\${{ hashFiles('**/pom.xml') }}
@@ -399,7 +578,7 @@ jobs:
       - name: Install sonar-scanner and build-wrapper
         env:
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
-        uses: SonarSource/sonarqube-github-c-cpp@v1
+        uses: SonarSource/sonarqube-github-c-cpp@v2
       - name: Run build-wrapper
         run: |
           build-wrapper-linux-aarch64 --out-dir \${{ env.BUILD_WRAPPER_OUT_DIR }} <insert_your_clean_build_command>
@@ -409,7 +588,7 @@ jobs:
           SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
         run: |
-          sonar-scanner --define sonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json""
+          sonar-scanner -Dsonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json""
 `;
 
 exports[`should follow and complete all steps: Objective-C Linux: .github/workflows/build.yml 1`] = `
@@ -435,7 +614,7 @@ jobs:
       - name: Install sonar-scanner and build-wrapper
         env:
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
-        uses: SonarSource/sonarqube-github-c-cpp@v1
+        uses: SonarSource/sonarqube-github-c-cpp@v2
       - name: Run build-wrapper
         run: |
           build-wrapper-linux-x86-64 --out-dir \${{ env.BUILD_WRAPPER_OUT_DIR }} <insert_your_clean_build_command>
@@ -445,7 +624,7 @@ jobs:
           SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
         run: |
-          sonar-scanner --define sonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json""
+          sonar-scanner -Dsonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json""
 `;
 
 exports[`should follow and complete all steps: Objective-C MacOS: .github/workflows/build.yml 1`] = `
@@ -471,7 +650,7 @@ jobs:
       - name: Install sonar-scanner and build-wrapper
         env:
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
-        uses: SonarSource/sonarqube-github-c-cpp@v1
+        uses: SonarSource/sonarqube-github-c-cpp@v2
       - name: Run build-wrapper
         run: |
           build-wrapper-macosx-x86 --out-dir \${{ env.BUILD_WRAPPER_OUT_DIR }} <insert_your_clean_build_command>
@@ -481,7 +660,7 @@ jobs:
           SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
         run: |
-          sonar-scanner --define sonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json""
+          sonar-scanner -Dsonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json""
 `;
 
 exports[`should follow and complete all steps: Objective-C Windows: .github/workflows/build.yml 1`] = `
@@ -507,7 +686,7 @@ jobs:
       - name: Install sonar-scanner and build-wrapper
         env:
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
-        uses: SonarSource/sonarqube-github-c-cpp@v1
+        uses: SonarSource/sonarqube-github-c-cpp@v2
       - name: Run build-wrapper
         run: |
           build-wrapper-win-x86-64 --out-dir \${{ env.BUILD_WRAPPER_OUT_DIR }} <insert_your_clean_build_command>
@@ -517,7 +696,7 @@ jobs:
           SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
         run: |
-          sonar-scanner --define sonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json""
+          sonar-scanner -Dsonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json""
 `;
 
 exports[`should follow and complete all steps: Objective-C: sonar-project.properties 1`] = `"sonar.projectKey=my-project"`;

@@ -18,8 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { ButtonPrimary } from 'design-system';
-import * as React from 'react';
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import { useState } from 'react';
 import Tooltip from '../../../components/controls/Tooltip';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
@@ -53,18 +52,22 @@ export default function PageActions(props: Props) {
   if (webhooksCount >= WEBHOOKS_LIMIT) {
     return (
       <Tooltip content={translateWithParameters('webhooks.maximum_reached', WEBHOOKS_LIMIT)}>
-        <ButtonPrimary className="it__webhook-create" disabled>
+        <Button className="it__webhook-create" isDisabled variety={ButtonVariety.Primary}>
           {translate('create')}
-        </ButtonPrimary>
+        </Button>
       </Tooltip>
     );
   }
 
   return (
     <>
-      <ButtonPrimary className="it__webhook-create" onClick={handleCreateOpen}>
+      <Button
+        className="it__webhook-create"
+        onClick={handleCreateOpen}
+        variety={ButtonVariety.Primary}
+      >
         {translate('create')}
-      </ButtonPrimary>
+      </Button>
       {openCreate && <CreateWebhookForm onClose={handleCreateClose} onDone={onCreate} />}
     </>
   );

@@ -17,17 +17,22 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ComponentQualifier, Visibility } from '~sonar-aligned/types/component';
 import AlmSettingsServiceMock from '../../../../../api/mocks/AlmSettingsServiceMock';
 import DopTranslationServiceMock from '../../../../../api/mocks/DopTranslationServiceMock';
 import GithubProvisioningServiceMock from '../../../../../api/mocks/GithubProvisioningServiceMock';
+import GitlabProvisioningServiceMock from '../../../../../api/mocks/GitlabProvisioningServiceMock';
 import PermissionsServiceMock from '../../../../../api/mocks/PermissionsServiceMock';
+import ProjectManagementServiceMock from '../../../../../api/mocks/ProjectsManagementServiceMock';
+import SettingsServiceMock from '../../../../../api/mocks/SettingsServiceMock';
 import SystemServiceMock from '../../../../../api/mocks/SystemServiceMock';
 import { mockComponent } from '../../../../../helpers/mocks/component';
 import { mockGitHubConfiguration } from '../../../../../helpers/mocks/dop-translation';
 import { mockPermissionGroup, mockPermissionUser } from '../../../../../helpers/mocks/permissions';
+import { mockProject } from '../../../../../helpers/mocks/projects';
 import {
   PERMISSIONS_ORDER_FOR_PROJECT_TEMPLATE,
   PERMISSIONS_ORDER_FOR_VIEW,
@@ -48,13 +53,20 @@ import { getPageObject } from '../../../test-utils';
 let serviceMock: PermissionsServiceMock;
 let dopTranslationHandler: DopTranslationServiceMock;
 let githubHandler: GithubProvisioningServiceMock;
+let gitlabHandler: GitlabProvisioningServiceMock;
 let almHandler: AlmSettingsServiceMock;
+let settingsHandler: SettingsServiceMock;
+let projectHandler: ProjectManagementServiceMock;
 let systemHandler: SystemServiceMock;
+
 beforeAll(() => {
   serviceMock = new PermissionsServiceMock();
   dopTranslationHandler = new DopTranslationServiceMock();
   githubHandler = new GithubProvisioningServiceMock(dopTranslationHandler);
+  gitlabHandler = new GitlabProvisioningServiceMock();
   almHandler = new AlmSettingsServiceMock();
+  settingsHandler = new SettingsServiceMock();
+  projectHandler = new ProjectManagementServiceMock(settingsHandler);
   systemHandler = new SystemServiceMock();
 });
 
@@ -62,7 +74,10 @@ afterEach(() => {
   serviceMock.reset();
   dopTranslationHandler.reset();
   githubHandler.reset();
+  gitlabHandler.reset();
   almHandler.reset();
+  settingsHandler.reset();
+  projectHandler.reset();
 });
 
 describe('rendering', () => {
@@ -78,9 +93,8 @@ describe('rendering', () => {
     const user = userEvent.setup();
     const ui = getPageObject(user);
     renderPermissionsProjectApp({ qualifier, visibility: Visibility.Private });
-    await ui.appLoaded();
 
-    expect(screen.getByText(description)).toBeInTheDocument();
+    expect(await screen.findByText(description)).toBeInTheDocument();
     permissions.forEach((permission) => {
       expect(ui.projectPermissionCheckbox('johndoe', permission).get()).toBeInTheDocument();
     });
@@ -238,7 +252,7 @@ it('should correctly handle pagination', async () => {
   expect(screen.getAllByRole('row').length).toBe(21);
 });
 
-describe('GH provisioning', () => {
+describe('GitHub provisioning', () => {
   beforeEach(() => {
     systemHandler.setProvider(Provider.Github);
   });
@@ -330,7 +344,7 @@ describe('GH provisioning', () => {
 
     expect(ui.pageTitle.get()).toBeInTheDocument();
     await waitFor(() =>
-      expect(ui.pageTitle.get()).toHaveAccessibleName(/project_permission.github_managed/),
+      expect(ui.pageTitle.get()).toHaveAccessibleName(/project_permission.managed/),
     );
     expect(ui.pageTitle.byRole('img').get()).toBeInTheDocument();
     expect(ui.githubExplanations.get()).toBeInTheDocument();
@@ -424,6 +438,231 @@ describe('GH provisioning', () => {
 
     expect(ui.pageTitle.get()).toBeInTheDocument();
     expect(ui.nonGHProjectWarning.get()).toBeInTheDocument();
+    expect(ui.pageTitle.byRole('img').query()).not.toBeInTheDocument();
+
+    expect(ui.applyTemplateBtn.get()).toBeInTheDocument();
+
+    // no restrictions
+    expect(
+      screen
+        .getAllByRole('checkbox')
+        .every((item) => item.getAttributeNames().includes('disabled')),
+    ).toBe(false);
+  });
+
+  it.each([ComponentQualifier.Portfolio, ComponentQualifier.Application])(
+    'shoudlnt show sync warning for portfolio and applications',
+    async (qualifier) => {
+      const user = userEvent.setup();
+      const ui = getPageObject(user);
+      dopTranslationHandler.gitHubConfigurations.push(
+        mockGitHubConfiguration({ provisioningType: ProvisioningType.auto }),
+      );
+      renderPermissionsProjectApp({ qualifier }, { featureList: [Feature.GithubProvisioning] });
+      await ui.appLoaded();
+
+      expect(ui.pageTitle.get()).toBeInTheDocument();
+      expect(ui.nonGHProjectWarning.query()).not.toBeInTheDocument();
+    },
+  );
+});
+
+describe('GitLab provisioning', () => {
+  beforeEach(() => {
+    systemHandler.setProvider(Provider.Gitlab);
+    almHandler.handleSetProjectBinding(AlmKeys.GitLab, {
+      almSetting: 'test',
+      repository: 'test',
+      monorepo: false,
+      project: 'my-project',
+    });
+    projectHandler.setProjects([mockProject({ key: 'my-project', managed: true })]);
+  });
+
+  it('should not allow to change visibility for GitLab Project with auto-provisioning', async () => {
+    const user = userEvent.setup();
+    const ui = getPageObject(user);
+    dopTranslationHandler.gitHubConfigurations.push(
+      mockGitHubConfiguration({ provisioningType: ProvisioningType.jit }),
+    );
+    almHandler.handleSetProjectBinding(AlmKeys.GitLab, {
+      almSetting: 'test',
+      repository: 'test',
+      monorepo: false,
+      project: 'my-project',
+    });
+
+    renderPermissionsProjectApp({}, { featureList: [Feature.GitlabProvisioning] });
+    await ui.appLoaded();
+
+    expect(ui.visibilityRadio(Visibility.Public).get()).toBeDisabled();
+    expect(ui.visibilityRadio(Visibility.Public).get()).toBeChecked();
+    expect(ui.visibilityRadio(Visibility.Private).get()).toBeDisabled();
+    await ui.turnProjectPrivate();
+    expect(ui.visibilityRadio(Visibility.Private).get()).not.toBeChecked();
+  });
+
+  it('should allow to change visibility for non-GitLab Project', async () => {
+    const user = userEvent.setup();
+    const ui = getPageObject(user);
+    almHandler.handleSetProjectBinding(AlmKeys.GitHub, {
+      almSetting: 'test',
+      repository: 'test',
+      monorepo: false,
+      project: 'my-project',
+    });
+    renderPermissionsProjectApp({}, { featureList: [Feature.GitlabProvisioning] });
+    await ui.appLoaded();
+
+    expect(ui.visibilityRadio(Visibility.Public).get()).not.toHaveClass('disabled');
+    expect(ui.visibilityRadio(Visibility.Public).get()).toBeChecked();
+    expect(ui.visibilityRadio(Visibility.Private).get()).not.toHaveClass('disabled');
+    await ui.turnProjectPrivate();
+    expect(ui.visibilityRadio(Visibility.Private).get()).toBeChecked();
+  });
+
+  it('should allow to change visibility for GitLab Project with disabled auto-provisioning', async () => {
+    const user = userEvent.setup();
+    const ui = getPageObject(user);
+    almHandler.handleSetProjectBinding(AlmKeys.GitLab, {
+      almSetting: 'test',
+      repository: 'test',
+      monorepo: false,
+      project: 'my-project',
+    });
+    projectHandler.setProjects([mockProject({ key: 'my-project', managed: false })]);
+    renderPermissionsProjectApp({}, { featureList: [Feature.GitlabProvisioning] });
+    await ui.appLoaded();
+
+    expect(ui.visibilityRadio(Visibility.Public).get()).not.toHaveClass('disabled');
+    expect(ui.visibilityRadio(Visibility.Public).get()).toBeChecked();
+    expect(ui.visibilityRadio(Visibility.Private).get()).not.toHaveClass('disabled');
+    await ui.turnProjectPrivate();
+    expect(ui.visibilityRadio(Visibility.Private).get()).toBeChecked();
+  });
+
+  it('should have disabled permissions for GitLab Project', async () => {
+    const user = userEvent.setup();
+    const ui = getPageObject(user);
+    almHandler.handleSetProjectBinding(AlmKeys.GitLab, {
+      almSetting: 'test',
+      repository: 'test',
+      monorepo: false,
+      project: 'my-project',
+    });
+    renderPermissionsProjectApp(
+      {},
+      { featureList: [Feature.GitlabProvisioning] },
+      {
+        component: mockComponent({ visibility: Visibility.Private }),
+      },
+    );
+    await ui.appLoaded();
+
+    expect(ui.pageTitle.get()).toBeInTheDocument();
+    await waitFor(() =>
+      expect(ui.pageTitle.get()).toHaveAccessibleName(/project_permission.managed/),
+    );
+    expect(ui.pageTitle.byRole('img').get()).toBeInTheDocument();
+    expect(ui.gitlabExplanations.get()).toBeInTheDocument();
+
+    expect(ui.projectPermissionCheckbox('John', Permissions.Admin).get()).toBeChecked();
+    expect(ui.projectPermissionCheckbox('John', Permissions.Admin).get()).toBeDisabled();
+    expect(ui.projectPermissionCheckbox('Alexa', Permissions.IssueAdmin).get()).toBeChecked();
+    expect(ui.projectPermissionCheckbox('Alexa', Permissions.IssueAdmin).get()).toBeEnabled();
+    await ui.toggleProjectPermission('Alexa', Permissions.IssueAdmin);
+    expect(ui.confirmRemovePermissionDialog.get()).toBeInTheDocument();
+    expect(ui.confirmRemovePermissionDialog.get()).toHaveTextContent(
+      `${Permissions.IssueAdmin}Alexa`,
+    );
+    await user.click(ui.confirmRemovePermissionDialog.byRole('button', { name: 'confirm' }).get());
+    expect(ui.projectPermissionCheckbox('Alexa', Permissions.IssueAdmin).get()).not.toBeChecked();
+
+    expect(ui.projectPermissionCheckbox('sonar-users', Permissions.Browse).get()).toBeChecked();
+    expect(ui.projectPermissionCheckbox('sonar-users', Permissions.Browse).get()).toBeEnabled();
+    await ui.toggleProjectPermission('sonar-users', Permissions.Browse);
+    expect(ui.confirmRemovePermissionDialog.get()).toBeInTheDocument();
+    expect(ui.confirmRemovePermissionDialog.get()).toHaveTextContent(
+      `${Permissions.Browse}sonar-users`,
+    );
+    await user.click(ui.confirmRemovePermissionDialog.byRole('button', { name: 'confirm' }).get());
+    expect(ui.projectPermissionCheckbox('sonar-users', Permissions.Browse).get()).not.toBeChecked();
+    expect(ui.projectPermissionCheckbox('sonar-admins', Permissions.Admin).get()).toBeChecked();
+    expect(ui.projectPermissionCheckbox('sonar-admins', Permissions.Admin).get()).toHaveAttribute(
+      'disabled',
+    );
+
+    const johnRow = screen.getAllByRole('row')[4];
+    expect(johnRow).toHaveTextContent('John');
+    expect(ui.gitlabLogo.get(johnRow)).toBeInTheDocument();
+    const alexaRow = screen.getAllByRole('row')[5];
+    expect(alexaRow).toHaveTextContent('Alexa');
+    expect(ui.gitlabLogo.query(alexaRow)).not.toBeInTheDocument();
+    const usersGroupRow = screen.getAllByRole('row')[1];
+    expect(usersGroupRow).toHaveTextContent('sonar-users');
+    expect(ui.gitlabLogo.query(usersGroupRow)).not.toBeInTheDocument();
+    const adminsGroupRow = screen.getAllByRole('row')[2];
+    expect(adminsGroupRow).toHaveTextContent('sonar-admins');
+    expect(ui.gitlabLogo.query(adminsGroupRow)).toBeInTheDocument();
+
+    expect(ui.applyTemplateBtn.query()).not.toBeInTheDocument();
+
+    // not possible to grant permissions at all
+    expect(
+      screen
+        .getAllByRole('checkbox', { checked: false })
+        .every((item) => item.getAttributeNames().includes('disabled')),
+    ).toBe(true);
+  });
+
+  it('should allow to change permissions for GitLab Project without auto-provisioning', async () => {
+    const user = userEvent.setup();
+    const ui = getPageObject(user);
+
+    projectHandler.setProjects([mockProject({ key: 'my-project', managed: false })]);
+    almHandler.handleSetProjectBinding(AlmKeys.GitLab, {
+      almSetting: 'test',
+      repository: 'test',
+      monorepo: false,
+      project: 'my-project',
+    });
+    renderPermissionsProjectApp(
+      { visibility: Visibility.Private },
+      { featureList: [Feature.GitlabProvisioning] },
+    );
+    await ui.appLoaded();
+
+    expect(ui.pageTitle.get()).toBeInTheDocument();
+    expect(ui.pageTitle.byRole('img').query()).not.toBeInTheDocument();
+
+    expect(ui.applyTemplateBtn.get()).toBeInTheDocument();
+
+    // no restrictions
+    expect(
+      screen
+        .getAllByRole('checkbox')
+        .every((item) => item.getAttributeNames().includes('disabled')),
+    ).toBe(false);
+  });
+
+  it('should allow to change permissions for non-GitLab Project', async () => {
+    const user = userEvent.setup();
+    projectHandler.reset();
+    projectHandler.setProjects([mockProject({ key: 'my-project', managed: false })]);
+    almHandler.reset();
+    almHandler.handleSetProjectBinding(AlmKeys.BitbucketServer, {
+      almSetting: 'test',
+      repository: 'test',
+      monorepo: false,
+      project: 'my-project',
+    });
+
+    const ui = getPageObject(user);
+
+    renderPermissionsProjectApp({}, { featureList: [Feature.GitlabProvisioning] });
+    await ui.appLoaded();
+
+    expect(ui.pageTitle.get()).toBeInTheDocument();
     expect(ui.pageTitle.byRole('img').query()).not.toBeInTheDocument();
 
     expect(ui.applyTemplateBtn.get()).toBeInTheDocument();

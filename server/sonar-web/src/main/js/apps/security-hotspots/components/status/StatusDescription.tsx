@@ -17,9 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import styled from '@emotion/styled';
-import { LightLabel, LightPrimary } from 'design-system';
-import * as React from 'react';
+import { LightLabel, LightPrimary } from '~design-system';
 import { translate } from '../../../../helpers/l10n';
 import { HotspotStatusOption } from '../../../../types/security-hotspots';
 
@@ -32,14 +32,14 @@ export default function StatusDescription(props: StatusDescriptionProps) {
 
   return (
     <div>
-      <h3>
-        <LightPrimary className="sw-body-sm-highlight">
+      <h2>
+        <LightPrimary className="sw-typo-semibold">
           {`${translate('status')}: `}
           {translate('hotspots.status_option', statusOption)}
         </LightPrimary>
-      </h3>
+      </h2>
       <Description className="sw-mt-1">
-        <LightLabel className="sw-body-sm">
+        <LightLabel className="sw-typo-default">
           {translate('hotspots.status_option', statusOption, 'description')}
         </LightLabel>
       </Description>

@@ -18,18 +18,23 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { ButtonPrimary, FlagMessage, InputTextArea } from 'design-system';
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { FlagMessage, InputTextArea } from '~design-system';
 import { translate } from '../../../../helpers/l10n';
 import { DefaultSpecializedInputProps, getPropertyName } from '../../utils';
 
 const JSON_SPACE_SIZE = 4;
 
+interface Props extends DefaultSpecializedInputProps {
+  innerRef: React.ForwardedRef<HTMLTextAreaElement>;
+}
+
 interface State {
   formatError: boolean;
 }
 
-export default class InputForJSON extends React.PureComponent<DefaultSpecializedInputProps, State> {
+class InputForJSON extends React.PureComponent<Props, State> {
   state: State = { formatError: false };
 
   handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -49,7 +54,7 @@ export default class InputForJSON extends React.PureComponent<DefaultSpecialized
   };
 
   render() {
-    const { value, name, setting, isInvalid } = this.props;
+    const { value, name, innerRef, setting, isInvalid } = this.props;
     const { formatError } = this.state;
 
     return (
@@ -59,15 +64,16 @@ export default class InputForJSON extends React.PureComponent<DefaultSpecialized
             size="large"
             name={name}
             onChange={this.handleInputChange}
+            ref={innerRef}
             rows={5}
             value={value || ''}
             aria-label={getPropertyName(setting.definition)}
             isInvalid={isInvalid}
           />
           <div className="sw-ml-2">
-            <ButtonPrimary className="sw-mt-2" onClick={this.format}>
+            <Button className="sw-mt-2" onClick={this.format} variety={ButtonVariety.Primary}>
               {translate('settings.json.format')}
-            </ButtonPrimary>
+            </Button>
           </div>
         </div>
         {formatError && (
@@ -79,3 +85,9 @@ export default class InputForJSON extends React.PureComponent<DefaultSpecialized
     );
   }
 }
+
+export default React.forwardRef(
+  (props: DefaultSpecializedInputProps, ref: React.ForwardedRef<HTMLTextAreaElement>) => (
+    <InputForJSON innerRef={ref} {...props} />
+  ),
+);

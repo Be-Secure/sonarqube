@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import * as React from 'react';
+
 import { Component } from '../../../../types/types';
 import { Arch, AutoConfig, BuildTools, OSs, TutorialConfig } from '../../types';
 import ClangGCCCustom from './ClangGCCCommand';
@@ -53,10 +53,11 @@ export default function AnalysisCommand(props: Readonly<AnalysisCommandProps>) {
     case BuildTools.DotNet:
       return <DotNet baseUrl={baseUrl} component={component} token={token} />;
 
+    case BuildTools.Dart:
     case BuildTools.Other:
       return (
         <Other
-          arch={Arch.X86_64}
+          arch={arch}
           baseUrl={baseUrl}
           os={os}
           component={component}

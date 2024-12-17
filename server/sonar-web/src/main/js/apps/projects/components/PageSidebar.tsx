@@ -17,27 +17,23 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { BasicSeparator, DangerButtonSecondary, StyledPageTitle } from 'design-system';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import { flatMap } from 'lodash';
 import * as React from 'react';
+import { BasicSeparator, StyledPageTitle } from '~design-system';
 import { RawQuery } from '~sonar-aligned/types/router';
 import { translate } from '../../../helpers/l10n';
 import { Dict } from '../../../types/types';
 import CoverageFilter from '../filters/CoverageFilter';
 import DuplicationsFilter from '../filters/DuplicationsFilter';
 import LanguagesFilter from '../filters/LanguagesFilter';
-import MaintainabilityFilter from '../filters/MaintainabilityFilter';
 import NewCoverageFilter from '../filters/NewCoverageFilter';
 import NewDuplicationsFilter from '../filters/NewDuplicationsFilter';
 import NewLinesFilter from '../filters/NewLinesFilter';
-import NewMaintainabilityFilter from '../filters/NewMaintainabilityFilter';
-import NewReliabilityFilter from '../filters/NewReliabilityFilter';
-import NewSecurityFilter from '../filters/NewSecurityFilter';
 import QualifierFacet from '../filters/QualifierFilter';
 import QualityGateFacet from '../filters/QualityGateFilter';
-import ReliabilityFilter from '../filters/ReliabilityFilter';
-import SecurityFilter from '../filters/SecurityFilter';
-import SecurityReviewFilter from '../filters/SecurityReviewFilter';
+import RatingFilter from '../filters/RatingFilter';
 import SizeFilter from '../filters/SizeFilter';
 import TagsFacet from '../filters/TagsFilter';
 import { hasFilterParams } from '../query';
@@ -79,18 +75,18 @@ export default function PageSidebar(props: PageSidebarProps) {
   }, [onClearAll, heading]);
 
   return (
-    <div className="sw-body-sm sw-px-4 sw-pt-12 sw-pb-24">
+    <div className="sw-typo-default sw-px-4 sw-pt-12 sw-pb-24">
       <FavoriteFilter />
 
       <div className="sw-flex sw-items-center sw-justify-between">
-        <StyledPageTitle className="sw-body-md-highlight" as="h2" tabIndex={-1} ref={heading}>
+        <StyledPageTitle className="sw-typo-lg-semibold" as="h2" tabIndex={-1} ref={heading}>
           {translate('filters')}
         </StyledPageTitle>
 
         {isFiltered && (
-          <DangerButtonSecondary onClick={clearAll}>
+          <Button onClick={clearAll} variety={ButtonVariety.DangerOutline}>
             {translate('clear_all_filters')}
-          </DangerButtonSecondary>
+          </Button>
         )}
       </div>
 
@@ -106,34 +102,38 @@ export default function PageSidebar(props: PageSidebarProps) {
 
       {!isLeakView && (
         <>
-          <ReliabilityFilter
+          <RatingFilter
             {...facetProps}
-            facet={getFacet(facets, 'reliability')}
-            value={query.reliability}
-          />
-
-          <BasicSeparator className="sw-my-4" />
-
-          <SecurityFilter
-            {...facetProps}
-            facet={getFacet(facets, 'security')}
+            facets={facets}
+            property="security"
             value={query.security}
           />
 
           <BasicSeparator className="sw-my-4" />
 
-          <SecurityReviewFilter
+          <RatingFilter
             {...facetProps}
-            facet={getFacet(facets, 'security_review')}
-            value={query.security_review_rating}
+            facets={facets}
+            property="reliability"
+            value={query.reliability}
           />
 
           <BasicSeparator className="sw-my-4" />
 
-          <MaintainabilityFilter
+          <RatingFilter
             {...facetProps}
-            facet={getFacet(facets, 'maintainability')}
+            facets={facets}
+            property="maintainability"
             value={query.maintainability}
+          />
+
+          <BasicSeparator className="sw-my-4" />
+
+          <RatingFilter
+            {...facetProps}
+            facets={facets}
+            property="security_review"
+            value={query.security_review}
           />
 
           <BasicSeparator className="sw-my-4" />
@@ -159,35 +159,38 @@ export default function PageSidebar(props: PageSidebarProps) {
       )}
       {isLeakView && (
         <>
-          <NewReliabilityFilter
+          <RatingFilter
             {...facetProps}
-            facet={getFacet(facets, 'new_reliability')}
-            value={query.new_reliability}
-          />
-
-          <BasicSeparator className="sw-my-4" />
-
-          <NewSecurityFilter
-            {...facetProps}
-            facet={getFacet(facets, 'new_security')}
+            facets={facets}
+            property="new_security"
             value={query.new_security}
           />
 
           <BasicSeparator className="sw-my-4" />
 
-          <SecurityReviewFilter
+          <RatingFilter
             {...facetProps}
-            facet={getFacet(facets, 'new_security_review')}
-            property="new_security_review"
-            value={query.new_security_review_rating}
+            facets={facets}
+            property="new_reliability"
+            value={query.new_reliability}
           />
 
           <BasicSeparator className="sw-my-4" />
 
-          <NewMaintainabilityFilter
+          <RatingFilter
             {...facetProps}
-            facet={getFacet(facets, 'new_maintainability')}
+            facets={facets}
+            property="new_maintainability"
             value={query.new_maintainability}
+          />
+
+          <BasicSeparator className="sw-my-4" />
+
+          <RatingFilter
+            {...facetProps}
+            facets={facets}
+            property="security_review"
+            value={query.new_security_review}
           />
 
           <BasicSeparator className="sw-my-4" />

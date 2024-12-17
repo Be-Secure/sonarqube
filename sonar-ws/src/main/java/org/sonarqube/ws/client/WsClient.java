@@ -32,11 +32,13 @@ import org.sonarqube.ws.client.components.ComponentsService;
 import org.sonarqube.ws.client.developers.DevelopersService;
 import org.sonarqube.ws.client.duplications.DuplicationsService;
 import org.sonarqube.ws.client.editions.EditionsService;
+import org.sonarqube.ws.client.emails.EmailConfigurationService;
 import org.sonarqube.ws.client.emails.EmailsService;
 import org.sonarqube.ws.client.favorites.FavoritesService;
 import org.sonarqube.ws.client.github.configuration.GithubConfigurationService;
 import org.sonarqube.ws.client.github.provisioning.permissions.GithubPermissionsService;
 import org.sonarqube.ws.client.gitlab.configuration.GitlabConfigurationService;
+import org.sonarqube.ws.client.gitlab.provisioning.permissions.GitlabPermissionService;
 import org.sonarqube.ws.client.gitlab.synchronization.run.GitlabSynchronizationRunService;
 import org.sonarqube.ws.client.governancereports.GovernanceReportsService;
 import org.sonarqube.ws.client.hotspots.HotspotsService;
@@ -45,6 +47,7 @@ import org.sonarqube.ws.client.l10n.L10nService;
 import org.sonarqube.ws.client.languages.LanguagesService;
 import org.sonarqube.ws.client.measures.MeasuresService;
 import org.sonarqube.ws.client.metrics.MetricsService;
+import org.sonarqube.ws.client.mode.ModeService;
 import org.sonarqube.ws.client.monitoring.MonitoringService;
 import org.sonarqube.ws.client.navigation.NavigationService;
 import org.sonarqube.ws.client.newcodeperiods.NewCodePeriodsService;
@@ -124,6 +127,8 @@ public interface WsClient {
 
   EditionsService editions();
 
+  EmailConfigurationService emailConfiguration();
+
   EmailsService emails();
 
   FavoritesService favorites();
@@ -133,6 +138,8 @@ public interface WsClient {
   GithubPermissionsService githubPermissionsService();
 
   GitlabConfigurationService gitlabConfigurationService();
+
+  GitlabPermissionService gitlabPermissionsService();
 
   GitlabSynchronizationRunService gitlabSynchronizationRunService();
 
@@ -149,6 +156,8 @@ public interface WsClient {
   MeasuresService measures();
 
   MetricsService metrics();
+
+  ModeService mode();
 
   NavigationService navigation();
 

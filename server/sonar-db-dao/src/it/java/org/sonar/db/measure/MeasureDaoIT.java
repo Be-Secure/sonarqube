@@ -19,208 +19,667 @@
  */
 package org.sonar.db.measure;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
-import org.junit.jupiter.api.BeforeEach;
+import java.util.Map;
+import org.apache.commons.lang.RandomStringUtils;
+import org.apache.commons.lang.math.RandomUtils;
+import org.apache.ibatis.session.ResultHandler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.sonar.api.measures.CoreMetrics;
+import org.sonar.db.component.ComponentQualifiers;
 import org.sonar.api.utils.System2;
-import org.sonar.core.util.Uuids;
-import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
 import org.sonar.db.DbTester;
+import org.sonar.db.component.BranchDto;
 import org.sonar.db.component.ComponentDto;
-import org.sonar.db.component.SnapshotDto;
-import org.sonar.db.component.SnapshotTesting;
+import org.sonar.db.component.ProjectData;
 import org.sonar.db.metric.MetricDto;
 
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static org.apache.commons.lang.RandomStringUtils.randomAlphabetic;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.sonar.api.utils.DateUtils.parseDate;
+import static org.assertj.core.api.Assertions.entry;
+import static org.assertj.core.groups.Tuple.tuple;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.sonar.db.component.ComponentTesting.newDirectory;
 import static org.sonar.db.component.ComponentTesting.newFileDto;
-import static org.sonar.db.component.SnapshotTesting.newAnalysis;
+import static org.sonar.db.component.ComponentTesting.newPrivateProjectDto;
+import static org.sonar.db.measure.MeasureTesting.newMeasure;
+import static org.sonar.db.qualityprofile.QualityProfileTesting.newQualityProfileDto;
 
 class MeasureDaoIT {
 
-  private MetricDto coverage;
-  private MetricDto complexity;
-  private MetricDto ncloc;
-
   @RegisterExtension
-  private final DbTester db = DbTester.create(System2.INSTANCE);
-  private final DbClient dbClient = db.getDbClient();
-  private final DbSession dbSession = db.getSession();
+  public final DbTester db = DbTester.create(System2.INSTANCE);
+
   private final MeasureDao underTest = db.getDbClient().measureDao();
 
-  @BeforeEach
-  void before() {
-    coverage = db.measures().insertMetric(m -> m.setKey("coverage"));
-    complexity = db.measures().insertMetric(m -> m.setKey("complexity"));
-    ncloc = db.measures().insertMetric(m -> m.setKey("ncloc"));
-    db.measures().insertMetric(m -> m.setKey("ncloc_language_distribution"));
+  @Test
+  void insert_measure() {
+    MeasureDto dto = newMeasure();
+    assertThat(dto.getJsonValueHash()).isNull();
+
+    int count = underTest.insert(db.getSession(), dto);
+
+    assertThat(dto.getJsonValueHash()).isNotNull();
+    assertThat(count).isEqualTo(1);
+    verifyTableSize(1);
+    verifyPersisted(dto);
   }
 
   @Test
-  void test_selectLastMeasure() {
+  void update_measure() {
+    MeasureDto dto = newMeasure();
+    underTest.insert(db.getSession(), dto);
+
+    dto.addValue("metric1", "value1");
+    dto.computeJsonValueHash();
+    int count = underTest.update(db.getSession(), dto);
+
+    assertThat(count).isEqualTo(1);
+    verifyTableSize(1);
+    verifyPersisted(dto);
+  }
+
+  @Test
+  void insertOrUpdate_inserts_or_updates_measure() {
+    // insert
+    MeasureDto dto = newMeasure();
+    int count = underTest.insertOrUpdate(db.getSession(), dto);
+    assertThat(count).isEqualTo(1);
+    verifyTableSize(1);
+    verifyPersisted(dto);
+
+    // update
+    String key = dto.getMetricValues().keySet().stream().findFirst().orElseThrow();
+    dto.addValue(key, getDoubleValue());
+    count = underTest.insertOrUpdate(db.getSession(), dto);
+    assertThat(count).isEqualTo(1);
+    verifyTableSize(1);
+    verifyPersisted(dto);
+  }
+
+  @Test
+  void insertOrUpdate_merges_measures() {
+    // insert
+    Double value2 = getDoubleValue();
+    MeasureDto dto = newMeasure();
+    dto.getMetricValues().clear();
+    dto.addValue("key1", getDoubleValue())
+      .addValue("key2", value2);
+    int count = underTest.insert(db.getSession(), dto);
+    verifyPersisted(dto);
+    verifyTableSize(1);
+    assertThat(count).isEqualTo(1);
+
+    // update key1 value, remove key2 (must not disappear from DB) and add key3
+    Double value1 = getDoubleValue();
+    Double value3 = getDoubleValue();
+    dto.addValue("key1", value1)
+      .addValue("key3", value3)
+      .getMetricValues().remove("key2");
+    count = underTest.insertOrUpdate(db.getSession(), dto);
+    assertThat(count).isEqualTo(1);
+    verifyTableSize(1);
+
+    assertThat(underTest.selectByComponentUuid(db.getSession(), dto.getComponentUuid()))
+      .hasValueSatisfying(selected -> {
+        assertThat(selected.getComponentUuid()).isEqualTo(dto.getComponentUuid());
+        assertThat(selected.getBranchUuid()).isEqualTo(dto.getBranchUuid());
+        assertThat(selected.getMetricValues()).contains(
+          entry("key1", value1),
+          entry("key2", value2),
+          entry("key3", value3));
+        assertThat(selected.getJsonValueHash()).isEqualTo(dto.computeJsonValueHash());
+      });
+  }
+
+  @Test
+  void selectByComponentUuid() {
+    MeasureDto measure1 = newMeasure();
+    MeasureDto measure2 = newMeasure();
+    underTest.insert(db.getSession(), measure1);
+    underTest.insert(db.getSession(), measure2);
+
+    assertThat(underTest.selectByComponentUuid(db.getSession(), measure1.getComponentUuid()))
+      .hasValueSatisfying(selected -> assertThat(selected).usingRecursiveComparison().isEqualTo(measure1));
+
+    assertThat(underTest.selectByComponentUuid(db.getSession(), "unknown-component")).isEmpty();
+  }
+
+  @Test
+  void selectByComponentUuidAndMetricKeys() {
+    ComponentDto branch1 = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto branch2 = db.components().insertPrivateProject().getMainBranchComponent();
+    String metricKey1 = "metric1";
+    String metricKey2 = "metric2";
+    String metricKey3 = "metric3";
+    String value = "foo";
+    db.measures().insertMeasure(branch1, m -> m.addValue(metricKey1, value).addValue(metricKey2, value).addValue(metricKey3, value));
+    db.measures().insertMeasure(branch2, m -> m.addValue(metricKey1, value));
+
+    assertThat(underTest.selectByComponentUuidAndMetricKeys(db.getSession(), branch1.uuid(), List.of(metricKey1, metricKey2)))
+      .hasValueSatisfying(selected -> {
+        assertThat(selected.getComponentUuid()).isEqualTo(branch1.uuid());
+        assertThat(selected.getMetricValues()).containsOnlyKeys(metricKey1, metricKey2);
+      });
+
+    assertThat(underTest.selectByComponentUuidAndMetricKeys(db.getSession(), "unknown-component", List.of(metricKey1))).isEmpty();
+    assertThat(underTest.selectByComponentUuidAndMetricKeys(db.getSession(), branch1.uuid(), List.of("random-metric"))).isEmpty();
+  }
+
+  @Test
+  void selectByComponentUuidsAndMetricKeys() {
+    ComponentDto branch1 = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto branch2 = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto branch3 = db.components().insertPrivateProject().getMainBranchComponent();
+    String metricKey1 = "metric1";
+    String metricKey2 = "metric2";
+    String metricKey3 = "metric3";
+    String value = "foo";
+    db.measures().insertMeasure(branch1, m -> m.addValue(metricKey1, value).addValue(metricKey2, value).addValue(metricKey3, value));
+    db.measures().insertMeasure(branch2, m -> m.addValue(metricKey1, value));
+    db.measures().insertMeasure(branch3, m -> m.addValue(metricKey1, value));
+
+    List<MeasureDto> measures = underTest.selectByComponentUuidsAndMetricKeys(db.getSession(), List.of(branch1.uuid(), branch2.uuid()),
+      List.of(metricKey1, metricKey2));
+    assertThat(measures).hasSize(2);
+    assertThat(measures.stream().filter(m -> m.getComponentUuid().equals(branch1.uuid())).map(MeasureDto::getMetricValues).findFirst())
+      .hasValueSatisfying(metricValues -> assertThat(metricValues).containsOnlyKeys(metricKey1, metricKey2));
+    assertThat(measures.stream().filter(m -> m.getComponentUuid().equals(branch2.uuid())).map(MeasureDto::getMetricValues).findFirst())
+      .hasValueSatisfying(metricValues -> assertThat(metricValues).containsOnlyKeys(metricKey1));
+
+    assertThat(underTest.selectByComponentUuidsAndMetricKeys(db.getSession(), List.of("unknown-component"), List.of(metricKey1))).isEmpty();
+    assertThat(underTest.selectByComponentUuidsAndMetricKeys(db.getSession(), List.of(branch1.uuid()), List.of("random-metric"))).isEmpty();
+  }
+
+  @Test
+  void selectByComponentUuidsAndMetricKeys_does_not_use_db_when_no_components() {
+    String metricKey = randomAlphabetic(7);
+    newMeasure().addValue(metricKey, randomAlphabetic(11));
+
+    DbSession dbSession = mock(DbSession.class);
+    assertThat(underTest.selectByComponentUuidsAndMetricKeys(dbSession, emptyList(), singletonList(metricKey)))
+      .isEmpty();
+    verifyNoInteractions(dbSession);
+  }
+
+  @Test
+  void selectByComponentUuidsAndMetricKeys_does_not_use_db_when_no_metrics() {
+    DbSession dbSession = mock(DbSession.class);
+    assertThat(underTest.selectByComponentUuidsAndMetricKeys(dbSession, singletonList("nonexistent"), emptyList()))
+      .isEmpty();
+    verifyNoInteractions(dbSession);
+  }
+
+  @Test
+  void selectByComponentUuidsAndMetricKeys_with_single_component_and_single_metric() {
+    String metricKey = randomAlphabetic(7);
+    String value = randomAlphabetic(11);
+    MeasureDto measure = newMeasure().addValue(metricKey, value);
+    underTest.insert(db.getSession(), measure);
+
+    List<MeasureDto> measureDtos = underTest.selectByComponentUuidsAndMetricKeys(
+      db.getSession(), singletonList(measure.getComponentUuid()), singletonList(metricKey));
+    assertThat(measureDtos).hasSize(1);
+    assertThat(measureDtos.get(0).getMetricValues()).isEqualTo(Map.of(metricKey, value));
+  }
+
+  @Test
+  void selectByComponentUuidsAndMetricKeys_with_nonexistent_component_returns_empty() {
+    String metricKey = randomAlphabetic(7);
+    String value = randomAlphabetic(11);
+    MeasureDto measure = newMeasure().addValue(metricKey, value);
+    underTest.insert(db.getSession(), measure);
+
+    assertThat(underTest.selectByComponentUuidsAndMetricKeys(
+      db.getSession(), singletonList("nonexistent"), singletonList(metricKey))).isEmpty();
+
+    assertThat(underTest.selectByComponentUuidsAndMetricKeys(
+      db.getSession(), singletonList(measure.getComponentUuid()), singletonList(metricKey))).isNotEmpty();
+  }
+
+  @Test
+  void selectByComponentUuidsAndMetricKeys_with_nonexistent_metric_returns_empty() {
+    String metricKey = randomAlphabetic(7);
+    String value = randomAlphabetic(11);
+    MeasureDto measure = newMeasure().addValue(metricKey, value);
+    underTest.insert(db.getSession(), measure);
+
+    assertThat(underTest.selectByComponentUuidsAndMetricKeys(
+      db.getSession(), singletonList(measure.getComponentUuid()), singletonList("nonexistent"))).isEmpty();
+
+    assertThat(underTest.selectByComponentUuidsAndMetricKeys(
+      db.getSession(), singletonList(measure.getComponentUuid()), singletonList(metricKey))).isNotEmpty();
+
+    MeasureDto m = newMeasure().addValue("foo", "bar");
+    underTest.insert(db.getSession(), m);
+  }
+
+  @Test
+  void selectByComponentUuidsAndMetricKeys_with_many_components_and_many_metrics() {
+    String metric1 = "metric1";
+    String metric2 = "metric2";
+    String nonRequestedMetric = "nonRequestedMetric";
+
+    String component1 = "component1";
+    String component1measure1 = "component1measure1";
+    underTest.insert(db.getSession(),
+      newMeasure().setComponentUuid(component1)
+        .addValue(metric1, component1measure1)
+        .addValue(nonRequestedMetric, randomAlphabetic(7)));
+
+    String component2 = "component2";
+    String component2measure1 = "component2measure1";
+    String component2measure2 = "component2measure2";
+    underTest.insert(db.getSession(),
+      newMeasure().setComponentUuid(component2)
+        .addValue(metric1, component2measure1)
+        .addValue(metric2, component2measure2)
+        .addValue(nonRequestedMetric, randomAlphabetic(7)));
+
+    String nonRequestedComponent = "nonRequestedComponent";
+    underTest.insert(db.getSession(),
+      newMeasure().setComponentUuid(nonRequestedComponent).addValue(metric1, randomAlphabetic(7)));
+
+    List<MeasureDto> measureDtos = underTest.selectByComponentUuidsAndMetricKeys(
+      db.getSession(), Arrays.asList(component1, component2), Arrays.asList(metric1, metric2));
+
+    assertThat(measureDtos.stream().map(MeasureDto::getComponentUuid))
+      .containsExactlyInAnyOrder(component1, component2);
+
+    assertThat(measureDtos).flatExtracting(m -> m.getMetricValues().entrySet().stream()
+        .map(entry -> tuple(m.getComponentUuid(), entry.getKey(), entry.getValue()))
+        .toList())
+      .containsExactlyInAnyOrder(
+        tuple(component1, metric1, component1measure1),
+        tuple(component2, metric1, component2measure1),
+        tuple(component2, metric2, component2measure2)
+      );
+  }
+
+  @Test
+  void scrollSelectByComponentUuid() {
+    List<MeasureDto> results = new ArrayList<>();
     MetricDto metric = db.measures().insertMetric();
+    MetricDto metric2 = db.measures().insertMetric();
     ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
-    ComponentDto file = db.components().insertComponent(newFileDto(project));
-    SnapshotDto lastAnalysis = insertAnalysis(project.uuid(), true);
-    SnapshotDto pastAnalysis = insertAnalysis(project.uuid(), false);
-
-    MeasureDto pastMeasure = MeasureTesting.newMeasureDto(metric, file, pastAnalysis);
-    MeasureDto lastMeasure = MeasureTesting.newMeasureDto(metric, file, lastAnalysis);
-    underTest.insert(db.getSession(), pastMeasure);
-    underTest.insert(db.getSession(), lastMeasure);
-
-    MeasureDto selected = underTest.selectLastMeasure(db.getSession(), file.uuid(), metric.getKey()).get();
-    assertThat(selected).isEqualToComparingFieldByField(lastMeasure);
-
-    assertThat(underTest.selectLastMeasure(dbSession, "_missing_", metric.getKey())).isEmpty();
-    assertThat(underTest.selectLastMeasure(dbSession, file.uuid(), "_missing_")).isEmpty();
-    assertThat(underTest.selectLastMeasure(dbSession, "_missing_", "_missing_")).isEmpty();
-  }
-
-  @Test
-  void test_selectMeasure() {
-    MetricDto metric = db.measures().insertMetric();
-    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
-    ComponentDto file = db.components().insertComponent(newFileDto(project));
-    SnapshotDto lastAnalysis = insertAnalysis(project.uuid(), true);
-    SnapshotDto pastAnalysis = insertAnalysis(project.uuid(), false);
-
-    MeasureDto pastMeasure = MeasureTesting.newMeasureDto(metric, file, pastAnalysis);
-    MeasureDto lastMeasure = MeasureTesting.newMeasureDto(metric, file, lastAnalysis);
-    underTest.insert(db.getSession(), pastMeasure);
-    underTest.insert(db.getSession(), lastMeasure);
-
-    assertThat(underTest.selectMeasure(db.getSession(), lastAnalysis.getUuid(), file.uuid(), metric.getKey()).get())
-      .isEqualToComparingFieldByField(lastMeasure);
-
-    assertThat(underTest.selectMeasure(db.getSession(), pastAnalysis.getUuid(), file.uuid(), metric.getKey()).get())
-      .isEqualToComparingFieldByField(pastMeasure);
-
-    assertThat(underTest.selectMeasure(db.getSession(), "_missing_", file.uuid(), metric.getKey())).isEmpty();
-    assertThat(underTest.selectMeasure(db.getSession(), pastAnalysis.getUuid(), "_missing_", metric.getKey())).isEmpty();
-    assertThat(underTest.selectMeasure(db.getSession(), pastAnalysis.getUuid(), file.uuid(), "_missing_")).isEmpty();
-  }
-
-  @Test
-  void test_selects() {
-    ComponentDto project1 = db.components().insertPrivateProject().getMainBranchComponent();
-    ComponentDto dir = db.components().insertComponent(newDirectory(project1, "path"));
-    db.components().insertComponent(newFileDto(dir).setUuid("C1"));
-    db.components().insertComponent(newFileDto(dir).setUuid("C2"));
-    SnapshotDto lastAnalysis = insertAnalysis(project1.uuid(), true);
-    SnapshotDto pastAnalysis = insertAnalysis(project1.uuid(), false);
-
     ComponentDto project2 = db.components().insertPrivateProject().getMainBranchComponent();
-    SnapshotDto project2LastAnalysis = insertAnalysis(project2.uuid(), true);
+    underTest.insertOrUpdate(db.getSession(), newMeasure(project, metric, 3.14));
+    underTest.insertOrUpdate(db.getSession(), newMeasure(project, metric2, 4.54));
+    underTest.insertOrUpdate(db.getSession(), newMeasure(project2, metric, 99.99));
+    underTest.scrollSelectByComponentUuid(db.getSession(), project.uuid(), context -> results.add(context.getResultObject()));
 
-    // project 1
-    insertMeasure("P1_M1", lastAnalysis.getUuid(), project1.uuid(), ncloc.getUuid());
-    insertMeasure("P1_M2", lastAnalysis.getUuid(), project1.uuid(), coverage.getUuid());
-    insertMeasure("P1_M3", pastAnalysis.getUuid(), project1.uuid(), ncloc.getUuid());
-    // project 2
-    insertMeasure("P2_M1", project2LastAnalysis.getUuid(), project2.uuid(), ncloc.getUuid());
-    insertMeasure("P2_M2", project2LastAnalysis.getUuid(), project2.uuid(), coverage.getUuid());
-    // component C1
-    insertMeasure("M1", pastAnalysis.getUuid(), "C1", ncloc.getUuid());
-    insertMeasure("M2", lastAnalysis.getUuid(), "C1", ncloc.getUuid());
-    insertMeasure("M3", lastAnalysis.getUuid(), "C1", coverage.getUuid());
-    // component C2
-    insertMeasure("M6", lastAnalysis.getUuid(), "C2", ncloc.getUuid());
-    db.commit();
-
-    verifyNoMeasure("C1", ncloc.getKey(), "invalid_analysis");
-    verifyNoMeasure("C1", "INVALID_KEY");
-    verifyNoMeasure("C1", "INVALID_KEY", pastAnalysis.getUuid());
-    verifyNoMeasure("MISSING_COMPONENT", ncloc.getKey());
-    verifyNoMeasure("MISSING_COMPONENT", ncloc.getKey(), pastAnalysis.getUuid());
-
-    // ncloc measure of component C1 of last analysis
-    verifyMeasure("C1", ncloc.getKey(), "M2");
-    // ncloc measure of component C1 of non last analysis
-    verifyMeasure("C1", ncloc.getKey(), pastAnalysis.getUuid(), "M1");
-    // ncloc measure of component C1 of last analysis by UUID
-    verifyMeasure("C1", ncloc.getKey(), lastAnalysis.getUuid(), "M2");
-
-    // missing measure of component C1 of last analysis
-    verifyNoMeasure("C1", complexity.getKey());
-    // missing measure of component C1 of non last analysis
-    verifyNoMeasure("C1", complexity.getKey(), pastAnalysis.getUuid());
-    // missing measure of component C1 of last analysis by UUID
-    verifyNoMeasure("C1", complexity.getKey(), lastAnalysis.getUuid());
-
-    // projects measures of last analysis
-    verifyMeasure(project1.uuid(), ncloc.getKey(), "P1_M1");
-
-    // projects measures of none last analysis
-    verifyMeasure(project1.uuid(), ncloc.getKey(), pastAnalysis.getUuid(), "P1_M3");
+    assertThat(results).hasSize(1);
+    assertThat(results).flatExtracting(m -> m.getMetricValues().entrySet().stream()
+        .map(entry -> tuple(m.getComponentUuid(), entry.getKey(), entry.getValue()))
+        .toList())
+      .containsExactlyInAnyOrder(
+        tuple(project.uuid(), metric.getKey(), 3.14),
+        tuple(project.uuid(), metric2.getKey(), 4.54)
+      );
   }
 
   @Test
-  void select_past_measures_with_several_analyses() {
-    ComponentDto project = db.components().insertPrivateProject().getMainBranchComponent();
-    long lastAnalysisDate = parseDate("2017-01-25").getTime();
-    long previousAnalysisDate = lastAnalysisDate - 10_000_000_000L;
-    long oldAnalysisDate = lastAnalysisDate - 100_000_000_000L;
-    SnapshotDto lastAnalysis = dbClient.snapshotDao().insert(dbSession, newAnalysis(project).setCreatedAt(lastAnalysisDate));
-    SnapshotDto pastAnalysis = dbClient.snapshotDao().insert(dbSession,
-      newAnalysis(project).setCreatedAt(previousAnalysisDate).setLast(false));
-    dbClient.snapshotDao().insert(dbSession, newAnalysis(project).setCreatedAt(oldAnalysisDate).setLast(false));
-    db.commit();
+  void select_measure_hashes_for_branch() {
+    MeasureDto measure1 = new MeasureDto()
+      .setComponentUuid("c1")
+      .setBranchUuid("b1")
+      .addValue("metric1", "value1");
+    MeasureDto measure2 = new MeasureDto()
+      .setComponentUuid("c2")
+      .setBranchUuid("b1")
+      .addValue("metric2", "value2");
+    MeasureDto measure3 = new MeasureDto()
+      .setComponentUuid("c3")
+      .setBranchUuid("b3")
+      .addValue("metric3", "value3");
+    long hash1 = measure1.computeJsonValueHash();
+    long hash2 = measure2.computeJsonValueHash();
+    measure3.computeJsonValueHash();
 
-    // project
-    insertMeasure("PROJECT_M1", lastAnalysis.getUuid(), project.uuid(), ncloc.getUuid());
-    insertMeasure("PROJECT_M2", pastAnalysis.getUuid(), project.uuid(), ncloc.getUuid());
-    insertMeasure("PROJECT_M3", "OLD_ANALYSIS_UUID", project.uuid(), ncloc.getUuid());
-    db.commit();
+    underTest.insert(db.getSession(), measure1);
+    underTest.insert(db.getSession(), measure2);
+    underTest.insert(db.getSession(), measure3);
 
-    // Measures of project for last and previous analyses
-    List<MeasureDto> result = underTest.selectPastMeasures(db.getSession(),
-      new PastMeasureQuery(project.uuid(), singletonList(ncloc.getUuid()), previousAnalysisDate, lastAnalysisDate + 1_000L));
-
-    assertThat(result).hasSize(2).extracting(MeasureDto::getData).containsOnly("PROJECT_M1", "PROJECT_M2");
+    assertThat(underTest.selectMeasureHashesForBranch(db.getSession(), "b1"))
+      .containsOnly(new MeasureHash("c1", hash1), new MeasureHash("c2", hash2));
   }
 
-  private void verifyMeasure(String componentUuid, String metricKey, String analysisUuid, String value) {
-    Optional<MeasureDto> measure = underTest.selectMeasure(db.getSession(), analysisUuid, componentUuid, metricKey);
-    assertThat(measure.map(MeasureDto::getData)).contains(value);
-    assertThat(measure.map(MeasureDto::getUuid)).isNotEmpty();
+  @Test
+  void select_branch_measures_for_project() {
+
+    // 2 branches on the same project, 1 branch on another project
+    ProjectData projectData = db.components().insertPrivateProject();
+    BranchDto branch1 = projectData.getMainBranchDto();
+    BranchDto branch2 = db.components().insertProjectBranch(projectData.getProjectDto());
+    BranchDto branch3 = db.components().insertPrivateProject().getMainBranchDto();
+
+    // Insert measures for each branch and for a random component on branch1
+    MetricDto metric = db.measures().insertMetric();
+    MeasureDto measure1 = newMeasure(branch1, metric, 3);
+    MeasureDto measure2 = newMeasure(branch2, metric, 4);
+    MeasureDto measure3 = newMeasure(branch3, metric, 5);
+    MeasureDto measure4 = newMeasure(db.components().insertFile(branch1), metric, 6);
+
+    underTest.insertOrUpdate(db.getSession(), measure1);
+    underTest.insertOrUpdate(db.getSession(), measure2);
+    underTest.insertOrUpdate(db.getSession(), measure3);
+    underTest.insertOrUpdate(db.getSession(), measure4);
+
+    List<MeasureDto> measures = underTest.selectBranchMeasuresForProject(db.getSession(), projectData.projectUuid());
+    assertThat(measures).hasSize(2);
+    assertThat(measures)
+      .flatExtracting(m -> m.getMetricValues().entrySet().stream()
+        .map(entry -> tuple(m.getComponentUuid(), m.getBranchUuid(), entry.getKey(), entry.getValue()))
+        .toList())
+      .containsExactlyInAnyOrder(
+        tuple(branch1.getUuid(), branch1.getUuid(), metric.getKey(), 3.0),
+        tuple(branch2.getUuid(), branch2.getUuid(), metric.getKey(), 4.0)
+      );
   }
 
-  private void verifyMeasure(String componentUuid, String metricKey, String value) {
-    Optional<MeasureDto> measure = underTest.selectLastMeasure(db.getSession(), componentUuid, metricKey);
-    assertThat(measure.map(MeasureDto::getData)).contains(value);
-    assertThat(measure.map(MeasureDto::getUuid)).isNotEmpty();
+  @Test
+  void selectTreeByQuery_return_leaves_and_base_component() {
+    List<MeasureDto> results = new ArrayList<>();
+    MetricDto metric1 = db.measures().insertMetric();
+    MetricDto metric2 = db.measures().insertMetric();
+
+    ComponentDto branch1 = db.components().insertPrivateProject().getMainBranchComponent();
+    MeasureDto measureOnProject1 = newMeasureForMetrics(branch1, metric1, metric2);
+
+    ComponentDto file11 = db.components().insertComponent(newFileDto(branch1));
+    ComponentDto file12 = db.components().insertComponent(newFileDto(branch1));
+    MeasureDto measureOnFile11 = newMeasureForMetrics(file11, metric1, metric2);
+    MeasureDto measureOnFile12 = newMeasureForMetrics(file12, metric1, metric2);
+
+    ComponentDto branch2 = db.components().insertPrivateProject().getMainBranchComponent();
+    ComponentDto file21 = db.components().insertComponent(newFileDto(branch2));
+    newMeasureForMetrics(file21, metric1, metric2);
+
+    underTest.selectTreeByQuery(db.getSession(), branch1,
+      MeasureTreeQuery.builder()
+        .setStrategy(MeasureTreeQuery.Strategy.LEAVES).build(),
+      context -> results.add(context.getResultObject()));
+
+    assertThat(results)
+      .hasSize(3)
+      .extracting(MeasureDto::getComponentUuid, measureDto -> measureDto.getMetricValues().get(metric1.getKey()))
+      .contains(
+        tuple(branch1.uuid(), measureOnProject1.getDouble(metric1.getKey())),
+        tuple(file11.uuid(), measureOnFile11.getDouble(metric1.getKey())),
+        tuple(file12.uuid(), measureOnFile12.getDouble(metric1.getKey()))
+      );
   }
 
-  private void verifyNoMeasure(String componentUuid, String metricKey, String analysisUuid) {
-    assertThat(underTest.selectMeasure(db.getSession(), analysisUuid, componentUuid, metricKey)).isEmpty();
+  @Test
+  void selectTreeByQuery_return_children_and_several_measures() {
+    List<MeasureDto> results = new ArrayList<>();
+    MetricDto metric1 = db.measures().insertMetric();
+    MetricDto metric2 = db.measures().insertMetric();
+
+    ComponentDto branch = db.components().insertPrivateProject().getMainBranchComponent();
+
+    ComponentDto dir = db.components().insertComponent(newDirectory(branch, RandomStringUtils.randomAlphabetic(15)));
+    MeasureDto measureOnDirectory = newMeasureForMetrics(dir, metric1, metric2);
+
+    ComponentDto file1 = db.components().insertComponent(newFileDto(dir));
+    newMeasureForMetrics(file1, metric1, metric2);
+
+    underTest.selectTreeByQuery(db.getSession(), branch,
+      MeasureTreeQuery.builder()
+        .setStrategy(MeasureTreeQuery.Strategy.CHILDREN).build(),
+      context -> results.add(context.getResultObject()));
+
+    assertThat(results)
+      .hasSize(1)
+      .extracting(MeasureDto::getComponentUuid, measureDto -> measureDto.getMetricValues().get(metric1.getKey()),
+        measureDto -> measureDto.getMetricValues().get(metric2.getKey()))
+      .contains(tuple(dir.uuid(), measureOnDirectory.getDouble(metric1.getKey()), measureOnDirectory.getDouble(metric2.getKey())));
   }
 
-  private void verifyNoMeasure(String componentUuid, String metricKey) {
-    assertThat(underTest.selectLastMeasure(db.getSession(), componentUuid, metricKey)).isEmpty();
+  @Test
+  void selectTreeByQuery_return_leaves_filtered_by_qualifier() {
+    List<MeasureDto> results = new ArrayList<>();
+    MetricDto metric1 = db.measures().insertMetric();
+    MetricDto metric2 = db.measures().insertMetric();
+
+    ComponentDto branch1 = db.components().insertPrivateProject().getMainBranchComponent();
+    newMeasureForMetrics(branch1, metric1, metric2);
+
+    ComponentDto file = db.components().insertComponent(newFileDto(branch1));
+    ComponentDto uts = db.components().insertComponent(newFileDto(branch1).setQualifier(ComponentQualifiers.UNIT_TEST_FILE));
+    MeasureDto measureOnFile11 = newMeasureForMetrics(file, metric1, metric2);
+    newMeasureForMetrics(uts, metric1, metric2);
+
+    underTest.selectTreeByQuery(db.getSession(), branch1,
+      MeasureTreeQuery.builder()
+        .setQualifiers(Collections.singletonList(ComponentQualifiers.FILE))
+        .setStrategy(MeasureTreeQuery.Strategy.LEAVES).build(),
+      context -> results.add(context.getResultObject()));
+
+    assertThat(results)
+      .hasSize(1)
+      .extracting(MeasureDto::getComponentUuid, measureDto -> measureDto.getMetricValues().get(metric1.getKey()))
+      .contains(
+        tuple(file.uuid(), measureOnFile11.getDouble(metric1.getKey()))
+      );
   }
 
-  private void insertMeasure(String value, String analysisUuid, String componentUuid, String metricUuid) {
-    MeasureDto measure = MeasureTesting.newMeasure()
-      .setAnalysisUuid(analysisUuid)
-      .setComponentUuid(componentUuid)
-      .setMetricUuid(metricUuid)
-      // as ids can't be forced when inserting measures, the field "data"
-      // is used to store a virtual value. It is used then in assertions.
-      .setData(value);
-    db.getDbClient().measureDao().insert(db.getSession(), measure);
+  @Test
+  void selectTreeByQuery_return_leaves_filtered_by_name_or_key() {
+    List<MeasureDto> results = new ArrayList<>();
+    MetricDto metric1 = db.measures().insertMetric();
+    MetricDto metric2 = db.measures().insertMetric();
+
+    ComponentDto matchingBranch =
+      db.components().insertPrivateProject(project -> project.setName("matchingBranch")).getMainBranchComponent();
+    MeasureDto measureOnProject = newMeasureForMetrics(matchingBranch, metric1, metric2);
+
+    ComponentDto fileWithMatchingName = db.components().insertComponent(newFileDto(matchingBranch).setName("matchingName"));
+    ComponentDto fileWithMatchingKey = db.components().insertComponent(newFileDto(matchingBranch).setName("anotherName").setKey("matching"
+    ));
+    ComponentDto fileNotMatching = db.components().insertComponent(newFileDto(matchingBranch).setName("anotherName").setKey("anotherKee"));
+
+    MeasureDto measureOnMatchingName = newMeasureForMetrics(fileWithMatchingName, metric1, metric2);
+    MeasureDto measureOnMatchingKee = newMeasureForMetrics(fileWithMatchingKey, metric1, metric2);
+    newMeasureForMetrics(fileNotMatching, metric1, metric2);
+
+    underTest.selectTreeByQuery(db.getSession(), matchingBranch,
+      MeasureTreeQuery.builder()
+        .setNameOrKeyQuery("matching")
+        .setStrategy(MeasureTreeQuery.Strategy.LEAVES).build(),
+      context -> results.add(context.getResultObject()));
+
+    assertThat(results)
+      .hasSize(3)
+      .extracting(MeasureDto::getComponentUuid, measureDto -> measureDto.getMetricValues().get(metric1.getKey()))
+      .contains(
+        tuple(matchingBranch.uuid(), measureOnProject.getDouble(metric1.getKey())),
+        tuple(fileWithMatchingName.uuid(), measureOnMatchingName.getDouble(metric1.getKey())),
+        tuple(fileWithMatchingKey.uuid(), measureOnMatchingKee.getDouble(metric1.getKey()))
+      );
   }
 
-  private SnapshotDto insertAnalysis(String projectUuid, boolean isLast) {
-    return db.getDbClient().snapshotDao().insert(db.getSession(), SnapshotTesting.newSnapshot()
-      .setUuid(Uuids.createFast())
-      .setRootComponentUuid(projectUuid)
-      .setLast(isLast));
+  @Test
+  void selectTreeByQuery_with_empty_results() {
+    List<MeasureDto> results = new ArrayList<>();
+    underTest.selectTreeByQuery(db.getSession(), newPrivateProjectDto(),
+      MeasureTreeQuery.builder().setStrategy(MeasureTreeQuery.Strategy.LEAVES).build(),
+      context -> results.add(context.getResultObject()));
+
+    assertThat(results).isEmpty();
   }
 
+  @Test
+  void selectTreeByQuery_does_not_use_db_when_query_returns_empty() {
+    DbSession dbSession = mock(DbSession.class);
+    MeasureTreeQuery query = mock(MeasureTreeQuery.class);
+    when(query.returnsEmpty()).thenReturn(true);
+
+    List<MeasureDto> results = new ArrayList<>();
+    ResultHandler<MeasureDto> resultHandler = context -> results.add(context.getResultObject());
+    underTest.selectTreeByQuery(dbSession, new ComponentDto(), query, resultHandler);
+
+    assertThat(results).isEmpty();
+    verifyNoInteractions(dbSession);
+  }
+
+  @Test
+  void selectAllForProjectMainBranches() {
+    ProjectData projectData1 = db.components().insertPrivateProject();
+    BranchDto branch1 = projectData1.getMainBranchDto();
+    BranchDto branch2 = db.components().insertProjectBranch(projectData1.getProjectDto());
+
+    ProjectData projectData2 = db.components().insertPrivateProject();
+    BranchDto branch3 = projectData2.getMainBranchDto();
+    BranchDto branch4 = db.components().insertProjectBranch(projectData2.getProjectDto());
+
+    // Insert measures for each branch and for a random component on branch1
+    MetricDto metric = db.measures().insertMetric();
+    MeasureDto measure1 = newMeasure(branch1, metric, 3);
+    MeasureDto measure2 = newMeasure(branch2, metric, 4);
+    MeasureDto measure3 = newMeasure(branch3, metric, 5);
+    MeasureDto measure4 = newMeasure(branch4, metric, 6);
+    MeasureDto measure5 = newMeasure(db.components().insertFile(branch1), metric, 7);
+
+    underTest.insertOrUpdate(db.getSession(), measure1);
+    underTest.insertOrUpdate(db.getSession(), measure2);
+    underTest.insertOrUpdate(db.getSession(), measure3);
+    underTest.insertOrUpdate(db.getSession(), measure4);
+    underTest.insertOrUpdate(db.getSession(), measure5);
+
+    List<ProjectMainBranchMeasureDto> measures = underTest.selectAllForProjectMainBranches(db.getSession());
+    assertThat(measures).hasSize(2);
+    assertThat(measures)
+      .flatExtracting(m -> m.getMetricValues().entrySet().stream()
+        .map(entry -> tuple(m.getProjectUuid(), entry.getKey(), entry.getValue()))
+        .toList())
+      .containsExactlyInAnyOrder(
+        tuple(projectData1.projectUuid(), metric.getKey(), 3.0),
+        tuple(projectData2.projectUuid(), metric.getKey(), 5.0)
+      );
+  }
+
+  @Test
+  void selectAllForProjectMainBranchesAssociatedToDefaultQualityProfile() {
+    ProjectData projectData1 = db.components().insertPrivateProject();
+    BranchDto branch1 = projectData1.getMainBranchDto();
+    BranchDto branch2 = db.components().insertProjectBranch(projectData1.getProjectDto());
+
+    ProjectData projectData2 = db.components().insertPrivateProject();
+    BranchDto branch3 = projectData2.getMainBranchDto();
+
+    // Insert measures for each branch and for a random component on branch1
+    MetricDto metric = db.measures().insertMetric();
+    MeasureDto measure1 = newMeasure(branch1, metric, 3);
+    MeasureDto measure2 = newMeasure(branch2, metric, 4);
+    MeasureDto measure3 = newMeasure(branch3, metric, 5);
+    MeasureDto measure4 = newMeasure(db.components().insertFile(branch1), metric, 7);
+
+    underTest.insertOrUpdate(db.getSession(), measure1);
+    underTest.insertOrUpdate(db.getSession(), measure2);
+    underTest.insertOrUpdate(db.getSession(), measure3);
+    underTest.insertOrUpdate(db.getSession(), measure4);
+
+    db.qualityProfiles().associateWithProject(projectData2.getProjectDto(), newQualityProfileDto());
+
+    List<ProjectMainBranchMeasureDto> measures =
+      underTest.selectAllForProjectMainBranchesAssociatedToDefaultQualityProfile(db.getSession());
+    assertThat(measures).hasSize(1);
+    assertThat(measures)
+      .flatExtracting(m -> m.getMetricValues().entrySet().stream()
+        .map(entry -> tuple(m.getProjectUuid(), entry.getKey(), entry.getValue()))
+        .toList())
+      .containsExactly(
+        tuple(projectData1.projectUuid(), metric.getKey(), 3.0)
+      );
+  }
+
+  @Test
+  void selectAllForMainBranches() {
+    ProjectData projectData1 = db.components().insertPrivateProject();
+    BranchDto branch1 = projectData1.getMainBranchDto();
+    BranchDto branch2 = db.components().insertProjectBranch(projectData1.getProjectDto());
+
+    ProjectData projectData2 = db.components().insertPrivateProject();
+    BranchDto branch3 = projectData2.getMainBranchDto();
+    BranchDto branch4 = db.components().insertProjectBranch(projectData2.getProjectDto());
+
+    // Insert measures for each branch and for a random component on branch1
+    MetricDto metric = db.measures().insertMetric();
+    MeasureDto measure1 = newMeasure(branch1, metric, 3);
+    MeasureDto measure2 = newMeasure(branch2, metric, 4);
+    MeasureDto measure3 = newMeasure(branch3, metric, 5);
+    MeasureDto measure4 = newMeasure(branch4, metric, 6);
+    MeasureDto measure5 = newMeasure(db.components().insertFile(branch1), metric, 7);
+
+    underTest.insertOrUpdate(db.getSession(), measure1);
+    underTest.insertOrUpdate(db.getSession(), measure2);
+    underTest.insertOrUpdate(db.getSession(), measure3);
+    underTest.insertOrUpdate(db.getSession(), measure4);
+    underTest.insertOrUpdate(db.getSession(), measure5);
+
+    List<MeasureDto> measures = underTest.selectAllForMainBranches(db.getSession());
+    assertThat(measures).hasSize(2);
+    assertThat(measures)
+      .flatExtracting(m -> m.getMetricValues().entrySet().stream()
+        .map(entry -> tuple(m.getComponentUuid(), m.getBranchUuid(), entry.getKey(), entry.getValue()))
+        .toList())
+      .containsExactlyInAnyOrder(
+        tuple(branch1.getUuid(), branch1.getUuid(), metric.getKey(), 3.0),
+        tuple(branch3.getUuid(), branch3.getUuid(), metric.getKey(), 5.0)
+      );
+  }
+
+  @Test
+  void findNclocOfBiggestBranchForProject() {
+    // 2 branches on the same project, 1 branch on 2 other projects
+    ProjectData projectData = db.components().insertPrivateProject();
+    BranchDto branch1 = projectData.getMainBranchDto();
+    BranchDto branch2 = db.components().insertProjectBranch(projectData.getProjectDto());
+    BranchDto branch3 = db.components().insertPrivateProject().getMainBranchDto();
+    ProjectData project2 = db.components().insertPrivateProject();
+
+    // Insert measures for each branch and for a random component on branch1
+    MetricDto metric = db.measures().insertMetric(metricDto -> metricDto.setKey(CoreMetrics.NCLOC_KEY));
+    MeasureDto measure1 = newMeasure(branch1, metric, 3);
+    MeasureDto measure2 = newMeasure(branch2, metric, 4);
+    MeasureDto measure3 = newMeasure(branch3, metric, 5);
+    MeasureDto measure4 = newMeasure(db.components().insertFile(branch1), metric, 6);
+
+    underTest.insertOrUpdate(db.getSession(), measure1);
+    underTest.insertOrUpdate(db.getSession(), measure2);
+    underTest.insertOrUpdate(db.getSession(), measure3);
+    underTest.insertOrUpdate(db.getSession(), measure4);
+
+    assertThat(underTest.findNclocOfBiggestBranchForProject(db.getSession(), projectData.projectUuid())).isEqualTo(4);
+    assertThat(underTest.findNclocOfBiggestBranchForProject(db.getSession(), project2.projectUuid())).isZero();
+  }
+
+  private MeasureDto newMeasureForMetrics(ComponentDto componentDto, MetricDto... metrics) {
+    return db.measures().insertMeasure(componentDto,
+      m -> Arrays.stream(metrics).forEach(metric -> m.addValue(metric.getKey(), RandomUtils.nextInt(50))));
+  }
+
+  private void verifyTableSize(int expectedSize) {
+    assertThat(db.countRowsOfTable(db.getSession(), "measures")).isEqualTo(expectedSize);
+  }
+
+  private void verifyPersisted(MeasureDto dto) {
+    assertThat(underTest.selectByComponentUuid(db.getSession(), dto.getComponentUuid())).hasValueSatisfying(selected -> {
+      assertThat(selected).usingRecursiveComparison().isEqualTo(dto);
+    });
+  }
+
+  private static double getDoubleValue() {
+    return RandomUtils.nextInt(100);
+  }
 }

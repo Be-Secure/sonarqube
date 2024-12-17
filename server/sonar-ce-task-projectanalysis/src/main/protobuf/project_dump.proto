@@ -53,12 +53,12 @@ message Branch {
 message Analysis {
   int64 component_ref = 2;
   int64 date = 3;
-  string projectVersion = 4;
+  string project_version = 4;
   string period1_mode = 5;
   string period1_param = 6;
   int64 period1_date = 7;
   string uuid = 8;
-  string buildString = 9;
+  string build_string = 9;
 }
 
 message Metric {
@@ -80,10 +80,7 @@ message Measure {
 
 message LiveMeasure {
   int64 component_ref = 1;
-  int32 metric_ref = 2;
-  DoubleValue double_value = 3;
-  string text_value = 4;
-  DoubleValue variation = 5;
+  string json_value = 2;
 }
 
 message DoubleValue {
@@ -123,17 +120,20 @@ message Issue {
   string project_uuid = 22;
   string rule_ref = 23;
 
-  optional string ruleDescriptionContextKey = 24;
+  optional string rule_description_context_key = 24;
 
-  repeated MessageFormatting messageFormattings = 25;
-  string codeVariants = 26;
+  repeated MessageFormatting message_formattings = 25;
+  string code_variants = 26;
 
   repeated Impact impacts = 27;
+
+  bool prioritized_rule = 28;
 }
 
 message Impact {
   SoftwareQuality software_quality = 1;
   Severity severity = 2;
+  bool manual_severity = 3;
 }
 
 // Stream of issues changelog stored in file issues_changelog.pb
@@ -177,7 +177,7 @@ message AdHocRule {
   string scope = 8;
   RuleMetadata metadata = 9;
   repeated Impact impacts = 11;
-  optional string cleanCodeAttribute = 12;
+  optional string clean_code_attribute = 12;
 }
 
 // stream of messages in settings.pb
@@ -253,4 +253,7 @@ enum Severity {
   LOW = 0;
   MEDIUM = 1;
   HIGH = 2;
+  INFO = 3;
+  BLOCKER = 4;
 }
+

@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 export interface SystemUpgradeDownloadUrls {
   downloadDatacenterUrl?: string;
   downloadDeveloperUrl?: string;
@@ -24,9 +25,20 @@ export interface SystemUpgradeDownloadUrls {
   downloadUrl: string;
 }
 
+export enum ProductName {
+  SonarQubeCommunityBuild = 'SonarQube Community Build',
+  SonarQubeServer = 'SonarQube Server',
+}
+
+export enum ProductNameForUpgrade {
+  SonarQubeCommunityBuild = 'SONARQUBE_COMMUNITY_BUILD',
+  SonarQubeServer = 'SONARQUBE_SERVER',
+}
+
 export interface SystemUpgrade extends SystemUpgradeDownloadUrls {
   changeLogUrl?: string;
   description?: string;
+  product?: ProductNameForUpgrade;
   releaseDate?: string;
   version: string;
 }
@@ -52,4 +64,41 @@ export interface MigrationsStatusResponse {
   startedAt?: string;
   status: MigrationStatus;
   totalSteps?: number;
+}
+
+export enum AuthMethod {
+  Basic = 'BASIC',
+  OAuth = 'OAUTH',
+}
+
+export type EmailConfiguration = EmailConfigurationAuth & EmailConfigurationCommon;
+export type EmailConfigurationAuth = EmailNotificationBasicAuth | EmailNotificationOAuth;
+export type EmailConfigurationBasicAuth = EmailNotificationBasicAuth & EmailConfigurationCommon;
+export type EmailConfigurationOAuth = EmailNotificationOAuth & EmailConfigurationCommon;
+
+interface EmailConfigurationCommon {
+  fromAddress: string;
+  fromName: string;
+  host: string;
+  id?: string;
+  port: string;
+  securityProtocol: string;
+  subjectPrefix: string;
+  username: string;
+}
+
+interface EmailNotificationBasicAuth {
+  authMethod: AuthMethod.Basic;
+  basicPassword: string;
+  readonly isBasicPasswordSet?: boolean;
+}
+
+interface EmailNotificationOAuth {
+  authMethod: AuthMethod.OAuth;
+  readonly isOauthClientIdSet?: boolean;
+  readonly isOauthClientSecretSet?: boolean;
+  oauthAuthenticationHost: string;
+  oauthClientId: string;
+  oauthClientSecret: string;
+  oauthTenant: string;
 }

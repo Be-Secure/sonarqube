@@ -17,9 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { FlagMessage } from 'design-system';
-import React from 'react';
+
 import { useIntl } from 'react-intl';
+import { FlagMessage } from '~design-system';
 import ConfirmModal from '../../../../components/controls/ConfirmModal';
 import { ProvisioningType } from '../../../../types/provisioning';
 import { Provider } from '../../../../types/types';
@@ -28,6 +28,7 @@ interface Props {
   allowUsersToSignUp?: boolean;
   hasProvisioningTypeChange?: boolean;
   isAllowListEmpty: boolean;
+  isOpen: boolean;
   onClose: VoidFunction;
   onConfirm: VoidFunction;
   provider: Provider.Github | Provider.Gitlab;
@@ -39,6 +40,7 @@ export default function ConfirmProvisioningModal(props: Readonly<Props>) {
     allowUsersToSignUp,
     hasProvisioningTypeChange,
     isAllowListEmpty,
+    isOpen,
     onConfirm,
     onClose,
     provider,
@@ -49,6 +51,7 @@ export default function ConfirmProvisioningModal(props: Readonly<Props>) {
 
   return (
     <ConfirmModal
+      isOpen={isOpen}
       onConfirm={onConfirm}
       header={intl.formatMessage({
         id: `settings.authentication.${provider}.confirm.${hasProvisioningTypeChange ? provisioningStatus : 'insecure'}`,

@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { cloneDeep } from 'lodash';
 import {
   checkMessageDismissed,
@@ -59,7 +60,6 @@ export default class MessagesServiceMock {
   setMessageDismissed = ({ projectKey, messageType }: MessageDismissParams) => {
     if (projectKey) {
       this.#messageResponse[messageType] ||= {
-        ...this.#messageResponse[messageType],
         [projectKey]: {
           dismissed: true,
         },

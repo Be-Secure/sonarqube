@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { throwGlobalError } from '~sonar-aligned/helpers/error';
 import { getJSON } from '~sonar-aligned/helpers/request';
 import { post } from '../helpers/request';
@@ -27,6 +28,7 @@ export enum MessageTypes {
   ProjectNcd90 = 'PROJECT_NCD_90',
   ProjectNcdPage90 = 'PROJECT_NCD_PAGE_90',
   BranchNcd90 = 'BRANCH_NCD_90',
+  UnresolvedFindingsInAIGeneratedCode = 'UNRESOLVED_FINDINGS_IN_AI_GENERATED_CODE',
 }
 
 export interface MessageDismissParams {

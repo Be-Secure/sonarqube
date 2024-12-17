@@ -17,18 +17,20 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { keyBy, times } from 'lodash';
-import React from 'react';
 import { Route } from 'react-router-dom';
 import { byLabelText, byRole, byTestId, byText } from '~sonar-aligned/helpers/testSelector';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import { MetricKey, MetricType } from '~sonar-aligned/types/metrics';
 import ApplicationServiceMock from '../../../../api/mocks/ApplicationServiceMock';
+import { ModeServiceMock } from '../../../../api/mocks/ModeServiceMock';
 import { ProjectActivityServiceMock } from '../../../../api/mocks/ProjectActivityServiceMock';
 import { TimeMachineServiceMock } from '../../../../api/mocks/TimeMachineServiceMock';
 import { mockBranchList } from '../../../../api/mocks/data/branches';
+import { DEPRECATED_ACTIVITY_METRICS } from '../../../../helpers/constants';
 import { parseDate } from '../../../../helpers/dates';
 import { mockComponent } from '../../../../helpers/mocks/component';
 import {
@@ -40,6 +42,7 @@ import {
 import { get } from '../../../../helpers/storage';
 import { mockMetric } from '../../../../helpers/testMocks';
 import { renderAppWithComponentContext } from '../../../../helpers/testReactTestingUtils';
+import { Mode } from '../../../../types/mode';
 import {
   ApplicationAnalysisEventCategory,
   GraphType,
@@ -48,7 +51,6 @@ import {
 import ProjectActivityAppContainer from '../ProjectActivityApp';
 
 jest.mock('../../../../api/projectActivity');
-jest.mock('../../../../api/time-machine');
 
 jest.mock('../../../../helpers/storage', () => ({
   ...jest.requireActual('../../../../helpers/storage'),
@@ -66,6 +68,7 @@ jest.mock('../../../../api/branches', () => ({
 const applicationHandler = new ApplicationServiceMock();
 const projectActivityHandler = new ProjectActivityServiceMock();
 const timeMachineHandler = new TimeMachineServiceMock();
+const modeHandler = new ModeServiceMock();
 
 let isBranchReady = false;
 
@@ -76,6 +79,7 @@ beforeEach(() => {
   applicationHandler.reset();
   projectActivityHandler.reset();
   timeMachineHandler.reset();
+  modeHandler.reset();
 
   timeMachineHandler.setMeasureHistory(
     [
@@ -86,7 +90,7 @@ beforeEach(() => {
       MetricKey.sqale_rating,
       MetricKey.security_hotspots_reviewed,
       MetricKey.security_review_rating,
-      MetricKey.maintainability_issues,
+      MetricKey.software_quality_maintainability_issues,
     ].map((metric) =>
       mockMeasureHistory({
         metric,
@@ -107,7 +111,7 @@ describe('rendering', () => {
     renderProjectActivityAppContainer();
 
     await ui.appLoaded();
-    expect(ui.graphTypeIssues.get()).toBeInTheDocument();
+    expect(ui.graphTypeSelect.get()).toHaveValue('project_activity.graphs.issues');
   });
 
   it('should render new code legend for applications', async () => {
@@ -246,10 +250,46 @@ describe('rendering', () => {
     },
   );
 
+  it.each([
+    ComponentQualifier.Portfolio,
+    ComponentQualifier.SubPortfolio,
+    ComponentQualifier.Application,
+  ])(
+    'should hide efforts to reach maintainability rating a metrics for a %s',
+    async (qualifier) => {
+      const { ui } = getPageObject();
+
+      renderProjectActivityAppContainer(
+        mockComponent({
+          qualifier,
+          breadcrumbs: [{ key: 'breadcrumb', name: 'breadcrumb', qualifier }],
+        }),
+      );
+
+      await ui.changeGraphType(GraphType.custom);
+      await ui.openMetricsDropdown();
+      expect(ui.metricCheckbox(MetricKey.security_review_rating).get()).toBeInTheDocument();
+
+      expect(
+        ui.metricCheckbox(MetricKey.effort_to_reach_maintainability_rating_a).query(),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   it('should render graph gap info message', async () => {
     timeMachineHandler.setMeasureHistory([
       mockMeasureHistory({
-        metric: MetricKey.maintainability_issues,
+        metric: MetricKey.code_smells,
+        history: projectActivityHandler.getAnalysesList().map(({ date }) =>
+          mockHistoryItem({
+            // eslint-disable-next-line jest/no-conditional-in-test
+            value: '2',
+            date: parseDate(date),
+          }),
+        ),
+      }),
+      mockMeasureHistory({
+        metric: MetricKey.software_quality_maintainability_issues,
         history: projectActivityHandler.getAnalysesList().map(({ date }, index) =>
           mockHistoryItem({
             // eslint-disable-next-line jest/no-conditional-in-test
@@ -270,7 +310,7 @@ describe('rendering', () => {
 
     await ui.changeGraphType(GraphType.custom);
     await ui.openMetricsDropdown();
-    await ui.toggleMetric(MetricKey.maintainability_issues);
+    await ui.toggleMetric(MetricKey.software_quality_maintainability_issues);
     expect(ui.gapInfoMessage.get()).toBeInTheDocument();
   });
 
@@ -286,7 +326,7 @@ describe('rendering', () => {
 
     await ui.changeGraphType(GraphType.custom);
     await ui.openMetricsDropdown();
-    await ui.toggleMetric(MetricKey.maintainability_issues);
+    await ui.toggleMetric(MetricKey.software_quality_maintainability_issues);
     expect(ui.gapInfoMessage.query()).not.toBeInTheDocument();
   });
 });
@@ -311,10 +351,10 @@ describe('CRUD', () => {
     await ui.addVersionEvent('1.1.0.1', initialValue);
     expect(screen.getAllByText(initialValue).length).toBeGreaterThan(0);
 
-    await ui.updateEvent(1, updatedValue);
+    await ui.updateEvent(`VERSION ${initialValue}`, updatedValue);
     expect(screen.getAllByText(updatedValue).length).toBeGreaterThan(0);
 
-    await ui.deleteEvent(0);
+    await ui.deleteEvent(`VERSION ${updatedValue}`);
     expect(screen.queryByText(updatedValue)).not.toBeInTheDocument();
   });
 
@@ -337,10 +377,10 @@ describe('CRUD', () => {
     await ui.addCustomEvent('1.1.0.1', initialValue);
     expect(screen.getAllByText(initialValue).length).toBeGreaterThan(0);
 
-    await ui.updateEvent(1, updatedValue);
+    await ui.updateEvent(`OTHER ${initialValue}`, updatedValue);
     expect(screen.getAllByText(updatedValue).length).toBeGreaterThan(0);
 
-    await ui.deleteEvent(0);
+    await ui.deleteEvent(`OTHER ${updatedValue}`);
     expect(screen.queryByText(updatedValue)).not.toBeInTheDocument();
   });
 
@@ -398,7 +438,7 @@ describe('data loading', () => {
     renderProjectActivityAppContainer();
     await ui.appLoaded();
 
-    expect(ui.graphTypeCustom.get()).toBeInTheDocument();
+    expect(ui.graphTypeSelect.get()).toHaveValue('project_activity.graphs.custom');
   });
 
   it('should correctly fetch the top level component when dealing with sub portfolios', async () => {
@@ -517,7 +557,11 @@ describe('graph interactions', () => {
     expect(ui.issuesPopupCell.get()).toBeInTheDocument();
   });
 
-  it('should correctly handle customizing the graph', async () => {
+  it.each([
+    [Mode.MQR, MetricKey.software_quality_maintainability_issues],
+    [Mode.Standard, MetricKey.code_smells],
+  ])('should correctly handle customizing the graph in %s mode', async (mode, metric) => {
+    modeHandler.setMode(mode);
     const { ui } = getPageObject();
     renderProjectActivityAppContainer();
     await ui.appLoaded();
@@ -528,7 +572,7 @@ describe('graph interactions', () => {
 
     // Add metrics.
     await ui.openMetricsDropdown();
-    await ui.toggleMetric(MetricKey.bugs);
+    await ui.toggleMetric(metric);
     await ui.toggleMetric(MetricKey.security_hotspots_reviewed);
     await ui.closeMetricsDropdown();
 
@@ -536,7 +580,7 @@ describe('graph interactions', () => {
 
     // Remove metrics.
     await ui.openMetricsDropdown();
-    await ui.toggleMetric(MetricKey.bugs);
+    await ui.toggleMetric(metric);
     await ui.toggleMetric(MetricKey.security_hotspots_reviewed);
     await ui.closeMetricsDropdown();
 
@@ -548,23 +592,221 @@ describe('graph interactions', () => {
   });
 });
 
+describe('ratings', () => {
+  it('should combine old and new rating + gaps', async () => {
+    timeMachineHandler.setMeasureHistory([
+      mockMeasureHistory({
+        metric: MetricKey.reliability_rating,
+        history: [
+          mockHistoryItem({
+            value: '5',
+            date: new Date('2022-01-11'),
+          }),
+          mockHistoryItem({
+            value: '2',
+            date: new Date('2022-01-12'),
+          }),
+          mockHistoryItem({
+            value: '2',
+            date: new Date('2022-01-13'),
+          }),
+          mockHistoryItem({
+            value: '2',
+            date: new Date('2022-01-14'),
+          }),
+        ],
+      }),
+      mockMeasureHistory({
+        metric: MetricKey.software_quality_reliability_rating,
+        history: [
+          mockHistoryItem({
+            value: undefined,
+            date: new Date('2022-01-11'),
+          }),
+          mockHistoryItem({
+            value: '3',
+            date: new Date('2022-01-12'),
+          }),
+          mockHistoryItem({
+            value: undefined,
+            date: new Date('2022-01-13'),
+          }),
+          mockHistoryItem({
+            value: '3',
+            date: new Date('2022-01-14'),
+          }),
+        ],
+      }),
+    ]);
+    const { ui } = getPageObject();
+    renderProjectActivityAppContainer();
+
+    await ui.changeGraphType(GraphType.custom);
+    await ui.openMetricsDropdown();
+    await ui.toggleMetric(MetricKey.software_quality_reliability_rating);
+    await ui.closeMetricsDropdown();
+
+    expect(await ui.graphs.findAll()).toHaveLength(1);
+    expect(ui.metricChangedInfoBtn.get()).toBeInTheDocument();
+    expect(ui.gapInfoMessage.get()).toBeInTheDocument();
+  });
+
+  it('should not show old rating if new one was always there', async () => {
+    timeMachineHandler.setMeasureHistory([
+      mockMeasureHistory({
+        metric: MetricKey.reliability_rating,
+        history: [
+          mockHistoryItem({
+            value: '5',
+            date: new Date('2022-01-11'),
+          }),
+          mockHistoryItem({
+            value: '2',
+            date: new Date('2022-01-12'),
+          }),
+        ],
+      }),
+      mockMeasureHistory({
+        metric: MetricKey.software_quality_reliability_rating,
+        history: [
+          mockHistoryItem({
+            value: '4',
+            date: new Date('2022-01-11'),
+          }),
+          mockHistoryItem({
+            value: '3',
+            date: new Date('2022-01-12'),
+          }),
+        ],
+      }),
+    ]);
+    const { ui } = getPageObject();
+    renderProjectActivityAppContainer();
+
+    await ui.changeGraphType(GraphType.custom);
+    await ui.openMetricsDropdown();
+    await ui.toggleMetric(MetricKey.software_quality_reliability_rating);
+    await ui.closeMetricsDropdown();
+
+    expect(await ui.graphs.findAll()).toHaveLength(1);
+    expect(ui.metricChangedInfoBtn.query()).not.toBeInTheDocument();
+    expect(ui.gapInfoMessage.query()).not.toBeInTheDocument();
+  });
+
+  it('should not show change info button if no new metrics', async () => {
+    timeMachineHandler.setMeasureHistory([
+      mockMeasureHistory({
+        metric: MetricKey.reliability_rating,
+        history: [
+          mockHistoryItem({
+            value: '5',
+            date: new Date('2022-01-11'),
+          }),
+          mockHistoryItem({
+            value: '2',
+            date: new Date('2022-01-12'),
+          }),
+          mockHistoryItem({
+            value: '2',
+            date: new Date('2022-01-13'),
+          }),
+        ],
+      }),
+    ]);
+    const { ui } = getPageObject();
+    renderProjectActivityAppContainer();
+
+    await ui.changeGraphType(GraphType.custom);
+    await ui.openMetricsDropdown();
+    await ui.toggleMetric(MetricKey.software_quality_reliability_rating);
+    await ui.closeMetricsDropdown();
+
+    expect(await ui.graphs.findAll()).toHaveLength(1);
+    expect(ui.metricChangedInfoBtn.query()).not.toBeInTheDocument();
+    expect(ui.gapInfoMessage.query()).not.toBeInTheDocument();
+  });
+
+  it('should not show gaps message and metric change button in legacy mode', async () => {
+    modeHandler.setMode(Mode.Standard);
+    timeMachineHandler.setMeasureHistory([
+      mockMeasureHistory({
+        metric: MetricKey.reliability_rating,
+        history: [
+          mockHistoryItem({
+            value: '5',
+            date: new Date('2022-01-11'),
+          }),
+          mockHistoryItem({
+            value: '2',
+            date: new Date('2022-01-12'),
+          }),
+          mockHistoryItem({
+            value: '2',
+            date: new Date('2022-01-13'),
+          }),
+          mockHistoryItem({
+            value: '2',
+            date: new Date('2022-01-14'),
+          }),
+        ],
+      }),
+      mockMeasureHistory({
+        metric: MetricKey.software_quality_reliability_rating,
+        history: [
+          mockHistoryItem({
+            value: undefined,
+            date: new Date('2022-01-11'),
+          }),
+          mockHistoryItem({
+            value: '4',
+            date: new Date('2022-01-12'),
+          }),
+          mockHistoryItem({
+            value: undefined,
+            date: new Date('2022-01-13'),
+          }),
+          mockHistoryItem({
+            value: '3',
+            date: new Date('2022-01-14'),
+          }),
+        ],
+      }),
+    ]);
+    const { ui } = getPageObject();
+    renderProjectActivityAppContainer();
+
+    await ui.changeGraphType(GraphType.custom);
+    await ui.openMetricsDropdown();
+    await ui.toggleMetric(MetricKey.reliability_rating);
+    await ui.closeMetricsDropdown();
+
+    expect(await ui.graphs.findAll()).toHaveLength(1);
+    expect(ui.metricChangedInfoBtn.query()).not.toBeInTheDocument();
+    expect(ui.gapInfoMessage.query()).not.toBeInTheDocument();
+  });
+});
+
 function getPageObject() {
   const user = userEvent.setup();
 
   const ui = {
     // Graph types.
     graphTypeSelect: byLabelText('project_activity.graphs.choose_type'),
-    graphTypeIssues: byText('project_activity.graphs.issues'),
-    graphTypeCustom: byText('project_activity.graphs.custom'),
 
     // Graphs.
     graphs: byLabelText('project_activity.graphs.explanation_x', { exact: false }),
     noDataText: byText('project_activity.graphs.custom.no_history'),
     gapInfoMessage: byText('project_activity.graphs.data_table.data_gap', { exact: false }),
+    metricChangedInfoBtn: byRole('button', {
+      name: 'project_activity.graphs.rating_split.info_icon',
+    }),
 
     // Add metrics.
     addMetricBtn: byRole('button', { name: 'project_activity.graphs.custom.add' }),
-    metricCheckbox: (name: MetricKey) => byRole('checkbox', { name }),
+    metricCheckbox: (name: MetricKey) =>
+      byRole('checkbox', {
+        name: DEPRECATED_ACTIVITY_METRICS.includes(name) ? `${name} (deprecated)` : name,
+      }),
 
     // Graph legend.
     newCodeLegend: byText('hotspot.filters.period.since_leak_period'),
@@ -583,8 +825,10 @@ function getPageObject() {
     addCustomEventBtn: byRole('menuitem', { name: 'project_activity.add_custom_event' }),
     addVersionEvenBtn: byRole('menuitem', { name: 'project_activity.add_version' }),
     deleteAnalysisBtn: byRole('menuitem', { name: 'project_activity.delete_analysis' }),
-    editEventBtn: byRole('button', { name: 'project_activity.events.tooltip.edit' }),
-    deleteEventBtn: byRole('button', { name: 'project_activity.events.tooltip.delete' }),
+    editEventBtn: (event: string) =>
+      byRole('button', { name: `project_activity.events.tooltip.edit.${event}` }),
+    deleteEventBtn: (event: string) =>
+      byRole('button', { name: `project_activity.events.tooltip.delete.${event}` }),
 
     // Event modal.
     nameInput: byLabelText('name'),
@@ -605,6 +849,10 @@ function getPageObject() {
     ui: {
       ...ui,
       async appLoaded({ doNotWaitForBranch }: { doNotWaitForBranch?: boolean } = {}) {
+        await waitFor(() => {
+          expect(byText('loading').query()).not.toBeInTheDocument();
+        });
+
         expect(await ui.graphs.findAll()).toHaveLength(1);
 
         if (!doNotWaitForBranch) {
@@ -615,7 +863,7 @@ function getPageObject() {
       },
 
       async changeGraphType(type: GraphType) {
-        await user.click(ui.graphTypeSelect.get());
+        await user.click(await ui.graphTypeSelect.find());
         const optionForType = await screen.findByText(`project_activity.graphs.${type}`);
         await user.click(optionForType);
       },
@@ -656,15 +904,15 @@ function getPageObject() {
         await user.click(ui.saveBtn.get());
       },
 
-      async updateEvent(index: number, value: string) {
-        await user.click(ui.editEventBtn.getAll()[index]);
+      async updateEvent(event: string, value: string) {
+        await user.click(ui.editEventBtn(event).get());
         await user.clear(ui.nameInput.get());
         await user.type(ui.nameInput.get(), value);
         await user.click(ui.changeBtn.get());
       },
 
-      async deleteEvent(index: number) {
-        await user.click(ui.deleteEventBtn.getAll()[index]);
+      async deleteEvent(event: string) {
+        await user.click(ui.deleteEventBtn(event).get());
         await user.click(ui.deleteBtn.get());
       },
 
@@ -746,11 +994,20 @@ function renderProjectActivityAppContainer(
     {
       metrics: keyBy(
         [
-          mockMetric({ key: MetricKey.maintainability_issues, type: MetricType.Data }),
+          mockMetric({
+            key: MetricKey.software_quality_maintainability_issues,
+            type: MetricType.Integer,
+          }),
           mockMetric({ key: MetricKey.bugs, type: MetricType.Integer }),
           mockMetric({ key: MetricKey.code_smells, type: MetricType.Integer }),
           mockMetric({ key: MetricKey.security_hotspots_reviewed }),
+          mockMetric({ key: MetricKey.effort_to_reach_maintainability_rating_a }),
           mockMetric({ key: MetricKey.security_review_rating, type: MetricType.Rating }),
+          mockMetric({ key: MetricKey.reliability_rating, type: MetricType.Rating }),
+          mockMetric({
+            key: MetricKey.software_quality_reliability_rating,
+            type: MetricType.Rating,
+          }),
         ],
         'key',
       ),

@@ -17,8 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonPrimary, FlagMessage, FormField, InputField, Modal } from 'design-system';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { FlagMessage, FormField, InputField, Modal } from '~design-system';
 import MandatoryFieldsExplanation from '../../../components/ui/MandatoryFieldsExplanation';
 import { KeyboardKeys } from '../../../helpers/keycodes';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
@@ -114,9 +116,9 @@ export default function ProfileModalForm(props: ProfileModalFormProps) {
         </>
       }
       primaryButton={
-        <ButtonPrimary onClick={handleSubmit} disabled={submitDisabled}>
+        <Button onClick={handleSubmit} isDisabled={submitDisabled} variety={ButtonVariety.Primary}>
           {translate(labels.button)}
-        </ButtonPrimary>
+        </Button>
       }
       secondaryButtonLabel={translate('cancel')}
     />

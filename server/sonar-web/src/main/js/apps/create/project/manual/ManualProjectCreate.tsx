@@ -18,24 +18,23 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+import { ButtonIcon, ButtonSize, ButtonVariety, IconX } from '@sonarsource/echoes-react';
 import classNames from 'classnames';
+import { isEmpty } from 'lodash';
+import * as React from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
 import {
   ButtonPrimary,
   ButtonSecondary,
-  CloseIcon,
   FlagErrorIcon,
   FlagMessage,
   FlagSuccessIcon,
   FormField,
   InputField,
-  InteractiveIcon,
   Link,
   Note,
   Title,
-} from 'design-system';
-import { isEmpty } from 'lodash';
-import * as React from 'react';
-import { FormattedMessage, useIntl } from 'react-intl';
+} from '~design-system';
 import { getValue } from '../../../../api/settings';
 import { DocLink } from '../../../../helpers/doc-links';
 import { useDocUrl } from '../../../../helpers/docs';
@@ -76,7 +75,8 @@ export default function ManualProjectCreate(props: Readonly<Props>) {
 
   React.useEffect(() => {
     async function fetchMainBranchName() {
-      const { value: mainBranchName } = await getValue({ key: GlobalSettingKeys.MainBranchName });
+      const { value: mainBranchName } =
+        (await getValue({ key: GlobalSettingKeys.MainBranchName })) ?? {};
 
       if (mainBranchName !== undefined) {
         setMainBranch((prevBranchName) => ({
@@ -139,19 +139,19 @@ export default function ManualProjectCreate(props: Readonly<Props>) {
   return (
     <section
       aria-label={translate('onboarding.create_project.manual.title')}
-      className="sw-body-sm"
+      className="sw-typo-default"
     >
       <div className="sw-flex sw-justify-between">
         <FormattedMessage
           id="onboarding.create_project.manual.step1"
           defaultMessage={translate('onboarding.create_project.manual.step1')}
         />
-        <InteractiveIcon
-          Icon={CloseIcon}
-          aria-label={intl.formatMessage({ id: 'clear' })}
-          currentColor
+        <ButtonIcon
+          Icon={IconX}
+          ariaLabel={intl.formatMessage({ id: 'clear' })}
           onClick={props.onClose}
-          size="small"
+          size={ButtonSize.Medium}
+          variety={ButtonVariety.DefaultGhost}
         />
       </div>
       <Title>{translate('onboarding.create_project.manual.title')}</Title>
@@ -163,7 +163,7 @@ export default function ManualProjectCreate(props: Readonly<Props>) {
       <div className="sw-max-w-[50%] sw-mt-2">
         <form
           id="create-project-manual"
-          className="sw-flex-col sw-body-sm"
+          className="sw-flex-col sw-typo-default"
           onSubmit={handleFormSubmit}
         >
           <ProjectValidation onChange={setProject} />

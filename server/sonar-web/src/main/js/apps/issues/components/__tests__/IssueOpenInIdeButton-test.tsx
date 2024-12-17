@@ -20,16 +20,12 @@
 
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { addGlobalErrorMessage, addGlobalSuccessMessage } from 'design-system';
-import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
+import { addGlobalErrorMessage, addGlobalSuccessMessage } from '~design-system';
 import UserTokensMock from '../../../../api/mocks/UserTokensMock';
 import DocumentationLink from '../../../../components/common/DocumentationLink';
 import { DocLink } from '../../../../helpers/doc-links';
-import {
-  openIssue as openSonarLintIssue,
-  probeSonarLintServers,
-} from '../../../../helpers/sonarlint';
+import { openFixOrIssueInSonarLint, probeSonarLintServers } from '../../../../helpers/sonarlint';
 import { renderComponent } from '../../../../helpers/testReactTestingUtils';
 import { Ide } from '../../../../types/sonarlint';
 import { IssueOpenInIdeButton, Props } from '../IssueOpenInIdeButton';
@@ -38,12 +34,12 @@ jest.mock('../../../../helpers/sonarlint', () => ({
   generateSonarLintUserToken: jest
     .fn()
     .mockResolvedValue({ name: 'token name', token: 'token value' }),
-  openIssue: jest.fn().mockResolvedValue(undefined),
+  openFixOrIssueInSonarLint: jest.fn().mockResolvedValue(undefined),
   probeSonarLintServers: jest.fn(),
 }));
 
-jest.mock('design-system', () => ({
-  ...jest.requireActual('design-system'),
+jest.mock('~design-system', () => ({
+  ...jest.requireActual('~design-system'),
   addGlobalErrorMessage: jest.fn(),
   addGlobalSuccessMessage: jest.fn(),
 }));
@@ -77,7 +73,7 @@ it('renders properly', () => {
 
   expect(addGlobalErrorMessage).not.toHaveBeenCalled();
   expect(addGlobalSuccessMessage).not.toHaveBeenCalled();
-  expect(openSonarLintIssue).not.toHaveBeenCalled();
+  expect(openFixOrIssueInSonarLint).not.toHaveBeenCalled();
   expect(probeSonarLintServers).not.toHaveBeenCalled();
 });
 
@@ -107,7 +103,7 @@ it('handles button click with no ide found', async () => {
     />,
   );
 
-  expect(openSonarLintIssue).not.toHaveBeenCalled();
+  expect(openFixOrIssueInSonarLint).not.toHaveBeenCalled();
   expect(addGlobalSuccessMessage).not.toHaveBeenCalled();
 });
 
@@ -126,7 +122,7 @@ it('handles button click with one ide found', async () => {
 
   expect(probeSonarLintServers).toHaveBeenCalledWith();
 
-  expect(openSonarLintIssue).toHaveBeenCalledWith({
+  expect(openFixOrIssueInSonarLint).toHaveBeenCalledWith({
     branchName: undefined,
     calledPort: MOCK_IDES[0].port,
     issueKey: MOCK_ISSUE_KEY,
@@ -156,7 +152,7 @@ it('handles button click with several ides found', async () => {
 
   expect(probeSonarLintServers).toHaveBeenCalledWith();
 
-  expect(openSonarLintIssue).not.toHaveBeenCalled();
+  expect(openFixOrIssueInSonarLint).not.toHaveBeenCalled();
   expect(addGlobalSuccessMessage).not.toHaveBeenCalled();
   expect(addGlobalErrorMessage).not.toHaveBeenCalled();
 
@@ -170,14 +166,16 @@ it('handles button click with several ides found', async () => {
 
   await user.click(secondIde);
 
-  expect(openSonarLintIssue).toHaveBeenCalledWith({
-    branchName: undefined,
+  expect(openFixOrIssueInSonarLint).toHaveBeenCalledWith({
+    branchLike: undefined,
     calledPort: MOCK_IDES[1].port,
     issueKey: MOCK_ISSUE_KEY,
     projectKey: MOCK_PROJECT_KEY,
     pullRequestID: undefined,
-    tokenName: 'token name',
-    tokenValue: 'token value',
+    token: {
+      name: 'token name',
+      token: 'token value',
+    },
   });
 
   expect(addGlobalSuccessMessage).toHaveBeenCalledWith('issues.open_in_ide.success');

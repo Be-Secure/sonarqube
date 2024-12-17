@@ -17,9 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonSecondary, Spinner } from 'design-system';
+
+import { Button } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { useIntl } from 'react-intl';
+import { Spinner } from '~design-system';
 import { Profile } from '../../../api/quality-profiles';
 import { getRuleDetails } from '../../../api/rules';
 import Tooltip from '../../../components/controls/Tooltip';
@@ -38,7 +40,7 @@ export default function ComparisonResultActivation(props: React.PropsWithChildre
   const [rule, setRule] = React.useState<RuleDetails>();
   const intl = useIntl();
 
-  const isOpen = state === 'open' && rule;
+  const isOpen = state === 'open' && !!rule;
 
   const activateRuleMsg = intl.formatMessage(
     { id: 'quality_profiles.comparison.activate_rule' },
@@ -61,17 +63,19 @@ export default function ComparisonResultActivation(props: React.PropsWithChildre
   return (
     <Spinner loading={state === 'opening'}>
       <Tooltip side="bottom" content={activateRuleMsg}>
-        <ButtonSecondary
-          disabled={state !== 'closed'}
+        <Button
+          isDisabled={state !== 'closed'}
           aria-label={activateRuleMsg}
           onClick={handleButtonClick}
         >
           {intl.formatMessage({ id: 'activate' })}
-        </ButtonSecondary>
+        </Button>
       </Tooltip>
 
-      {isOpen && (
+      {rule && (
         <ActivationFormModal
+          isOpen={isOpen}
+          onOpenChange={(open) => setState(open ? 'open' : 'closed')}
           modalHeader={intl.formatMessage({ id: 'coding_rules.activate_in_quality_profile' })}
           onClose={() => {
             setState('closed');

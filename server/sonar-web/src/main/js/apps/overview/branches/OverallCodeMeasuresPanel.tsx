@@ -17,16 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import classNames from 'classnames';
-import {
-  MetricsRatingBadge,
-  NoDataIcon,
-  SnoozeCircleIcon,
-  TextSubdued,
-  getTabPanelId,
-} from 'design-system';
-import * as React from 'react';
 import { useIntl } from 'react-intl';
+import { NoDataIcon, SnoozeCircleIcon, TextSubdued, getTabPanelId } from '~design-system';
 import { getBranchLikeQuery } from '~sonar-aligned/helpers/branch-like';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import {
@@ -34,7 +28,8 @@ import {
   getComponentSecurityHotspotsUrl,
 } from '~sonar-aligned/helpers/urls';
 import { MetricKey, MetricType } from '~sonar-aligned/types/metrics';
-import { findMeasure, formatRating, isDiffMetric } from '../../../helpers/measures';
+import RatingComponent from '../../../app/components/metrics/RatingComponent';
+import { findMeasure, isDiffMetric } from '../../../helpers/measures';
 import { CodeScope, getComponentDrilldownUrl } from '../../../helpers/urls';
 import { Branch } from '../../../types/branch-like';
 import { SoftwareQuality } from '../../../types/clean-code-taxonomy';
@@ -139,7 +134,7 @@ export default function OverallCodeMeasuresPanel(props: Readonly<OverallCodeMeas
             />
           }
         >
-          <TextSubdued className="sw-body-xs sw-mt-3">
+          <TextSubdued className="sw-typo-sm sw-mt-3">
             {intl.formatMessage({
               id: 'overview.accepted_issues.help',
             })}
@@ -199,9 +194,16 @@ export default function OverallCodeMeasuresPanel(props: Readonly<OverallCodeMeas
           showRequired={!isApp}
           icon={
             securityRating ? (
-              <MetricsRatingBadge
-                label={securityRating}
-                rating={formatRating(securityRating)}
+              <RatingComponent
+                branchLike={branch}
+                componentKey={component.key}
+                getTooltip={(rating) =>
+                  intl.formatMessage({ id: `metric.security_review_rating.tooltip.${rating}` })
+                }
+                getLabel={(rating) =>
+                  intl.formatMessage({ id: 'metric.has_rating_X' }, { 0: rating })
+                }
+                ratingMetric={MetricKey.security_review_rating}
                 size="md"
               />
             ) : (

@@ -32,11 +32,13 @@ import org.sonarqube.ws.client.components.ComponentsService;
 import org.sonarqube.ws.client.developers.DevelopersService;
 import org.sonarqube.ws.client.duplications.DuplicationsService;
 import org.sonarqube.ws.client.editions.EditionsService;
+import org.sonarqube.ws.client.emails.EmailConfigurationService;
 import org.sonarqube.ws.client.emails.EmailsService;
 import org.sonarqube.ws.client.favorites.FavoritesService;
 import org.sonarqube.ws.client.github.configuration.GithubConfigurationService;
 import org.sonarqube.ws.client.github.provisioning.permissions.GithubPermissionsService;
 import org.sonarqube.ws.client.gitlab.configuration.GitlabConfigurationService;
+import org.sonarqube.ws.client.gitlab.provisioning.permissions.GitlabPermissionService;
 import org.sonarqube.ws.client.gitlab.synchronization.run.GitlabSynchronizationRunService;
 import org.sonarqube.ws.client.governancereports.GovernanceReportsService;
 import org.sonarqube.ws.client.hotspots.HotspotsService;
@@ -45,6 +47,7 @@ import org.sonarqube.ws.client.l10n.L10nService;
 import org.sonarqube.ws.client.languages.LanguagesService;
 import org.sonarqube.ws.client.measures.MeasuresService;
 import org.sonarqube.ws.client.metrics.MetricsService;
+import org.sonarqube.ws.client.mode.ModeService;
 import org.sonarqube.ws.client.monitoring.MonitoringService;
 import org.sonarqube.ws.client.navigation.NavigationService;
 import org.sonarqube.ws.client.newcodeperiods.NewCodePeriodsService;
@@ -101,6 +104,7 @@ class DefaultWsClient implements WsClient {
   private final DevelopersService developersService;
   private final DuplicationsService duplicationsService;
   private final EditionsService editionsService;
+  private final EmailConfigurationService emailConfigurationService;
   private final EmailsService emailsService;
   private final FavoritesService favoritesService;
   private final GovernanceReportsService governanceReportsService;
@@ -147,8 +151,10 @@ class DefaultWsClient implements WsClient {
   private final GithubConfigurationService githubConfigurationService;
   private final GithubPermissionsService githubPermissionsService;
   private final GitlabConfigurationService gitlabConfigurationService;
+  private final GitlabPermissionService gitlabPermissionsService;
 
   private final GitlabSynchronizationRunService gitlabSynchronizationRunService;
+  private final ModeService modeService;
 
   DefaultWsClient(WsConnector wsConnector) {
     this.wsConnector = wsConnector;
@@ -164,6 +170,7 @@ class DefaultWsClient implements WsClient {
     this.developersService = new DevelopersService(wsConnector);
     this.duplicationsService = new DuplicationsService(wsConnector);
     this.editionsService = new EditionsService(wsConnector);
+    this.emailConfigurationService = new EmailConfigurationService(wsConnector);
     this.emailsService = new EmailsService(wsConnector);
     this.favoritesService = new FavoritesService(wsConnector);
     this.governanceReportsService = new GovernanceReportsService(wsConnector);
@@ -173,6 +180,7 @@ class DefaultWsClient implements WsClient {
     this.languagesService = new LanguagesService(wsConnector);
     this.measuresService = new MeasuresService(wsConnector);
     this.metricsService = new MetricsService(wsConnector);
+    this.modeService = new ModeService(wsConnector);
     this.monitoringService = new MonitoringService(wsConnector);
     this.navigationService = new NavigationService(wsConnector);
     this.newCodePeriodsService = new NewCodePeriodsService(wsConnector);
@@ -210,6 +218,7 @@ class DefaultWsClient implements WsClient {
     this.githubConfigurationService = new GithubConfigurationService(wsConnector);
     this.githubPermissionsService = new GithubPermissionsService(wsConnector);
     this.gitlabConfigurationService = new GitlabConfigurationService(wsConnector);
+    this.gitlabPermissionsService = new GitlabPermissionService(wsConnector);
     this.gitlabSynchronizationRunService = new GitlabSynchronizationRunService(wsConnector);
   }
 
@@ -280,6 +289,11 @@ class DefaultWsClient implements WsClient {
   }
 
   @Override
+  public EmailConfigurationService emailConfiguration() {
+    return emailConfigurationService;
+  }
+
+  @Override
   public EmailsService emails() {
     return emailsService;
   }
@@ -302,6 +316,11 @@ class DefaultWsClient implements WsClient {
   @Override
   public GitlabConfigurationService gitlabConfigurationService() {
     return gitlabConfigurationService;
+  }
+
+  @Override
+  public GitlabPermissionService gitlabPermissionsService() {
+    return gitlabPermissionsService;
   }
 
   @Override
@@ -342,6 +361,11 @@ class DefaultWsClient implements WsClient {
   @Override
   public MetricsService metrics() {
     return metricsService;
+  }
+
+  @Override
+  public ModeService mode() {
+    return modeService;
   }
 
   @Override

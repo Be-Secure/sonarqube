@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import {
   Card,
   DiscreetLink,
@@ -25,8 +26,7 @@ import {
   QualityGateIndicator,
   SubHeading,
   UnorderedList,
-} from 'design-system';
-import * as React from 'react';
+} from '~design-system';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { Status } from '~sonar-aligned/types/common';
 import { MetricType } from '~sonar-aligned/types/metrics';
@@ -79,11 +79,8 @@ export default function ProjectCard({ project }: Readonly<Props>) {
           <div>
             <Tooltip content={qualityGateLabel}>
               <span className="sw-flex sw-items-center">
-                <QualityGateIndicator
-                  status={(project.qualityGate as Status) ?? 'NONE'}
-                  ariaLabel={qualityGateLabel}
-                />
-                <LightPrimary className="sw-ml-2 sw-body-sm-highlight">{formatted}</LightPrimary>
+                <QualityGateIndicator status={(project.qualityGate as Status) ?? 'NONE'} />
+                <LightPrimary className="sw-ml-2 sw-typo-semibold">{formatted}</LightPrimary>
               </span>
             </Tooltip>
           </div>

@@ -22,19 +22,24 @@ package org.sonar.auth.gitlab;
 import com.github.scribejava.core.model.OAuth2AccessToken;
 import com.github.scribejava.core.model.OAuthConstants;
 import com.github.scribejava.core.oauth.OAuth20Service;
-import com.tngtech.java.junit.dataprovider.DataProvider;
-import com.tngtech.java.junit.dataprovider.DataProviderRunner;
-import com.tngtech.java.junit.dataprovider.UseDataProvider;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.sonar.api.config.Configuration;
 import org.sonar.api.server.authentication.Display;
 import org.sonar.api.server.authentication.OAuth2IdentityProvider;
 import org.sonar.api.server.authentication.UnauthorizedException;
@@ -42,17 +47,17 @@ import org.sonar.api.server.authentication.UserIdentity;
 
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
-import static org.mockito.Mockito.any;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.MockitoAnnotations.openMocks;
 
-@RunWith(DataProviderRunner.class)
-public class GitLabIdentityProviderTest {
+@ExtendWith(MockitoExtension.class)
+class GitLabIdentityProviderTest {
 
   private static final String OAUTH_CODE = "code fdsojfsjodfg";
   private static final String AUTHORIZATION_URL = "AUTHORIZATION_URL";
@@ -62,6 +67,10 @@ public class GitLabIdentityProviderTest {
   @Mock
   private GitLabRestClient gitLabRestClient;
   @Mock
+  private Configuration configuration;
+
+  @Spy
+  @InjectMocks
   private GitLabSettings gitLabSettings;
   @Mock(answer = Answers.RETURNS_DEEP_STUBS)
   private GitLabIdentityProvider.ScribeFactory scribeFactory;
@@ -78,24 +87,23 @@ public class GitLabIdentityProviderTest {
 
   private GitLabIdentityProvider gitLabIdentityProvider;
 
-  @Before
-  public void setup() throws IOException, ExecutionException, InterruptedException {
-    openMocks(this);
+  @BeforeEach
+  void setup() throws IOException, ExecutionException, InterruptedException {
     gitLabIdentityProvider = new GitLabIdentityProvider(gitLabSettings, gitLabRestClient, scribeApi, scribeFactory);
 
-    when(initContext.generateCsrfState()).thenReturn(STATE);
-    when(initContext.getCallbackUrl()).thenReturn(CALLBACK_URL);
+    lenient().when(initContext.generateCsrfState()).thenReturn(STATE);
+    lenient().when(initContext.getCallbackUrl()).thenReturn(CALLBACK_URL);
 
-    when(callbackContext.getCallbackUrl()).thenReturn(CALLBACK_URL);
-    when(callbackContext.getHttpRequest().getParameter(OAuthConstants.CODE)).thenReturn(OAUTH_CODE);
+    lenient().when(callbackContext.getCallbackUrl()).thenReturn(CALLBACK_URL);
+    lenient().when(callbackContext.getHttpRequest().getParameter(OAuthConstants.CODE)).thenReturn(OAUTH_CODE);
 
-    when(scribeFactory.newScribe(gitLabSettings, CALLBACK_URL, scribeApi)).thenReturn(scribe);
-    when(scribe.getAccessToken(OAUTH_CODE)).thenReturn(accessToken);
-    when(scribe.getAuthorizationUrl(STATE)).thenReturn(AUTHORIZATION_URL);
+    lenient().when(scribeFactory.newScribe(gitLabSettings, CALLBACK_URL, scribeApi)).thenReturn(scribe);
+    lenient().when(scribe.getAccessToken(OAUTH_CODE)).thenReturn(accessToken);
+    lenient().when(scribe.getAuthorizationUrl(STATE)).thenReturn(AUTHORIZATION_URL);
   }
 
   @Test
-  public void test_identity_provider() {
+  void test_identity_provider() {
     when(gitLabSettings.isEnabled()).thenReturn(true);
     when(gitLabSettings.allowUsersToSignUp()).thenReturn(true);
 
@@ -109,7 +117,7 @@ public class GitLabIdentityProviderTest {
   }
 
   @Test
-  public void init_whenSuccessful_redirectsToUrl() {
+  void init_whenSuccessful_redirectsToUrl() {
     gitLabIdentityProvider.init(initContext);
 
     verify(initContext).generateCsrfState();
@@ -117,7 +125,7 @@ public class GitLabIdentityProviderTest {
   }
 
   @Test
-  public void init_whenErrorWhileBuildingScribe_shouldReThrow() {
+  void init_whenErrorWhileBuildingScribe_shouldReThrow() {
     IllegalStateException exception = new IllegalStateException("GitLab authentication is disabled");
     when(scribeFactory.newScribe(any(), any(), any())).thenThrow(exception);
 
@@ -129,7 +137,7 @@ public class GitLabIdentityProviderTest {
   }
 
   @Test
-  public void onCallback_withGroupSyncDisabledAndNoAllowedGroups_redirectsToRequestedPage() {
+  void onCallback_withGroupSyncDisabledAndNoAllowedGroups_redirectsToRequestedPage() {
     GsonUser gsonUser = mockGsonUser();
 
     gitLabIdentityProvider.callback(callbackContext);
@@ -140,7 +148,7 @@ public class GitLabIdentityProviderTest {
   }
 
   @Test
-  public void onCallback_withGroupSyncDisabledAndAllowedGroups_redirectsToRequestedPage() {
+  void onCallback_withGroupSyncDisabledAndAllowedGroups_redirectsToRequestedPage() {
     when(gitLabSettings.syncUserGroups()).thenReturn(false);
 
     GsonUser gsonUser = mockGsonUser();
@@ -152,11 +160,11 @@ public class GitLabIdentityProviderTest {
     verify(gitLabRestClient, never()).getGroups(any(), any());
   }
 
-  @Test
-  @UseDataProvider("allowedGroups")
-  public void onCallback_withGroupSyncAndAllowedGroupsMatching_redirectsToRequestedPage(Set<String> allowedGroups) {
+  @ParameterizedTest
+  @MethodSource("allowedGroups")
+  void onCallback_withGroupSyncAndAllowedGroupsMatching_redirectsToRequestedPage(Set<String> allowedGroups) {
     when(gitLabSettings.syncUserGroups()).thenReturn(true);
-    when(gitLabSettings.allowedGroups()).thenReturn(allowedGroups);
+    when(configuration.getStringArray("sonar.auth.gitlab.allowedGroups")).thenReturn(allowedGroups.toArray(new String[0]));
 
     GsonUser gsonUser = mockGsonUser();
     Set<GsonGroup> gsonGroups = mockGitlabGroups();
@@ -167,18 +175,19 @@ public class GitLabIdentityProviderTest {
     verify(callbackContext).redirectToRequestedPage();
   }
 
-  @DataProvider
-  public static Object[][] allowedGroups() {
-    return new Object[][]{
-      {Set.of()},
-      {Set.of("path")}
-    };
+  static Stream<Arguments> allowedGroups() {
+    return Stream.of(
+      Arguments.of(Set.of()),
+      Arguments.of(Set.of("path")),
+      Arguments.of(Set.of("path/to/group"))
+    );
   }
 
-  @Test
-  public void onCallback_withGroupSyncAndAllowedGroupsNotMatching_shouldThrow() {
+  @ParameterizedTest
+  @MethodSource("notAllowedGroups")
+  void onCallback_withGroupSyncAndAllowedGroupsNotMatching_shouldThrow(Set<String> allowedGroups) {
     when(gitLabSettings.syncUserGroups()).thenReturn(true);
-    when(gitLabSettings.allowedGroups()).thenReturn(Set.of("path2"));
+    when(configuration.getStringArray("sonar.auth.gitlab.allowedGroups")).thenReturn(allowedGroups.toArray(new String[0]));
 
     mockGsonUser();
     mockGitlabGroups();
@@ -188,8 +197,15 @@ public class GitLabIdentityProviderTest {
       .withMessage("You are not allowed to authenticate");
   }
 
+  static Stream<Arguments> notAllowedGroups() {
+    return Stream.of(
+      Arguments.of(Set.of("pat")),
+      Arguments.of(Set.of("path2"))
+    );
+  }
+
   @Test
-  public void onCallback_ifScribeFactoryFails_shouldThrow() {
+  void onCallback_ifScribeFactoryFails_shouldThrow() {
     IllegalStateException exception = new IllegalStateException("message");
     when(scribeFactory.newScribe(any(), any(), any())).thenThrow(exception);
 
@@ -232,7 +248,7 @@ public class GitLabIdentityProviderTest {
   }
 
   @Test
-  public void newScribe_whenGitLabAuthIsDisabled_throws() {
+  void newScribe_whenGitLabAuthIsDisabled_throws() {
     when(gitLabSettings.isEnabled()).thenReturn(false);
 
     assertThatIllegalStateException()
@@ -240,9 +256,9 @@ public class GitLabIdentityProviderTest {
       .withMessage("GitLab authentication is disabled");
   }
 
-  @Test
-  @UseDataProvider("groupsSyncToScope")
-  public void newScribe_whenGitLabSettingsValid_shouldUseCorrectScopeDependingOnGroupSync(boolean groupSyncEnabled, String expectedScope) {
+  @ParameterizedTest
+  @MethodSource("groupsSyncToScope")
+  void newScribe_whenGitLabSettingsValid_shouldUseCorrectScopeDependingOnGroupSync(boolean groupSyncEnabled, String expectedScope) {
     setupGitlabSettingsWithGroupSync(groupSyncEnabled);
 
 
@@ -255,12 +271,11 @@ public class GitLabIdentityProviderTest {
     assertThat(realScribe.getDefaultScope()).isEqualTo(expectedScope);
   }
 
-  @DataProvider
-  public static Object[][] groupsSyncToScope() {
-    return new Object[][]{
-      {false, "read_user"},
-      {true, "api"}
-    };
+  static Stream<Arguments> groupsSyncToScope() {
+    return Stream.of(
+      Arguments.of(false, "read_user"),
+      Arguments.of(true, "api")
+    );
   }
 
   private void setupGitlabSettingsWithGroupSync(boolean enableGroupSync) {

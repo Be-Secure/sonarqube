@@ -17,9 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { RadioButtonGroup } from '@sonarsource/echoes-react';
 import classNames from 'classnames';
-import * as React from 'react';
 import { Visibility } from '~sonar-aligned/types/component';
 import { translate } from '../../helpers/l10n';
 
@@ -33,10 +33,11 @@ export interface VisibilitySelectorProps {
 }
 
 export default function VisibilitySelector(props: Readonly<VisibilitySelectorProps>) {
-  const { className, canTurnToPrivate, visibility, disabled, loading = false } = props;
+  const { className, canTurnToPrivate, visibility, disabled, loading = false, onChange } = props;
   return (
     <div className={classNames(className)}>
       <RadioButtonGroup
+        ariaLabel={translate('roles.page.change_visibility')}
         id="project-visiblity-radio"
         isDisabled={disabled}
         options={Object.values(Visibility).map((v) => ({
@@ -45,7 +46,7 @@ export default function VisibilitySelector(props: Readonly<VisibilitySelectorPro
           isDisabled: (v === Visibility.Private && !canTurnToPrivate) || loading,
         }))}
         value={visibility}
-        onChange={props.onChange}
+        onChange={onChange}
       />
     </div>
   );

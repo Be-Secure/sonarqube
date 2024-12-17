@@ -17,9 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import styled from '@emotion/styled';
-import { ContentCell, ListItem, UnorderedList } from 'design-system';
-import * as React from 'react';
+import { ContentCell, ListItem, UnorderedList } from '~design-system';
 import { translate } from '../../../helpers/l10n';
 import { InstalledPlugin } from '../../../types/plugins';
 import PluginDescription from './PluginDescription';
@@ -48,7 +48,7 @@ export default function PluginInstalled({
       <ContentCell>
         <StyledUnorderedList>
           <ListItem className="sw-mt-0">
-            <strong className="sw-mr-1 sw-body-sm-highlight">{plugin.version}</strong>
+            <strong className="sw-mr-1 sw-typo-semibold">{plugin.version}</strong>
             {translate('marketplace._installed')}
           </ListItem>
           <PluginUpdates pluginName={plugin.name} updates={plugin.updates} />

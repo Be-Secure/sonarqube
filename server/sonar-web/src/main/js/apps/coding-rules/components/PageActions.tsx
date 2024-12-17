@@ -17,8 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { KeyboardHint } from 'design-system';
-import * as React from 'react';
+
+import { KeyboardHint } from '~design-system';
 import PageCounter from '../../../components/common/PageCounter';
 import { translate } from '../../../helpers/l10n';
 import { Paging } from '../../../types/types';
@@ -29,7 +29,7 @@ export interface PageActionsProps {
 
 export default function PageActions(props: Readonly<PageActionsProps>) {
   return (
-    <div className="sw-body-sm sw-flex sw-items-center sw-gap-6 sw-justify-end sw-flex-1">
+    <div className="sw-typo-default sw-flex sw-items-center sw-gap-6 sw-justify-end sw-flex-1">
       <KeyboardHint title={translate('coding_rules.to_select_rules')} command="ArrowUp ArrowDown" />
       <KeyboardHint title={translate('coding_rules.to_navigate')} command="ArrowLeft ArrowRight" />
 

@@ -90,8 +90,16 @@ public class FileStructure {
     return new File(dir, "context-props.pb");
   }
 
+  public File telemetryEntries() {
+    return new File(dir, "telemetry-entries.pb");
+  }
+
   public File analysisWarnings() {
     return new File(dir, "analysis-warnings.pb");
+  }
+
+  public File dependencies() {
+    return new File(dir, "dependencies.pb");
   }
 
   public File root() {

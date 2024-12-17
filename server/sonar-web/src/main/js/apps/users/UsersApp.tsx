@@ -19,6 +19,8 @@
  */
 
 import { subDays, subSeconds } from 'date-fns';
+import { useEffect, useMemo, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import {
   HelperHintIcon,
   InputSearch,
@@ -27,9 +29,7 @@ import {
   PageContentFontWrapper,
   Spinner,
   StyledPageTitle,
-} from 'design-system';
-import React, { useEffect, useMemo, useState } from 'react';
-import { Helmet } from 'react-helmet-async';
+} from '~design-system';
 import HelpTooltip from '~sonar-aligned/components/controls/HelpTooltip';
 import { getIdentityProviders } from '../../api/users';
 import GitHubSynchronisationWarning from '../../app/components/GitHubSynchronisationWarning';
@@ -97,7 +97,7 @@ export default function UsersApp() {
 
   return (
     <LargeCenteredLayout as="main" id="users-page">
-      <PageContentFontWrapper className="sw-my-8 sw-body-sm">
+      <PageContentFontWrapper className="sw-my-8 sw-typo-default">
         <Helmet defer={false} title={translate('users.page')} />
         <Header manageProvider={manageProvider?.provider} />
         {manageProvider?.provider === Provider.Github && <GitHubSynchronisationWarning short />}
@@ -117,11 +117,11 @@ export default function UsersApp() {
             value={search}
           />
           <div className="sw-flex sw-items-center sw-ml-4">
-            <StyledPageTitle as="label" className="sw-body-sm-highlight sw-mr-2">
+            <StyledPageTitle as="label" className="sw-typo-semibold sw-mr-2">
               {translate('users.filter.by')}
             </StyledPageTitle>
             <InputSelect
-              className="sw-body-sm"
+              className="sw-typo-default"
               size="medium"
               id="users-activity-filter"
               isDisabled={isLoading}

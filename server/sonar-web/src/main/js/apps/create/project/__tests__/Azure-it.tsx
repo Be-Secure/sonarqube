@@ -17,11 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { screen, waitFor } from '@testing-library/react';
 
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import * as React from 'react';
-import selectEvent from 'react-select-event';
 import { byLabelText, byRole, byText } from '~sonar-aligned/helpers/testSelector';
 import { searchAzureRepositories } from '../../../../api/alm-integrations';
 import AlmIntegrationsServiceMock from '../../../../api/mocks/AlmIntegrationsServiceMock';
@@ -62,13 +60,7 @@ const ui = {
   }),
 };
 
-const original = window.location;
-
 beforeAll(() => {
-  Object.defineProperty(window, 'location', {
-    configurable: true,
-    value: { replace: jest.fn() },
-  });
   almIntegrationHandler = new AlmIntegrationsServiceMock();
   dopTranslationHandler = new DopTranslationServiceMock();
   newCodePeriodHandler = new NewCodeDefinitionServiceMock();
@@ -80,9 +72,6 @@ beforeEach(() => {
   dopTranslationHandler.reset();
   newCodePeriodHandler.reset();
 });
-afterAll(() => {
-  Object.defineProperty(window, 'location', { configurable: true, value: original });
-});
 
 it('should ask for PAT when it is not set yet and show the import project feature afterwards', async () => {
   const user = userEvent.setup();
@@ -90,7 +79,8 @@ it('should ask for PAT when it is not set yet and show the import project featur
   expect(await screen.findByText('onboarding.create_project.azure.title')).toBeInTheDocument();
   expect(screen.getByText('alm.configuration.selector.label.alm.azure.long')).toBeInTheDocument();
 
-  await selectEvent.select(ui.instanceSelector.get(), [/conf-azure-1/]);
+  await user.click(ui.instanceSelector.get());
+  await user.click(byRole('option', { name: /conf-azure-1/ }).get());
 
   expect(await screen.findByText('onboarding.create_project.enter_pat')).toBeInTheDocument();
   expect(screen.getByText('onboarding.create_project.pat_form.title')).toBeInTheDocument();
@@ -100,7 +90,7 @@ it('should ask for PAT when it is not set yet and show the import project featur
   await user.keyboard('secret');
   await user.click(screen.getByRole('button', { name: 'save' }));
 
-  expect(screen.getByText('Azure project')).toBeInTheDocument();
+  expect(await screen.findByText('Azure project')).toBeInTheDocument();
   expect(screen.getByText('Azure project 2')).toBeInTheDocument();
   // eslint-disable-next-line jest-dom/prefer-in-document
   expect(screen.getAllByText('onboarding.create_project.repository_imported')).toHaveLength(1);
@@ -112,7 +102,8 @@ it('should show import project feature when PAT is already set', async () => {
   renderCreateProject();
   expect(await screen.findByText('onboarding.create_project.azure.title')).toBeInTheDocument();
 
-  await selectEvent.select(ui.instanceSelector.get(), [/conf-azure-2/]);
+  await user.click(ui.instanceSelector.get());
+  await user.click(byRole('option', { name: /conf-azure-2/ }).get());
 
   expect(await screen.findByText('Azure project')).toBeInTheDocument();
   expect(screen.getByText('Azure project 2')).toBeInTheDocument();
@@ -194,7 +185,8 @@ it('should show search filter when PAT is already set', async () => {
   renderCreateProject();
   expect(await screen.findByText('onboarding.create_project.azure.title')).toBeInTheDocument();
 
-  await selectEvent.select(ui.instanceSelector.get(), [/conf-azure-2/]);
+  await user.click(ui.instanceSelector.get());
+  await user.click(byRole('option', { name: /conf-azure-2/ }).get());
 
   // Should search with positive results
   const inputSearch = await screen.findByPlaceholderText(
@@ -241,10 +233,13 @@ describe('Azure monorepo setup navigation', () => {
   });
 
   it('should load every repositories from every projects in monorepo setup mode', async () => {
+    const user = userEvent.setup();
     renderCreateProject({ isMonorepo: true });
 
-    await selectEvent.select(await ui.monorepoDopSettingDropdown.find(), [/conf-azure-2/]);
-    selectEvent.openMenu(await ui.repositorySelector.find());
+    await user.click(await ui.monorepoDopSettingDropdown.find());
+    await user.click(byRole('option', { name: /conf-azure-2/ }).get());
+
+    await user.click(ui.repositorySelector.get());
 
     expect(screen.getByText('Azure repo 1')).toBeInTheDocument();
     expect(screen.getByText('Azure repo 2')).toBeInTheDocument();

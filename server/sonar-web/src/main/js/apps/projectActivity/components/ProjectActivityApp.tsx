@@ -17,15 +17,14 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+import { Spinner } from '@sonarsource/echoes-react';
 import React from 'react';
 import { useLocation, useRouter } from '~sonar-aligned/components/hoc/withRouter';
 import { getBranchLikeQuery } from '~sonar-aligned/helpers/branch-like';
 import { isPortfolioLike } from '~sonar-aligned/helpers/component';
 import { MetricKey } from '~sonar-aligned/types/metrics';
-import {
-  useComponent,
-  useTopLevelComponentKey,
-} from '../../../app/components/componentContext/withComponentContext';
+import { useComponent } from '../../../app/components/componentContext/withComponentContext';
 import { useMetrics } from '../../../app/components/metrics/withMetricsContext';
 import {
   DEFAULT_GRAPH,
@@ -33,12 +32,15 @@ import {
   getHistoryMetrics,
   isCustomGraph,
 } from '../../../components/activity-graph/utils';
+import { mergeMeasureHistory } from '../../../helpers/activity-graph';
 import { parseDate } from '../../../helpers/dates';
-import useApplicationLeakQuery from '../../../queries/applications';
-import { useBranchesQuery } from '../../../queries/branch';
+import { useApplicationLeakQuery } from '../../../queries/applications';
+import { useCurrentBranchQuery } from '../../../queries/branch';
+import { StaleTime } from '../../../queries/common';
 import { useAllMeasuresHistoryQuery } from '../../../queries/measures';
+import { useStandardExperienceModeQuery } from '../../../queries/mode';
 import { useAllProjectAnalysesQuery } from '../../../queries/project-analyses';
-import { isApplication, isProject } from '../../../types/component';
+import { isApplication, isApplicationOrPortfolio, isProject } from '../../../types/component';
 import { MeasureHistory, ParsedAnalysis } from '../../../types/project-activity';
 import { Query, parseQuery, serializeUrlQuery } from '../utils';
 import ProjectActivityAppRenderer from './ProjectActivityAppRenderer';
@@ -57,42 +59,44 @@ export const PROJECT_ACTIVITY_GRAPH = 'sonar_project_activity.graph';
 
 export function ProjectActivityApp() {
   const { query, pathname } = useLocation();
-  const parsedQuery = parseQuery(query);
+  const { data: isStandardMode, isLoading: isLoadingStandardMode } =
+    useStandardExperienceModeQuery();
+  const parsedQuery = parseQuery(query, isStandardMode);
   const router = useRouter();
   const { component } = useComponent();
   const metrics = useMetrics();
-  const { data: { branchLike } = {}, isFetching: isFetchingBranch } = useBranchesQuery(component);
+  const { data: branchLike, isFetching: isFetchingBranch } = useCurrentBranchQuery(
+    component,
+    StaleTime.LONG,
+  );
   const enabled =
     component?.key !== undefined &&
     (isPortfolioLike(component?.qualifier) || (Boolean(branchLike) && !isFetchingBranch));
 
-  const componentKey = useTopLevelComponentKey();
-  const { data: appLeaks } = useApplicationLeakQuery(
-    componentKey ?? '',
-    isApplication(component?.qualifier),
-  );
+  const { data: appLeaks } = useApplicationLeakQuery(component?.key ?? '', {
+    enabled: isApplication(component?.qualifier),
+  });
 
-  const { data: analysesData, isLoading: isLoadingAnalyses } = useAllProjectAnalysesQuery(enabled);
+  const { data: analysesData, isLoading: isLoadingAnalyses } = useAllProjectAnalysesQuery({
+    enabled,
+    staleTime: StaleTime.LONG,
+  });
 
   const { data: historyData, isLoading: isLoadingHistory } = useAllMeasuresHistoryQuery(
-    componentKey,
-    getBranchLikeQuery(branchLike),
-    getHistoryMetrics(query.graph || DEFAULT_GRAPH, parsedQuery.customMetrics).join(','),
-    enabled,
+    {
+      component: component?.key,
+      branchParams: getBranchLikeQuery(branchLike),
+      metrics: getHistoryMetrics(query.graph || DEFAULT_GRAPH, parsedQuery.customMetrics).join(','),
+    },
+    { enabled, staleTime: StaleTime.LONG },
   );
 
   const analyses = React.useMemo(() => analysesData ?? [], [analysesData]);
 
   const measuresHistory = React.useMemo(
     () =>
-      historyData?.measures?.map((measure) => ({
-        metric: measure.metric,
-        history: measure.history.map((historyItem) => ({
-          date: parseDate(historyItem.date),
-          value: historyItem.value,
-        })),
-      })) ?? [],
-    [historyData],
+      isLoadingStandardMode ? [] : mergeMeasureHistory(historyData, parseDate, isStandardMode),
+    [historyData, isStandardMode, isLoadingStandardMode],
   );
 
   const leakPeriodDate = React.useMemo(() => {
@@ -113,6 +117,18 @@ export function ProjectActivityApp() {
       ) {
         return false;
       }
+
+      // Application and Portfolio don't have these metrics
+      if (
+        isApplicationOrPortfolio(component?.qualifier) &&
+        [
+          MetricKey.effort_to_reach_software_quality_maintainability_rating_a,
+          MetricKey.effort_to_reach_maintainability_rating_a,
+        ].includes(metric.key as MetricKey)
+      ) {
+        return false;
+      }
+
       if (isProject(component?.qualifier) && metric.key === MetricKey.security_review_rating) {
         return false;
       }
@@ -122,10 +138,13 @@ export function ProjectActivityApp() {
   }, [component?.qualifier, metrics]);
 
   const handleUpdateQuery = (newQuery: Query) => {
-    const q = serializeUrlQuery({
-      ...parsedQuery,
-      ...newQuery,
-    });
+    const q = serializeUrlQuery(
+      {
+        ...parsedQuery,
+        ...newQuery,
+      },
+      isStandardMode,
+    );
 
     router.push({
       pathname,
@@ -139,18 +158,21 @@ export function ProjectActivityApp() {
 
   return (
     component && (
-      <ProjectActivityAppRenderer
-        analyses={analyses}
-        analysesLoading={isLoadingAnalyses}
-        graphLoading={isLoadingHistory}
-        leakPeriodDate={leakPeriodDate}
-        initializing={isLoadingAnalyses || isLoadingHistory}
-        measuresHistory={measuresHistory}
-        metrics={filteredMetrics}
-        project={component}
-        onUpdateQuery={handleUpdateQuery}
-        query={parsedQuery}
-      />
+      <Spinner isLoading={isLoadingStandardMode}>
+        <ProjectActivityAppRenderer
+          analyses={analyses}
+          isStandardMode={isStandardMode}
+          analysesLoading={isLoadingAnalyses}
+          graphLoading={isLoadingHistory}
+          leakPeriodDate={leakPeriodDate}
+          initializing={isLoadingAnalyses || isLoadingHistory}
+          measuresHistory={measuresHistory}
+          metrics={filteredMetrics}
+          project={component}
+          onUpdateQuery={handleUpdateQuery}
+          query={parsedQuery}
+        />
+      </Spinner>
     )
   );
 }

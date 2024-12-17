@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import styled from '@emotion/styled';
 import classNames from 'classnames';
 import { bisector, extent, max } from 'd3-array';
@@ -30,15 +31,17 @@ import {
   scaleTime,
 } from 'd3-scale';
 import { area, curveBasis, line as d3Line } from 'd3-shape';
-import { CSSColor, ThemeProp, themeColor, withTheme } from 'design-system';
 import { flatten, isEqual, sortBy, throttle, uniq } from 'lodash';
 import * as React from 'react';
+import { CSSColor, ThemeProp, themeColor, withTheme } from '~design-system';
 import { MetricType } from '~sonar-aligned/types/metrics';
 import { isDefined } from '../../helpers/types';
 import { Chart } from '../../types/types';
 import { LINE_CHART_DASHES } from '../activity-graph/utils';
 import './AdvancedTimeline.css';
 import './LineChart.css';
+import SplitLine from './SplitLine';
+import SplitLinePopover from './SplitLinePopover';
 
 export interface PropsWithoutTheme {
   basisCurve?: boolean;
@@ -57,6 +60,7 @@ export interface PropsWithoutTheme {
   selectedDate?: Date;
   series: Chart.Serie[];
   showAreas?: boolean;
+  splitPointDate?: Date;
   startDate?: Date;
   updateSelectedDate?: (selectedDate?: Date) => void;
   updateTooltip?: (selectedDate?: Date, tooltipXPos?: number, tooltipIdx?: number) => void;
@@ -342,7 +346,7 @@ export class AdvancedTimelineClass extends React.PureComponent<Props, State> {
             <g key={tick}>
               {formatYTick != null && (
                 <text
-                  className="line-chart-tick line-chart-tick-x sw-body-sm"
+                  className="line-chart-tick line-chart-tick-x sw-typo-default"
                   dx="-1em"
                   dy="0.3em"
                   textAnchor="end"
@@ -379,7 +383,7 @@ export class AdvancedTimelineClass extends React.PureComponent<Props, State> {
 
           return (
             <text
-              className="line-chart-tick sw-body-sm"
+              className="line-chart-tick sw-typo-default"
               // eslint-disable-next-line react/no-array-index-key
               key={index}
               textAnchor="end"
@@ -627,7 +631,9 @@ export class AdvancedTimelineClass extends React.PureComponent<Props, State> {
       hideXAxis,
       showAreas,
       graphDescription,
+      splitPointDate,
     } = this.props as PropsWithDefaults;
+    const { xScale, yScale } = this.state;
 
     if (!width || !height) {
       return <div />;
@@ -637,24 +643,32 @@ export class AdvancedTimelineClass extends React.PureComponent<Props, State> {
     const isZoomed = Boolean(startDate ?? endDate);
 
     return (
-      <svg
-        aria-label={graphDescription}
-        className={classNames('line-chart', { 'chart-zoomed': isZoomed })}
-        height={height}
-        width={width}
-      >
-        {zoomEnabled && this.renderClipPath()}
-        <g transform={`translate(${padding[3]}, ${padding[0]})`}>
-          {leakPeriodDate != null && this.renderLeak()}
-          {!hideGrid && this.renderHorizontalGrid()}
-          {!hideXAxis && this.renderXAxisTicks()}
-          {showAreas && this.renderAreas()}
-          {this.renderLines()}
-          {this.renderDots()}
-          {this.renderSelectedDate()}
-          {this.renderMouseEventsOverlay(zoomEnabled)}
-        </g>
-      </svg>
+      <div className="sw-relative">
+        <svg
+          aria-label={graphDescription}
+          className={classNames('line-chart', { 'chart-zoomed': isZoomed })}
+          height={height}
+          width={width}
+        >
+          {zoomEnabled && this.renderClipPath()}
+          <g transform={`translate(${padding[3]}, ${padding[0]})`}>
+            {leakPeriodDate != null && this.renderLeak()}
+            {!hideGrid && this.renderHorizontalGrid()}
+            {!hideXAxis && this.renderXAxisTicks()}
+            {showAreas && this.renderAreas()}
+            {this.renderLines()}
+            {this.renderDots()}
+            {this.renderSelectedDate()}
+            {this.renderMouseEventsOverlay(zoomEnabled)}
+            <SplitLine splitPointDate={splitPointDate} xScale={xScale} yScale={yScale} />
+          </g>
+        </svg>
+        <SplitLinePopover
+          paddingLeft={padding[3]}
+          splitPointDate={splitPointDate}
+          xScale={xScale}
+        />
+      </div>
     );
   }
 }

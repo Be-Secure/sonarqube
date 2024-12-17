@@ -70,4 +70,8 @@ public interface BatchReportReader {
   Optional<ScannerReport.ChangedLines> readComponentChangedLines(int fileRef);
 
   CloseableIterator<ScannerReport.AnalysisWarning> readAnalysisWarnings();
+
+  CloseableIterator<ScannerReport.TelemetryEntry> readTelemetryEntries();
+
+  CloseableIterator<ScannerReport.Dependency> readDependencies();
 }

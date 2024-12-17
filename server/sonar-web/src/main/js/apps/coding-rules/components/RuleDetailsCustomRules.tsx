@@ -17,21 +17,20 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import {
-  ButtonSecondary,
-  ContentCell,
-  DangerButtonSecondary,
-  HeadingDark,
+  Button,
+  ButtonVariety,
+  Heading,
   Link,
+  ModalAlert,
   Spinner,
-  Table,
-  TableRow,
-  UnorderedList,
-} from 'design-system';
+} from '@sonarsource/echoes-react';
 import { sortBy } from 'lodash';
 import * as React from 'react';
-import ConfirmButton from '../../../components/controls/ConfirmButton';
-import { translate, translateWithParameters } from '../../../helpers/l10n';
+import { useIntl } from 'react-intl';
+import { ContentCell, Table, TableRow, UnorderedList } from '~design-system';
+import { translate } from '../../../helpers/l10n';
 import { getRuleUrl } from '../../../helpers/urls';
 import { useDeleteRuleMutation, useSearchRulesQuery } from '../../../queries/rules';
 import { Rule, RuleDetails } from '../../../types/types';
@@ -67,14 +66,18 @@ export default function RuleDetailsCustomRules(props: Readonly<Props>) {
   return (
     <div className="js-rule-custom-rules">
       <div>
-        <HeadingDark as="h2">{translate('coding_rules.custom_rules')}</HeadingDark>
+        <Heading as="h2">{translate('coding_rules.custom_rules')}</Heading>
 
         {props.canChange && (
           <CustomRuleButton templateRule={ruleDetails}>
             {({ onClick }) => (
-              <ButtonSecondary className="js-create-custom-rule sw-mt-6" onClick={onClick}>
+              <Button
+                variety={ButtonVariety.Default}
+                className="js-create-custom-rule sw-mt-6"
+                onClick={onClick}
+              >
                 {translate('coding_rules.create')}
-              </ButtonSecondary>
+              </Button>
             )}
           </CustomRuleButton>
         )}
@@ -95,7 +98,7 @@ export default function RuleDetailsCustomRules(props: Readonly<Props>) {
             ))}
           </Table>
         )}
-        <Spinner className="sw-my-6" loading={loading} />
+        <Spinner className="sw-my-6" isLoading={loading} />
       </div>
     </div>
   );
@@ -109,6 +112,7 @@ function RuleListItem(
   }>,
 ) {
   const { rule, editable } = props;
+  const intl = useIntl();
   return (
     <TableRow data-rule={rule.key}>
       <ContentCell>
@@ -133,24 +137,39 @@ function RuleListItem(
 
       {editable && (
         <ContentCell>
-          <ConfirmButton
-            confirmButtonText={translate('delete')}
-            confirmData={rule.key}
-            isDestructive
-            modalBody={translateWithParameters('coding_rules.delete.custom.confirm', rule.name)}
-            modalHeader={translate('coding_rules.delete_rule')}
-            onConfirm={props.onDelete}
-          >
-            {({ onClick }) => (
-              <DangerButtonSecondary
-                className="js-delete-custom-rule"
-                aria-label={translateWithParameters('coding_rules.delete_rule_x', rule.name)}
-                onClick={onClick}
+          <ModalAlert
+            title={translate('coding_rules.delete_rule')}
+            description={intl.formatMessage(
+              {
+                id: 'coding_rules.delete.custom.confirm',
+              },
+              {
+                name: rule.name,
+              },
+            )}
+            primaryButton={
+              <Button
+                className="sw-ml-2 js-delete"
+                id="coding-rules-detail-rule-delete"
+                onClick={() => props.onDelete(rule.key)}
+                variety={ButtonVariety.DangerOutline}
               >
                 {translate('delete')}
-              </DangerButtonSecondary>
-            )}
-          </ConfirmButton>
+              </Button>
+            }
+            secondaryButtonLabel={translate('close')}
+          >
+            <Button
+              className="js-delete-custom-rule"
+              aria-label={intl.formatMessage(
+                { id: 'coding_rules.delete_rule_x' },
+                { name: rule.name },
+              )}
+              variety={ButtonVariety.DangerOutline}
+            >
+              {translate('delete')}
+            </Button>
+          </ModalAlert>
         </ContentCell>
       )}
     </TableRow>

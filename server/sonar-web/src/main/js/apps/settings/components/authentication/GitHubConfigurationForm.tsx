@@ -17,11 +17,12 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Spinner } from '@sonarsource/echoes-react';
-import { ButtonPrimary, FlagMessage, Modal } from 'design-system';
+
+import { Button, ButtonVariety, Modal } from '@sonarsource/echoes-react';
 import { isEmpty, keyBy } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { FormattedMessage } from 'react-intl';
+import { FlagMessage } from '~design-system';
 import DocumentationLink from '../../../../components/common/DocumentationLink';
 import { DocLink } from '../../../../helpers/doc-links';
 import { translate } from '../../../../helpers/l10n';
@@ -48,7 +49,7 @@ import {
 
 interface Props {
   gitHubConfiguration?: GitHubConfigurationResponse;
-  isLegacyConfiguration: boolean;
+  isStandardModeConfiguration: boolean;
   onClose: () => void;
 }
 
@@ -64,7 +65,7 @@ interface FormData {
 }
 
 export default function GitHubConfigurationForm(props: Readonly<Props>) {
-  const { gitHubConfiguration, isLegacyConfiguration, onClose } = props;
+  const { gitHubConfiguration, isStandardModeConfiguration, onClose } = props;
   const isCreate = gitHubConfiguration === undefined;
 
   const [errors, setErrors] = useState<Partial<Record<GitHubAuthFormFields, ErrorValue>>>({});
@@ -158,13 +159,13 @@ export default function GitHubConfigurationForm(props: Readonly<Props>) {
     }
   };
 
-  const helpMessage = isLegacyConfiguration ? `legacy_help.${AlmKeys.GitHub}` : 'help';
+  const helpMessage = isStandardModeConfiguration ? `legacy_help.${AlmKeys.GitHub}` : 'help';
 
   const formBody = (
     <form id={FORM_ID} onSubmit={handleSubmit}>
       <FlagMessage
         className="sw-w-full sw-mb-8"
-        variant={isLegacyConfiguration ? 'warning' : 'info'}
+        variant={isStandardModeConfiguration ? 'warning' : 'info'}
       >
         <span>
           <FormattedMessage
@@ -192,7 +193,7 @@ export default function GitHubConfigurationForm(props: Readonly<Props>) {
               onFieldChange={(_, value) => {
                 setFormData((prev) => ({ ...prev, [key]: { ...prev[key], value } }));
               }}
-              isNotSet={isCreate || isLegacyConfiguration}
+              isNotSet={isCreate || isStandardModeConfiguration}
               error={errors[key]?.message}
             />
           </div>
@@ -228,29 +229,34 @@ export default function GitHubConfigurationForm(props: Readonly<Props>) {
   return (
     <>
       <Modal
-        body={formBody}
-        headerTitle={header}
-        isScrollable
-        onClose={onClose}
+        content={formBody}
+        title={header}
+        isOpen
+        onOpenChange={onClose}
         primaryButton={
-          <>
-            <Spinner className="sw-ml-2" isLoading={isCreating || isUpdating} />
-            <ButtonPrimary form={FORM_ID} type="submit" autoFocus disabled={!isFormValid}>
-              <FormattedMessage id="settings.almintegration.form.save" />
-            </ButtonPrimary>
-          </>
+          <Button
+            form={FORM_ID}
+            type="submit"
+            hasAutoFocus
+            isDisabled={!isFormValid}
+            isLoading={isCreating || isUpdating}
+            variety={ButtonVariety.Primary}
+          >
+            <FormattedMessage id="settings.almintegration.form.save" />
+          </Button>
         }
+        secondaryButton={<Button onClick={onClose}>{translate('close')}</Button>}
       />
-      {isConfirmModalOpen && (
-        <ConfirmProvisioningModal
-          allowUsersToSignUp={gitHubConfiguration?.allowUsersToSignUp}
-          isAllowListEmpty={isEmpty(gitHubConfiguration?.allowedOrganizations)}
-          onClose={() => setIsConfirmModalOpen(false)}
-          onConfirm={onSave}
-          provider={Provider.Github}
-          provisioningStatus={gitHubConfiguration?.provisioningType ?? ProvisioningType.jit}
-        />
-      )}
+
+      <ConfirmProvisioningModal
+        allowUsersToSignUp={gitHubConfiguration?.allowUsersToSignUp}
+        isAllowListEmpty={isEmpty(gitHubConfiguration?.allowedOrganizations)}
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={onSave}
+        provider={Provider.Github}
+        provisioningStatus={gitHubConfiguration?.provisioningType ?? ProvisioningType.jit}
+      />
     </>
   );
 }

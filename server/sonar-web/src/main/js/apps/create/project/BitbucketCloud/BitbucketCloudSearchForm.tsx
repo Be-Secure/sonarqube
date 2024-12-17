@@ -17,9 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { FlagMessage, InputSearch, LightPrimary, Link } from 'design-system';
-import * as React from 'react';
+
 import { FormattedMessage } from 'react-intl';
+import { FlagMessage, InputSearch, LightPrimary, Link } from '~design-system';
 import { queryToSearchString } from '~sonar-aligned/helpers/urls';
 import ListFooter from '../../../../components/controls/ListFooter';
 import { translate } from '../../../../helpers/l10n';
@@ -90,7 +90,7 @@ export default function BitbucketCloudSearchForm(props: BitbucketCloudSearchForm
 
       {repositories.length === 0 ? (
         <div className="sw-py-6 sw-px-2">
-          <LightPrimary className="sw-body-sm">{translate('no_results')}</LightPrimary>
+          <LightPrimary className="sw-typo-default">{translate('no_results')}</LightPrimary>
         </div>
       ) : (
         <ul className="sw-flex sw-flex-col sw-gap-3">

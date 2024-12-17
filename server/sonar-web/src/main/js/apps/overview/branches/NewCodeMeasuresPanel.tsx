@@ -17,21 +17,21 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import styled from '@emotion/styled';
+import { Text, TextSize } from '@sonarsource/echoes-react';
 import classNames from 'classnames';
+import { isEmpty } from 'lodash';
+import { FormattedMessage, useIntl } from 'react-intl';
 import {
   LightLabel,
-  MetricsRatingBadge,
   NoDataIcon,
   SnoozeCircleIcon,
   TextError,
-  TextSubdued,
   TrendUpCircleIcon,
   getTabPanelId,
   themeColor,
-} from 'design-system';
-import React from 'react';
-import { useIntl } from 'react-intl';
+} from '~design-system';
 import { getBranchLikeQuery } from '~sonar-aligned/helpers/branch-like';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import {
@@ -39,10 +39,11 @@ import {
   getComponentSecurityHotspotsUrl,
 } from '~sonar-aligned/helpers/urls';
 import { MetricKey, MetricType } from '~sonar-aligned/types/metrics';
+import RatingComponent from '../../../app/components/metrics/RatingComponent';
 import { getLeakValue } from '../../../components/measure/utils';
 import { DEFAULT_ISSUES_QUERY } from '../../../components/shared/utils';
 import { translate } from '../../../helpers/l10n';
-import { findMeasure, formatRating, isDiffMetric } from '../../../helpers/measures';
+import { findMeasure, isDiffMetric } from '../../../helpers/measures';
 import { CodeScope, getComponentDrilldownUrl } from '../../../helpers/urls';
 import { ApplicationPeriod } from '../../../types/application';
 import { Branch } from '../../../types/branch-like';
@@ -98,32 +99,30 @@ export default function NewCodeMeasuresPanel(props: Readonly<Props>) {
   if (newIssuesCondition && !isApp) {
     issuesFooter = issuesConditionFailed ? (
       <TextError
-        className="sw-font-regular sw-body-xs sw-inline"
+        className="sw-font-regular sw-typo-sm sw-inline"
         text={getConditionRequiredLabel(newIssuesCondition, intl, true)}
       />
     ) : (
-      <LightLabel className="sw-body-xs">
+      <LightLabel className="sw-typo-sm">
         {getConditionRequiredLabel(newIssuesCondition, intl)}
       </LightLabel>
     );
   }
 
   let acceptedIssuesFooter = null;
-  if (!newAcceptedIssues) {
+  if (isEmpty(newAcceptedIssues)) {
     acceptedIssuesFooter = (
-      <StyledInfoMessage className="sw-rounded-2 sw-text-xs sw-p-4 sw-flex sw-gap-1 sw-flex-wrap">
-        <span>
-          {intl.formatMessage({
-            id: `overview.run_analysis_to_compute.${component.qualifier}`,
-          })}
-        </span>
+      <StyledInfoMessage className="sw-rounded-2 sw-p-4">
+        <Text size={TextSize.Small}>
+          <FormattedMessage id={`overview.run_analysis_to_compute.${component.qualifier}`} />
+        </Text>
       </StyledInfoMessage>
     );
   } else {
     acceptedIssuesFooter = (
-      <TextSubdued className="sw-body-xs">
+      <Text size={TextSize.Small} isSubdued>
         {intl.formatMessage({ id: 'overview.accepted_issues.help' })}
-      </TextSubdued>
+      </Text>
     );
   }
 
@@ -156,15 +155,14 @@ export default function NewCodeMeasuresPanel(props: Readonly<Props>) {
   return (
     <div id={getTabPanelId(CodeScope.New)}>
       {leakPeriod && (
-        <span
-          className="sw-body-xs sw-flex sw-items-center sw-mr-6"
-          data-spotlight-id="cayc-promotion-2"
-        >
-          <LightLabel className="sw-mr-1">{translate('overview.new_code')}:</LightLabel>
-          <b className="sw-flex">
+        <div className="sw-flex sw-items-center sw-mr-6" data-spotlight-id="cayc-promotion-2">
+          <Text isSubdued size={TextSize.Small} className="sw-mr-1">
+            {translate('overview.new_code')}:
+          </Text>
+          <Text isHighlighted size={TextSize.Small} className="sw-flex">
             <LeakPeriodInfo leakPeriod={leakPeriod} />
-          </b>
-        </span>
+          </Text>
+        </div>
       )}
       <GridContainer className="sw-relative sw-overflow-hidden sw-mt-8 js-summary">
         {!noConditionsAndWarningForNewCode && (
@@ -213,7 +211,7 @@ export default function NewCodeMeasuresPanel(props: Readonly<Props>) {
         >
           <IssueMeasuresCardInner
             data-testid="overview__measures-accepted_issues"
-            disabled={Boolean(component.needIssueSync) || !newAcceptedIssues}
+            disabled={Boolean(component.needIssueSync) || isEmpty(newAcceptedIssues)}
             metric={MetricKey.new_accepted_issues}
             value={formatMeasure(newAcceptedIssues, MetricType.ShortInteger)}
             header={intl.formatMessage({
@@ -291,9 +289,10 @@ export default function NewCodeMeasuresPanel(props: Readonly<Props>) {
             showRequired={!isApp}
             icon={
               newSecurityReviewRating ? (
-                <MetricsRatingBadge
-                  label={newSecurityReviewRating}
-                  rating={formatRating(newSecurityReviewRating)}
+                <RatingComponent
+                  branchLike={branch}
+                  componentKey={component.key}
+                  ratingMetric={MetricKey.new_security_review_rating}
                   size="md"
                 />
               ) : (

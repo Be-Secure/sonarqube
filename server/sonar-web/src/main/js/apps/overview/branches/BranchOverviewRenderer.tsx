@@ -17,18 +17,17 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { CardSeparator, CenteredLayout, PageContentFontWrapper } from 'design-system';
+
 import * as React from 'react';
 import { useState } from 'react';
+import { CardSeparator, CenteredLayout, PageContentFontWrapper } from '~design-system';
 import A11ySkipTarget from '~sonar-aligned/components/a11y/A11ySkipTarget';
 import { useLocation, useRouter } from '~sonar-aligned/components/hoc/withRouter';
-import { isPortfolioLike } from '~sonar-aligned/helpers/component';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import { CurrentUserContext } from '../../../app/components/current-user/CurrentUserContext';
-import AnalysisMissingInfoMessage from '../../../components/shared/AnalysisMissingInfoMessage';
 import { parseDate } from '../../../helpers/dates';
 import { translate } from '../../../helpers/l10n';
-import { areCCTMeasuresComputed, isDiffMetric } from '../../../helpers/measures';
+import { isDiffMetric } from '../../../helpers/measures';
 import { CodeScope } from '../../../helpers/urls';
 import { useDismissNoticeMutation } from '../../../queries/users';
 import { ApplicationPeriod } from '../../../types/application';
@@ -43,12 +42,12 @@ import { Status } from '../utils';
 import ActivityPanel from './ActivityPanel';
 import BranchMetaTopBar from './BranchMetaTopBar';
 import CaycPromotionGuide from './CaycPromotionGuide';
+import DismissablePromotedSection from './DismissablePromotedSection';
 import FirstAnalysisNextStepsNotif from './FirstAnalysisNextStepsNotif';
 import MeasuresPanelNoNewCode from './MeasuresPanelNoNewCode';
 import NewCodeMeasuresPanel from './NewCodeMeasuresPanel';
 import NoCodeWarning from './NoCodeWarning';
 import OverallCodeMeasuresPanel from './OverallCodeMeasuresPanel';
-import PromotedSection from './PromotedSection';
 import QGStatus from './QualityGateStatus';
 import ReplayTourGuide from './ReplayTour';
 import TabsPanel from './TabsPanel';
@@ -73,7 +72,7 @@ export interface BranchOverviewRendererProps {
   qualityGate?: QualityGate;
 }
 
-export default function BranchOverviewRenderer(props: BranchOverviewRendererProps) {
+export default function BranchOverviewRenderer(props: Readonly<BranchOverviewRendererProps>) {
   const {
     analyses,
     appLeak,
@@ -114,9 +113,6 @@ export default function BranchOverviewRenderer(props: BranchOverviewRendererProp
   const isNewCodeTab = tab === CodeScope.New;
   const hasNewCodeMeasures = measures.some((m) => isDiffMetric(m.metric.key));
 
-  // Check if any potentially missing uncomputed measure is not present
-  const isMissingMeasures = !areCCTMeasuresComputed(measures);
-
   const selectTab = (tab: CodeScope) => {
     router.replace({ query: { ...query, codeScope: tab } });
   };
@@ -130,14 +126,6 @@ export default function BranchOverviewRenderer(props: BranchOverviewRendererProp
     // it would prevent the user from selecting it, even if it's empty.
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [loadingStatus, hasNewCodeMeasures]);
-
-  const analysisMissingInfo = isMissingMeasures && (
-    <AnalysisMissingInfoMessage
-      qualifier={component.qualifier}
-      hide={isPortfolioLike(component.qualifier)}
-      className="sw-mb-8"
-    />
-  );
 
   const dismissPromotedSection = () => {
     dismissNotice(NoticeType.ONBOARDING_CAYC_BRANCH_SUMMARY_GUIDE);
@@ -185,7 +173,7 @@ export default function BranchOverviewRenderer(props: BranchOverviewRendererProp
               tourCompleted={tourCompleted}
             />
           )}
-          <div className="overview sw-my-6 sw-body-sm">
+          <div className="overview sw-my-6 sw-typo-default">
             <A11ySkipTarget anchor="overview_main" />
 
             {projectIsEmpty ? (
@@ -207,7 +195,7 @@ export default function BranchOverviewRenderer(props: BranchOverviewRendererProp
                     <CardSeparator />
 
                     {currentUser.isLoggedIn && hasNewCodeMeasures && (
-                      <PromotedSection
+                      <DismissablePromotedSection
                         content={translate('overview.promoted_section.content')}
                         dismissed={dismissedTour ?? false}
                         onDismiss={dismissPromotedSection}
@@ -225,7 +213,7 @@ export default function BranchOverviewRenderer(props: BranchOverviewRendererProp
                   data-testid="overview__quality-gate-panel"
                   className="sw-flex sw-justify-between sw-items-start sw-my-6"
                 >
-                  <QGStatus status={qgStatus} titleSize="extra-large" />
+                  <QGStatus status={qgStatus} />
                   <LastAnalysisLabel analysisDate={branch?.analysisDate} />
                 </div>
                 <AnalysisStatus component={component} />
@@ -262,17 +250,14 @@ export default function BranchOverviewRenderer(props: BranchOverviewRendererProp
                     )}
 
                     {!isNewCodeTab && (
-                      <>
-                        {analysisMissingInfo}
-                        <OverallCodeMeasuresPanel
-                          branch={branch}
-                          qgStatuses={qgStatuses}
-                          component={component}
-                          measures={measures}
-                          loading={loadingStatus}
-                          qualityGate={qualityGate}
-                        />
-                      </>
+                      <OverallCodeMeasuresPanel
+                        branch={branch}
+                        qgStatuses={qgStatuses}
+                        component={component}
+                        measures={measures}
+                        loading={loadingStatus}
+                        qualityGate={qualityGate}
+                      />
                     )}
                   </TabsPanel>
 

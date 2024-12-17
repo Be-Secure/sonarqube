@@ -17,9 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { LinkBox, TextMuted } from 'design-system';
+
+import styled from '@emotion/styled';
 import * as React from 'react';
 import { Path } from 'react-router-dom';
+import { LinkBox, TextMuted } from '~design-system';
 import { getBranchLikeQuery } from '~sonar-aligned/helpers/branch-like';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import {
@@ -38,11 +40,12 @@ import {
 import { getOperatorLabel } from '../../../helpers/qualityGates';
 import { getComponentDrilldownUrl } from '../../../helpers/urls';
 import { BranchLike } from '../../../types/branch-like';
+import { SoftwareQuality } from '../../../types/clean-code-taxonomy';
 import { IssueType } from '../../../types/issues';
 import { QualityGateStatusConditionEnhanced } from '../../../types/quality-gates';
 import { Component, Dict, Metric } from '../../../types/types';
 import { getLocalizedMetricNameNoDiffMetric } from '../../quality-gates/utils';
-import { RATING_TO_SEVERITIES_MAPPING } from '../utils';
+import { MQR_RATING_TO_SEVERITIES_MAPPING, RATING_TO_SEVERITIES_MAPPING } from '../utils';
 
 interface Props {
   branchLike?: BranchLike;
@@ -76,6 +79,22 @@ export class QualityGateCondition extends React.PureComponent<Props> {
     return this.getIssuesUrl(inNewCodePeriod, { types: 'CODE_SMELL' });
   }
 
+  getUrlForSoftwareQualityRatings(quality: SoftwareQuality, isNewCode: boolean) {
+    const { condition } = this.props;
+    const threshold = condition.level === 'ERROR' ? condition.error : condition.warning;
+
+    if (quality === SoftwareQuality.Maintainability) {
+      return this.getIssuesUrl(isNewCode, {
+        impactSoftwareQualities: quality,
+      });
+    }
+
+    return this.getIssuesUrl(isNewCode, {
+      impactSeverities: MQR_RATING_TO_SEVERITIES_MAPPING[Number(threshold) - 1],
+      impactSoftwareQualities: quality,
+    });
+  }
+
   getUrlForBugsOrVulnerabilities(type: string, inNewCodePeriod: boolean) {
     const { condition } = this.props;
     const threshold = condition.level === 'ERROR' ? condition.error : condition.warning;
@@ -104,10 +123,27 @@ export class QualityGateCondition extends React.PureComponent<Props> {
       [MetricKey.new_maintainability_rating]: () => this.getUrlForCodeSmells(true),
       [MetricKey.security_hotspots_reviewed]: () => this.getUrlForSecurityHotspot(false),
       [MetricKey.new_security_hotspots_reviewed]: () => this.getUrlForSecurityHotspot(true),
+      // MQR
+      [MetricKey.new_software_quality_reliability_rating]: () =>
+        this.getUrlForSoftwareQualityRatings(SoftwareQuality.Reliability, true),
+      [MetricKey.new_software_quality_security_rating]: () =>
+        this.getUrlForSoftwareQualityRatings(SoftwareQuality.Security, true),
+      [MetricKey.new_software_quality_maintainability_rating]: () =>
+        this.getUrlForSoftwareQualityRatings(SoftwareQuality.Maintainability, true),
+      [MetricKey.software_quality_reliability_rating]: () =>
+        this.getUrlForSoftwareQualityRatings(SoftwareQuality.Reliability, false),
+      [MetricKey.software_quality_security_rating]: () =>
+        this.getUrlForSoftwareQualityRatings(SoftwareQuality.Security, false),
+      [MetricKey.software_quality_maintainability_rating]: () =>
+        this.getUrlForSoftwareQualityRatings(SoftwareQuality.Maintainability, false),
     };
 
     if (METRICS_TO_URL_MAPPING[metricKey]) {
-      return <LinkBox to={METRICS_TO_URL_MAPPING[metricKey]()}>{children}</LinkBox>;
+      return (
+        <LinkBox className="link-box-wrapper" to={METRICS_TO_URL_MAPPING[metricKey]()}>
+          {children}
+        </LinkBox>
+      );
     }
 
     const url = isIssueMeasure(condition.measure.metric.key)
@@ -122,7 +158,11 @@ export class QualityGateCondition extends React.PureComponent<Props> {
           listView: true,
         });
 
-    return <LinkBox to={url}>{children}</LinkBox>;
+    return (
+      <LinkBox className="link-box-wrapper" to={url}>
+        {children}
+      </LinkBox>
+    );
   }
 
   getPrimaryText = () => {
@@ -145,7 +185,7 @@ export class QualityGateCondition extends React.PureComponent<Props> {
   };
 
   render() {
-    const { condition } = this.props;
+    const { condition, component, branchLike } = this.props;
     const { measure } = condition;
     const { metric } = measure;
 
@@ -157,8 +197,11 @@ export class QualityGateCondition extends React.PureComponent<Props> {
     return this.wrapWithLink(
       <div className="sw-flex sw-items-center sw-p-2">
         <MeasureIndicator
+          forceRatingMetric
+          branchLike={branchLike}
           className="sw-flex sw-justify-center sw-w-6 sw-mx-4"
           decimals={2}
+          componentKey={component.key}
           metricKey={measure.metric.key}
           metricType={measure.metric.type}
           value={actual}
@@ -166,11 +209,11 @@ export class QualityGateCondition extends React.PureComponent<Props> {
         <div className="sw-flex sw-flex-col sw-text-sm">
           <div className="sw-flex sw-items-center">
             <IssueTypeIcon className="sw-mr-2" type={metric.key} />
-            <span className="sw-body-sm-highlight sw-text-ellipsis sw-max-w-abs-300">
+            <span className="sw-typo-semibold sw-text-ellipsis sw-max-w-abs-300">
               {this.getPrimaryText()}
             </span>
           </div>
-          <TextMuted text={`${operator} ${formatMeasure(threshold, metric.type)}`} />
+          <StyledMutedText text={`${operator} ${formatMeasure(threshold, metric.type)}`} />
         </div>
       </div>,
     );
@@ -178,3 +221,9 @@ export class QualityGateCondition extends React.PureComponent<Props> {
 }
 
 export default withMetricsContext(QualityGateCondition);
+
+const StyledMutedText = styled(TextMuted)`
+  .link-box-wrapper:hover & {
+    color: unset;
+  }
+`;

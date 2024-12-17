@@ -18,87 +18,169 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { ButtonSecondary, Modal } from 'design-system';
+import { Button, ButtonVariety, RadioButtonGroup } from '@sonarsource/echoes-react';
 import { noop } from 'lodash';
 import * as React from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
+import { FormField, Modal } from '~design-system';
 import DocumentationLink from '../../../../components/common/DocumentationLink';
 import { DocLink } from '../../../../helpers/doc-links';
-import {
-  useSearchGitHubConfigurationsQuery,
-  useUpdateGitHubConfigurationMutation,
-} from '../../../../queries/dop-translation';
-import { ProvisioningType } from '../../../../types/provisioning';
+import { useUpdateGitHubConfigurationMutation } from '../../../../queries/dop-translation';
+import { useUpdateGitLabConfigurationMutation } from '../../../../queries/identity-provider/gitlab';
+import { useGetValueQuery, useResetSettingsMutation } from '../../../../queries/settings';
+import { GitHubConfigurationResponse } from '../../../../types/dop-translation';
+import { GitlabConfiguration, ProvisioningType } from '../../../../types/provisioning';
 
-export default function AutoProvisioningConsent() {
+const CONSENT_SETTING_KEY = 'sonar.auth.gitlab.userConsentForPermissionProvisioningRequired';
+interface Props {
+  githubConfiguration?: GitHubConfigurationResponse;
+  gitlabConfiguration?: GitlabConfiguration;
+}
+
+export default function AutoProvisioningConsent(props: Readonly<Props>) {
   const { formatMessage } = useIntl();
-  const { data: list } = useSearchGitHubConfigurationsQuery();
-  const gitHubConfiguration = list?.githubConfigurations[0];
+  const { githubConfiguration, gitlabConfiguration } = props;
 
-  const { mutate: updateConfig } = useUpdateGitHubConfigurationMutation();
+  const [provisioningMethod, setProvisioningMethod] = React.useState<ProvisioningType>(
+    ProvisioningType.auto,
+  );
 
-  if (gitHubConfiguration?.userConsentRequiredAfterUpgrade !== true) {
+  const { mutate: updateGithubConfig } = useUpdateGitHubConfigurationMutation();
+  const { mutate: updateGitlabConfig } = useUpdateGitLabConfigurationMutation();
+  const { data: userConsent } = useGetValueQuery({ key: CONSENT_SETTING_KEY });
+  const { mutateAsync: resetSettingValue } = useResetSettingsMutation();
+
+  if (
+    (githubConfiguration?.userConsentRequiredAfterUpgrade !== true &&
+      gitlabConfiguration === undefined) ||
+    (!userConsent && githubConfiguration === undefined)
+  ) {
     return null;
   }
 
-  const header = formatMessage({
-    id: 'settings.authentication.github.confirm_auto_provisioning.header',
-  });
-
-  const onClickAutoProvisioning = () => {
-    updateConfig({
-      id: gitHubConfiguration.id,
-      gitHubConfiguration: {
-        userConsentRequiredAfterUpgrade: false,
-      },
-    });
+  const onSubmit = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    event.preventDefault();
+    if (provisioningMethod === ProvisioningType.auto) {
+      confirmAutoProvisioning();
+    }
+    if (provisioningMethod === ProvisioningType.jit) {
+      confirmJitProvisioning();
+    }
   };
 
-  const onClickJitProvisioning = () => {
-    updateConfig({
-      id: gitHubConfiguration.id,
-      gitHubConfiguration: {
-        provisioningType: ProvisioningType.jit,
-        userConsentRequiredAfterUpgrade: false,
-      },
-    });
+  const confirmAutoProvisioning = async () => {
+    if (githubConfiguration) {
+      updateGithubConfig({
+        id: githubConfiguration.id,
+        gitHubConfiguration: {
+          userConsentRequiredAfterUpgrade: false,
+        },
+      });
+    }
+    if (gitlabConfiguration) {
+      await resetSettingValue({ keys: [CONSENT_SETTING_KEY] });
+      updateGitlabConfig({
+        id: gitlabConfiguration.id,
+        data: {
+          provisioningType: ProvisioningType.auto,
+        },
+      });
+    }
+  };
+
+  const confirmJitProvisioning = () => {
+    if (githubConfiguration) {
+      updateGithubConfig({
+        id: githubConfiguration.id,
+        gitHubConfiguration: {
+          provisioningType: ProvisioningType.jit,
+          userConsentRequiredAfterUpgrade: false,
+        },
+      });
+    }
+    if (gitlabConfiguration) {
+      updateGitlabConfig({
+        id: gitlabConfiguration.id,
+        data: {
+          provisioningType: ProvisioningType.jit,
+        },
+      });
+      resetSettingValue({ keys: [CONSENT_SETTING_KEY] });
+    }
   };
 
   return (
-    <Modal onClose={noop} closeOnOverlayClick={false} isLarge>
-      <Modal.Header title={header} />
+    <Modal onClose={noop} closeOnOverlayClick={false}>
+      <Modal.Header
+        title={formatMessage({
+          id: 'settings.authentication.confirm_auto_provisioning.header',
+        })}
+      />
       <Modal.Body>
         <FormattedMessage
           tagName="p"
-          id="settings.authentication.github.confirm_auto_provisioning.description1"
+          id="settings.authentication.confirm_auto_provisioning.description1"
         />
-        <FormattedMessage
-          id="settings.authentication.github.confirm_auto_provisioning.description2"
-          tagName="p"
-          values={{
-            documentation: (
-              <DocumentationLink to={DocLink.AlmGitHubAuth}>
-                <FormattedMessage id="documentation" />
-              </DocumentationLink>
-            ),
-          }}
-        />
-        <FormattedMessage
-          tagName="p"
-          id="settings.authentication.github.confirm_auto_provisioning.question"
-        />
+        <div className="sw-mt-3">
+          <FormattedMessage
+            id="settings.authentication.confirm_auto_provisioning.description2"
+            tagName="p"
+            values={{
+              documentation: (
+                <DocumentationLink
+                  to={githubConfiguration ? DocLink.AlmGitHubAuth : DocLink.AlmGitLabAuth}
+                >
+                  <FormattedMessage id="documentation" />
+                </DocumentationLink>
+              ),
+            }}
+          />
+        </div>
+
+        <div className="sw-mt-12">
+          <FormField
+            label={formatMessage({
+              id: 'settings.authentication.confirm_auto_provisioning.question',
+            })}
+            htmlFor="consent-provisioning-method"
+            required
+          >
+            <RadioButtonGroup
+              id="consent-provisioning-method"
+              isRequired
+              options={[
+                {
+                  helpText: formatMessage({
+                    id: 'settings.authentication.confirm_auto_provisioning.auto.help',
+                  }),
+                  label: formatMessage({
+                    id: 'settings.authentication.confirm_auto_provisioning.auto.label',
+                  }),
+                  value: ProvisioningType.auto,
+                },
+                {
+                  helpText: formatMessage({
+                    id: 'settings.authentication.confirm_auto_provisioning.jit.help',
+                  }),
+                  label: formatMessage({
+                    id: 'settings.authentication.confirm_auto_provisioning.jit.label',
+                  }),
+                  value: ProvisioningType.jit,
+                },
+              ]}
+              value={provisioningMethod}
+              onChange={(method: ProvisioningType) => setProvisioningMethod(method)}
+            />
+          </FormField>
+        </div>
       </Modal.Body>
       <Modal.Footer
         primaryButton={
-          <ButtonSecondary onClick={onClickAutoProvisioning}>
-            <FormattedMessage id="settings.authentication.github.confirm_auto_provisioning.continue" />
-          </ButtonSecondary>
+          <Button onClick={onSubmit} variety={ButtonVariety.Primary}>
+            <FormattedMessage id="settings.authentication.confirm_auto_provisioning.confirm_choice" />
+          </Button>
         }
-        secondaryButton={
-          <ButtonSecondary onClick={onClickJitProvisioning}>
-            <FormattedMessage id="settings.authentication.github.confirm_auto_provisioning.switch_jit" />
-          </ButtonSecondary>
-        }
+        secondaryButton={null}
       />
     </Modal>
   );

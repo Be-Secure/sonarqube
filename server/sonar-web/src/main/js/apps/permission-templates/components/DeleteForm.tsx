@@ -17,9 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { DangerButtonPrimary, Modal, Spinner } from 'design-system';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { useState } from 'react';
+import { Modal, Spinner } from '~design-system';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { PermissionTemplate } from '../../../types/types';
 
@@ -50,9 +52,9 @@ export default function DeleteForm({ onClose, onSubmit, permissionTemplate: t }:
       primaryButton={
         <>
           <Spinner loading={submitting} />
-          <DangerButtonPrimary onClick={handleClick} disabled={submitting}>
+          <Button onClick={handleClick} isDisabled={submitting} variety={ButtonVariety.Danger}>
             {translate('delete')}
-          </DangerButtonPrimary>
+          </Button>
         </>
       }
     />

@@ -19,17 +19,17 @@
  */
 
 import styled from '@emotion/styled';
+import { maxBy } from 'lodash';
+import * as React from 'react';
+import { Helmet } from 'react-helmet-async';
+import { Params, useParams } from 'react-router-dom';
 import {
   LAYOUT_FOOTER_HEIGHT,
   LAYOUT_GLOBAL_NAV_HEIGHT,
   LargeCenteredLayout,
   PageContentFontWrapper,
   Title,
-} from 'design-system';
-import { maxBy } from 'lodash';
-import * as React from 'react';
-import { Helmet } from 'react-helmet-async';
-import { Params, useParams } from 'react-router-dom';
+} from '~design-system';
 import A11ySkipTarget from '~sonar-aligned/components/a11y/A11ySkipTarget';
 import { withRouter } from '~sonar-aligned/components/hoc/withRouter';
 import { Location, Router } from '~sonar-aligned/types/router';
@@ -167,7 +167,7 @@ export class WebApiApp extends React.PureComponent<Props, State> {
 
     return (
       <LargeCenteredLayout>
-        <PageContentFontWrapper className="sw-body-sm sw-w-full sw-flex">
+        <PageContentFontWrapper className="sw-typo-default sw-w-full sw-flex">
           <Helmet defer={false} title={translate('api_documentation.page')} />
           <div className="sw-w-full sw-flex">
             <NavContainer

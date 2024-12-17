@@ -17,15 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import {
-  DisabledTabLink,
-  Dropdown,
-  ItemNavLink,
-  NavBarTabLink,
-  NavBarTabs,
-  PopupZLevel,
-} from 'design-system';
-import * as React from 'react';
+
+import { DropdownMenu } from '@sonarsource/echoes-react';
+import { DisabledTabLink, NavBarTabLink, NavBarTabs } from '~design-system';
 import { useLocation } from '~sonar-aligned/components/hoc/withRouter';
 import { getBranchLikeQuery, isPullRequest } from '~sonar-aligned/helpers/branch-like';
 import { isPortfolioLike } from '~sonar-aligned/helpers/component';
@@ -34,7 +28,7 @@ import { ComponentQualifier } from '~sonar-aligned/types/component';
 import { DEFAULT_ISSUES_QUERY } from '../../../../components/shared/utils';
 import { hasMessage, translate, translateWithParameters } from '../../../../helpers/l10n';
 import { getPortfolioUrl, getProjectQueryUrl } from '../../../../helpers/urls';
-import { useBranchesQuery } from '../../../../queries/branch';
+import { useBranchesQuery, useCurrentBranchQuery } from '../../../../queries/branch';
 import { isApplication, isProject } from '../../../../types/component';
 import { Feature } from '../../../../types/features';
 import { Component, Dict, Extension } from '../../../../types/types';
@@ -69,7 +63,10 @@ type Query = BranchParameters & { id: string };
 export function Menu(props: Readonly<Props>) {
   const { component, isInProgress, isPending } = props;
   const { extensions = [], canBrowseAllChildProjects, qualifier, configuration = {} } = component;
-  const { data: { branchLikes, branchLike } = { branchLikes: [] } } = useBranchesQuery(component);
+
+  const { data: branchLikes = [] } = useBranchesQuery(component);
+  const { data: branchLike } = useCurrentBranchQuery(component);
+
   const isApplicationChildInaccessble = isApplication(qualifier) && !canBrowseAllChildProjects;
 
   const location = useLocation();
@@ -211,6 +208,19 @@ export function Menu(props: Readonly<Props>) {
     );
   };
 
+  const renderDependenciesLink = () => {
+    const isEnabled = false; // SONAR-23577 Temporarily hide dependencies page
+    const isPortfolio = isPortfolioLike(qualifier);
+    return (
+      isEnabled &&
+      !isPortfolio &&
+      renderMenuLink({
+        label: translate('layout.dependencies'),
+        pathname: '/dependencies',
+      })
+    );
+  };
+
   const renderSecurityReports = () => {
     if (isPullRequest(branchLike)) {
       return null;
@@ -245,33 +255,29 @@ export function Menu(props: Readonly<Props>) {
       isApplication(qualifier),
       isPortfolioLike(qualifier),
     );
+
     if (!adminLinks.some((link) => link != null)) {
       return null;
     }
 
     return (
-      <Dropdown
+      <DropdownMenu.Root
         data-test="administration"
         id="component-navigation-admin"
-        size="auto"
-        zLevel={PopupZLevel.Global}
-        overlay={adminLinks}
+        items={adminLinks}
       >
-        {({ onToggleClick, open, a11yAttrs }) => (
-          <NavBarTabLink
-            active={isSettingsActive || open}
-            onClick={onToggleClick}
-            text={
-              hasMessage('layout.settings', component.qualifier)
-                ? translate('layout.settings', component.qualifier)
-                : translate('layout.settings')
-            }
-            withChevron
-            to={{}}
-            {...a11yAttrs}
-          />
-        )}
-      </Dropdown>
+        <NavBarTabLink
+          active={isSettingsActive}
+          preventDefault // not really a link, we just use the same style to be consistent
+          text={
+            hasMessage('layout.settings', component.qualifier)
+              ? translate('layout.settings', component.qualifier)
+              : translate('layout.settings')
+          }
+          to={{}} // not really a link, we just use the same style to be consistent
+          withChevron
+        />
+      </DropdownMenu.Root>
     );
   };
 
@@ -325,12 +331,12 @@ export function Menu(props: Readonly<Props>) {
       return null;
     }
     return (
-      <ItemNavLink
+      <DropdownMenu.ItemLink
         key="settings"
         to={{ pathname: '/project/settings', search: new URLSearchParams(query).toString() }}
       >
         {translate('project_settings.page')}
-      </ItemNavLink>
+      </DropdownMenu.ItemLink>
     );
   };
 
@@ -340,12 +346,12 @@ export function Menu(props: Readonly<Props>) {
     }
 
     return (
-      <ItemNavLink
+      <DropdownMenu.ItemLink
         key="branches"
         to={{ pathname: '/project/branches', search: new URLSearchParams(query).toString() }}
       >
         {translate('project_branch_pull_request.page')}
-      </ItemNavLink>
+      </DropdownMenu.ItemLink>
     );
   };
 
@@ -354,12 +360,12 @@ export function Menu(props: Readonly<Props>) {
       return null;
     }
     return (
-      <ItemNavLink
+      <DropdownMenu.ItemLink
         key="baseline"
         to={{ pathname: '/project/baseline', search: new URLSearchParams(query).toString() }}
       >
         {translate('project_baseline.page')}
-      </ItemNavLink>
+      </DropdownMenu.ItemLink>
     );
   };
 
@@ -368,7 +374,7 @@ export function Menu(props: Readonly<Props>) {
       return null;
     }
     return (
-      <ItemNavLink
+      <DropdownMenu.ItemLink
         key="import-export"
         to={{
           pathname: '/project/import_export',
@@ -376,7 +382,7 @@ export function Menu(props: Readonly<Props>) {
         }}
       >
         {translate('project_dump.page')}
-      </ItemNavLink>
+      </DropdownMenu.ItemLink>
     );
   };
 
@@ -385,7 +391,7 @@ export function Menu(props: Readonly<Props>) {
       return null;
     }
     return (
-      <ItemNavLink
+      <DropdownMenu.ItemLink
         key="profiles"
         to={{
           pathname: '/project/quality_profiles',
@@ -393,7 +399,7 @@ export function Menu(props: Readonly<Props>) {
         }}
       >
         {translate('project_quality_profiles.page')}
-      </ItemNavLink>
+      </DropdownMenu.ItemLink>
     );
   };
 
@@ -402,12 +408,12 @@ export function Menu(props: Readonly<Props>) {
       return null;
     }
     return (
-      <ItemNavLink
+      <DropdownMenu.ItemLink
         key="quality_gate"
         to={{ pathname: '/project/quality_gate', search: new URLSearchParams(query).toString() }}
       >
         {translate('project_quality_gate.page')}
-      </ItemNavLink>
+      </DropdownMenu.ItemLink>
     );
   };
 
@@ -416,12 +422,12 @@ export function Menu(props: Readonly<Props>) {
       return null;
     }
     return (
-      <ItemNavLink
+      <DropdownMenu.ItemLink
         key="links"
         to={{ pathname: '/project/links', search: new URLSearchParams(query).toString() }}
       >
         {translate('project_links.page')}
-      </ItemNavLink>
+      </DropdownMenu.ItemLink>
     );
   };
 
@@ -430,12 +436,12 @@ export function Menu(props: Readonly<Props>) {
       return null;
     }
     return (
-      <ItemNavLink
+      <DropdownMenu.ItemLink
         key="permissions"
         to={{ pathname: '/project_roles', search: new URLSearchParams(query).toString() }}
       >
         {translate('permissions.page')}
-      </ItemNavLink>
+      </DropdownMenu.ItemLink>
     );
   };
 
@@ -444,7 +450,7 @@ export function Menu(props: Readonly<Props>) {
       return null;
     }
     return (
-      <ItemNavLink
+      <DropdownMenu.ItemLink
         key="background_tasks"
         to={{
           pathname: '/project/background_tasks',
@@ -452,7 +458,7 @@ export function Menu(props: Readonly<Props>) {
         }}
       >
         {translate('background_tasks.page')}
-      </ItemNavLink>
+      </DropdownMenu.ItemLink>
     );
   };
 
@@ -461,12 +467,12 @@ export function Menu(props: Readonly<Props>) {
       return null;
     }
     return (
-      <ItemNavLink
+      <DropdownMenu.ItemLink
         key="update_key"
         to={{ pathname: '/project/key', search: new URLSearchParams(query).toString() }}
       >
         {translate('update_key.page')}
-      </ItemNavLink>
+      </DropdownMenu.ItemLink>
     );
   };
 
@@ -475,12 +481,12 @@ export function Menu(props: Readonly<Props>) {
       return null;
     }
     return (
-      <ItemNavLink
+      <DropdownMenu.ItemLink
         key="webhooks"
         to={{ pathname: '/project/webhooks', search: new URLSearchParams(query).toString() }}
       >
         {translate('webhooks.page')}
-      </ItemNavLink>
+      </DropdownMenu.ItemLink>
     );
   };
 
@@ -500,12 +506,12 @@ export function Menu(props: Readonly<Props>) {
     }
 
     return (
-      <ItemNavLink
+      <DropdownMenu.ItemLink
         key="project_delete"
         to={{ pathname: '/project/deletion', search: new URLSearchParams(query).toString() }}
       >
         {translate('deletion.page')}
-      </ItemNavLink>
+      </DropdownMenu.ItemLink>
     );
   };
 
@@ -513,9 +519,12 @@ export function Menu(props: Readonly<Props>) {
     const pathname = isAdmin ? `/project/admin/extension/${key}` : `/project/extension/${key}`;
     const query = { ...baseQuery, qualifier };
     return (
-      <ItemNavLink key={key} to={{ pathname, search: new URLSearchParams(query).toString() }}>
+      <DropdownMenu.ItemLink
+        key={key}
+        to={{ pathname, search: new URLSearchParams(query).toString() }}
+      >
         {name}
-      </ItemNavLink>
+      </DropdownMenu.ItemLink>
     );
   };
 
@@ -538,25 +547,13 @@ export function Menu(props: Readonly<Props>) {
     }
 
     return (
-      <Dropdown
+      <DropdownMenu.Root
         data-test="extensions"
         id="component-navigation-more"
-        size="auto"
-        zLevel={PopupZLevel.Global}
-        overlay={withoutSecurityExtension.map((e) => renderExtension(e, false, query))}
+        items={withoutSecurityExtension.map((e) => renderExtension(e, false, query))}
       >
-        {({ onToggleClick, open, a11yAttrs }) => (
-          <NavBarTabLink
-            active={open}
-            onClick={onToggleClick}
-            preventDefault
-            text={translate('more')}
-            withChevron
-            to={{}}
-            {...a11yAttrs}
-          />
-        )}
-      </Dropdown>
+        <NavBarTabLink preventDefault text={translate('more')} withChevron to={{}} />
+      </DropdownMenu.Root>
     );
   };
 
@@ -567,6 +564,7 @@ export function Menu(props: Readonly<Props>) {
         {renderBreakdownLink()}
         {renderIssuesLink()}
         {renderSecurityHotspotsLink()}
+        {renderDependenciesLink()}
         {renderSecurityReports()}
         {renderComponentMeasuresLink()}
         {renderCodeLink()}

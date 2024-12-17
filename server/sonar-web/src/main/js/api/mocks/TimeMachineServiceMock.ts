@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { chunk, cloneDeep, times } from 'lodash';
 import { BranchParameters } from '~sonar-aligned/types/branch-like';
 import { MetricKey } from '~sonar-aligned/types/metrics';
@@ -57,6 +58,7 @@ const defaultMeasureHistory = [
 
 export class TimeMachineServiceMock {
   #measureHistory: MeasureHistory[];
+  toISO = false;
 
   constructor() {
     this.#measureHistory = cloneDeep(defaultMeasureHistory);
@@ -109,7 +111,10 @@ export class TimeMachineServiceMock {
   map = (list: MeasureHistory[]) => {
     return list.map((item) => ({
       ...item,
-      history: item.history.map((h) => ({ ...h, date: h.date.toDateString() })),
+      history: item.history.map((h) => ({
+        ...h,
+        date: this.toISO ? h.date.toISOString() : h.date.toDateString(),
+      })),
     }));
   };
 

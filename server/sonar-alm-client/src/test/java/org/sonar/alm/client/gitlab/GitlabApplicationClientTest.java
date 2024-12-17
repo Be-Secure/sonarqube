@@ -26,6 +26,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import javax.annotation.Nullable;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -40,7 +41,9 @@ import org.sonar.alm.client.ConstantTimeoutConfiguration;
 import org.sonar.alm.client.TimeoutConfiguration;
 import org.sonar.api.testfixtures.log.LogTester;
 import org.sonar.auth.gitlab.GsonGroup;
+import org.sonar.auth.gitlab.GsonProjectMember;
 import org.sonar.auth.gitlab.GsonUser;
+import org.sonar.auth.gitlab.GsonMemberRole;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
@@ -56,8 +59,7 @@ public class GitlabApplicationClientTest {
   @Rule
   public LogTester logTester = new LogTester();
 
-
-  private GitlabPaginatedHttpClient gitlabPaginatedHttpClient = mock();
+  private final GitlabPaginatedHttpClient gitlabPaginatedHttpClient = mock();
 
   private final MockWebServer server = new MockWebServer();
   private GitlabApplicationClient underTest;
@@ -131,19 +133,22 @@ public class GitlabApplicationClientTest {
   public void get_project() {
     MockResponse response = new MockResponse()
       .setResponseCode(200)
-      .setBody("{\n"
-        + "    \"id\": 12345,\n"
-        + "    \"name\": \"SonarQube example 1\",\n"
-        + "    \"name_with_namespace\": \"SonarSource / SonarQube / SonarQube example 1\",\n"
-        + "    \"path\": \"sonarqube-example-1\",\n"
-        + "    \"path_with_namespace\": \"sonarsource/sonarqube/sonarqube-example-1\",\n"
-        + "    \"web_url\": \"https://example.gitlab.com/sonarsource/sonarqube/sonarqube-example-1\"\n"
-        + "  }");
+      .setBody("""
+        {
+            "id": 12345,
+            "name": "SonarQube example 1",
+            "name_with_namespace": "SonarSource / SonarQube / SonarQube example 1",
+            "path": "sonarqube-example-1",
+            "path_with_namespace": "sonarsource/sonarqube/sonarqube-example-1",
+            "visibility": "visibilityFromGitLab",
+            "web_url": "https://example.gitlab.com/sonarsource/sonarqube/sonarqube-example-1"
+          }
+        """);
     server.enqueue(response);
 
     assertThat(underTest.getProject(gitlabUrl, "pat", 12345L))
-      .extracting(Project::getId, Project::getName)
-      .containsExactly(12345L, "SonarQube example 1");
+      .extracting(Project::getId, Project::getName, Project::getVisibility)
+      .containsExactly(12345L, "SonarQube example 1", "visibilityFromGitLab");
   }
 
   @Test
@@ -376,15 +381,16 @@ public class GitlabApplicationClientTest {
   @Test
   public void get_project_details() throws InterruptedException {
     MockResponse projectResponse = new MockResponse()
-        .setResponseCode(200)
-        .setBody("{"
-            + "  \"id\": 1234,"
-            + "  \"name\": \"SonarQube example 2\","
-            + "  \"name_with_namespace\": \"SonarSource / SonarQube / SonarQube example 2\","
-            + "  \"path\": \"sonarqube-example-2\","
-            + "  \"path_with_namespace\": \"sonarsource/sonarqube/sonarqube-example-2\","
-            + "  \"web_url\": \"https://example.gitlab.com/sonarsource/sonarqube/sonarqube-example-2\""
-            + "}");
+      .setResponseCode(200)
+      .setBody("""
+        {\
+          "id": 1234,\
+          "name": "SonarQube example 2",\
+          "name_with_namespace": "SonarSource / SonarQube / SonarQube example 2",\
+          "path": "sonarqube-example-2",\
+          "path_with_namespace": "sonarsource/sonarqube/sonarqube-example-2",\
+          "web_url": "https://example.gitlab.com/sonarsource/sonarqube/sonarqube-example-2"\
+        }""");
 
     server.enqueue(projectResponse);
 
@@ -396,22 +402,22 @@ public class GitlabApplicationClientTest {
     assertThat(project).isNotNull();
 
     assertThat(gitlabUrlCall).isEqualTo(
-        server.url("") + "projects/1234");
+      server.url("") + "projects/1234");
     assertThat(projectGitlabRequest.getMethod()).isEqualTo("GET");
   }
 
   @Test
   public void get_reporter_level_access_project() throws InterruptedException {
     MockResponse projectResponse = new MockResponse()
-        .setResponseCode(200)
-        .setBody("[{"
-            + "  \"id\": 1234,"
-            + "  \"name\": \"SonarQube example 2\","
-            + "  \"name_with_namespace\": \"SonarSource / SonarQube / SonarQube example 2\","
-            + "  \"path\": \"sonarqube-example-2\","
-            + "  \"path_with_namespace\": \"sonarsource/sonarqube/sonarqube-example-2\","
-            + "  \"web_url\": \"https://example.gitlab.com/sonarsource/sonarqube/sonarqube-example-2\""
-            + "}]");
+      .setResponseCode(200)
+      .setBody("[{"
+        + "  \"id\": 1234,"
+        + "  \"name\": \"SonarQube example 2\","
+        + "  \"name_with_namespace\": \"SonarSource / SonarQube / SonarQube example 2\","
+        + "  \"path\": \"sonarqube-example-2\","
+        + "  \"path_with_namespace\": \"sonarsource/sonarqube/sonarqube-example-2\","
+        + "  \"web_url\": \"https://example.gitlab.com/sonarsource/sonarqube/sonarqube-example-2\""
+        + "}]");
 
     server.enqueue(projectResponse);
 
@@ -423,7 +429,7 @@ public class GitlabApplicationClientTest {
     assertThat(project).isNotNull();
 
     assertThat(gitlabUrlCall).isEqualTo(
-        server.url("") + "projects?min_access_level=20&id_after=1233&id_before=1235");
+      server.url("") + "projects?min_access_level=20&id_after=1233&id_before=1235");
     assertThat(projectGitlabRequest.getMethod()).isEqualTo("GET");
   }
 
@@ -654,6 +660,47 @@ public class GitlabApplicationClientTest {
     when(gsonUser.getName()).thenReturn(name);
     when(gsonUser.getAccessLevel()).thenReturn(accessLevel);
     return gsonUser;
+  }
+
+  @Test
+  public void getAllProjectMembers_whenCallIsSuccesfull_deserializesAndReturnsCorrectlyProjectsMembers() throws IOException {
+    ArgumentCaptor<Function<String, List<GsonProjectMember>>> deserializerCaptor = ArgumentCaptor.forClass(Function.class);
+
+    String token = "token-toto";
+    GitlabToken gitlabToken = new GitlabToken(token);
+    List<GsonProjectMember> expectedProjectMembers = expectedProjectMembers();
+    when(gitlabPaginatedHttpClient.get(eq(gitlabUrl), eq(gitlabToken), eq("/projects/42/members/all"), deserializerCaptor.capture())).thenReturn(expectedProjectMembers);
+
+    Set<GsonProjectMember> actualProjectMembers = underTest.getAllProjectMembers(gitlabUrl, token, 42);
+    assertThat(actualProjectMembers).containsExactlyInAnyOrderElementsOf(expectedProjectMembers);
+
+    String responseContent = getResponseContent("project-members-full-response.json");
+
+    List<GsonProjectMember> deserializedProjectMembers = deserializerCaptor.getValue().apply(responseContent);
+    assertThat(deserializedProjectMembers).isEqualTo(expectedProjectMembers);
+
+  }
+
+  @Test
+  public void getAllProjectMembers_whenCallIsInError_rethrows() {
+    String token = "token-toto";
+    GitlabToken gitlabToken = new GitlabToken(token);
+    when(gitlabPaginatedHttpClient.get(eq(gitlabUrl), eq(gitlabToken), eq("/projects/42/members/all"), any())).thenThrow(new IllegalStateException("exception"));
+
+    assertThatIllegalStateException()
+      .isThrownBy(() -> underTest.getAllProjectMembers(gitlabUrl, token, 42))
+      .withMessage("exception");
+  }
+
+  private static List<GsonProjectMember> expectedProjectMembers() {
+    GsonProjectMember user1 = createGsonProjectMember(12818153, 5, null);
+    GsonProjectMember user2 = createGsonProjectMember(22330087, 50, null);
+    GsonProjectMember user3 = createGsonProjectMember(20824381, 40, new GsonMemberRole("custom-role"));
+    return List.of(user1, user2, user3);
+  }
+
+  private static GsonProjectMember createGsonProjectMember(int id, int accessLevel, @Nullable GsonMemberRole gsonMemberRole) {
+    return new GsonProjectMember(id, accessLevel, gsonMemberRole);
   }
 
   private static String getResponseContent(String path) throws IOException {

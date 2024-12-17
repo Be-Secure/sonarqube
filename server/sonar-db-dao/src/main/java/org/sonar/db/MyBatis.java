@@ -63,6 +63,14 @@ import org.sonar.db.component.SnapshotDto;
 import org.sonar.db.component.SnapshotMapper;
 import org.sonar.db.component.UuidWithBranchUuidDto;
 import org.sonar.db.component.ViewsSnapshotDto;
+import org.sonar.db.dependency.CveCweDto;
+import org.sonar.db.dependency.CveCweMapper;
+import org.sonar.db.dependency.CveDto;
+import org.sonar.db.dependency.CveMapper;
+import org.sonar.db.dependency.IssuesDependencyDto;
+import org.sonar.db.dependency.IssuesDependencyMapper;
+import org.sonar.db.dependency.ProjectDependenciesMapper;
+import org.sonar.db.dependency.ProjectDependencyDto;
 import org.sonar.db.duplication.DuplicationMapper;
 import org.sonar.db.duplication.DuplicationUnitDto;
 import org.sonar.db.entity.EntityDto;
@@ -82,10 +90,10 @@ import org.sonar.db.issue.IssueMapper;
 import org.sonar.db.issue.NewCodeReferenceIssueDto;
 import org.sonar.db.issue.PrIssueDto;
 import org.sonar.db.measure.LargestBranchNclocDto;
-import org.sonar.db.measure.LiveMeasureMapper;
-import org.sonar.db.measure.MeasureDto;
 import org.sonar.db.measure.MeasureMapper;
 import org.sonar.db.measure.ProjectLocDistributionDto;
+import org.sonar.db.measure.ProjectMeasureDto;
+import org.sonar.db.measure.ProjectMeasureMapper;
 import org.sonar.db.metric.MetricMapper;
 import org.sonar.db.newcodeperiod.NewCodePeriodMapper;
 import org.sonar.db.notification.NotificationQueueDto;
@@ -119,10 +127,10 @@ import org.sonar.db.property.InternalPropertiesMapper;
 import org.sonar.db.property.InternalPropertyDto;
 import org.sonar.db.property.PropertiesMapper;
 import org.sonar.db.property.ScrapPropertyDto;
+import org.sonar.db.provisioning.DevOpsPermissionsMappingDto;
+import org.sonar.db.provisioning.DevOpsPermissionsMappingMapper;
 import org.sonar.db.provisioning.GithubOrganizationGroupDto;
 import org.sonar.db.provisioning.GithubOrganizationGroupMapper;
-import org.sonar.db.provisioning.GithubPermissionsMappingDto;
-import org.sonar.db.provisioning.GithubPermissionsMappingMapper;
 import org.sonar.db.purge.PurgeMapper;
 import org.sonar.db.purge.PurgeableAnalysisDto;
 import org.sonar.db.pushevent.PushEventDto;
@@ -157,6 +165,7 @@ import org.sonar.db.schemamigration.SchemaMigrationMapper;
 import org.sonar.db.scim.ScimGroupMapper;
 import org.sonar.db.scim.ScimUserMapper;
 import org.sonar.db.source.FileSourceMapper;
+import org.sonar.db.telemetry.TelemetryMetricsSentMapper;
 import org.sonar.db.user.ExternalGroupDto;
 import org.sonar.db.user.ExternalGroupMapper;
 import org.sonar.db.user.GroupDto;
@@ -207,12 +216,14 @@ public class MyBatis {
     confBuilder.loadAlias("AnticipatedTransition", AnticipatedTransitionDto.class);
     confBuilder.loadAlias("CeTaskCharacteristic", CeTaskCharacteristicDto.class);
     confBuilder.loadAlias("Component", ComponentDto.class);
+    confBuilder.loadAlias("Cve", CveDto.class);
+    confBuilder.loadAlias("CveCwe", CveCweDto.class);
+    confBuilder.loadAlias("DevOpsPermissionsMapping", DevOpsPermissionsMappingDto.class);
     confBuilder.loadAlias("DuplicationUnit", DuplicationUnitDto.class);
     confBuilder.loadAlias("Entity", EntityDto.class);
     confBuilder.loadAlias("Event", EventDto.class);
     confBuilder.loadAlias("ExternalGroup", ExternalGroupDto.class);
     confBuilder.loadAlias("GithubOrganizationGroup", GithubOrganizationGroupDto.class);
-    confBuilder.loadAlias("GithubPermissionsMapping", GithubPermissionsMappingDto.class);
     confBuilder.loadAlias("FilePathWithHash", FilePathWithHashDto.class);
     confBuilder.loadAlias("KeyWithUuid", KeyWithUuidDto.class);
     confBuilder.loadAlias("Group", GroupDto.class);
@@ -224,8 +235,9 @@ public class MyBatis {
     confBuilder.loadAlias("KeyLongValue", KeyLongValue.class);
     confBuilder.loadAlias("Impact", ImpactDto.class);
     confBuilder.loadAlias("Issue", IssueDto.class);
+    confBuilder.loadAlias("IssueDependency", IssuesDependencyDto.class);
     confBuilder.loadAlias("NewCodeReferenceIssue", NewCodeReferenceIssueDto.class);
-    confBuilder.loadAlias("Measure", MeasureDto.class);
+    confBuilder.loadAlias("ProjectMeasure", ProjectMeasureDto.class);
     confBuilder.loadAlias("LargestBranchNclocDto", LargestBranchNclocDto.class);
     confBuilder.loadAlias("NotificationQueue", NotificationQueueDto.class);
     confBuilder.loadAlias("PermissionTemplateCharacteristic", PermissionTemplateCharacteristicDto.class);
@@ -240,6 +252,7 @@ public class MyBatis {
     confBuilder.loadAlias("ProjectQgateAssociation", ProjectQgateAssociationDto.class);
     confBuilder.loadAlias("Project", ProjectDto.class);
     confBuilder.loadAlias("ProjectBadgeToken", ProjectBadgeTokenDto.class);
+    confBuilder.loadAlias("ProjectDependency", ProjectDependencyDto.class);
     confBuilder.loadAlias("AnalysisPropertyValuePerProject", AnalysisPropertyValuePerProject.class);
     confBuilder.loadAlias("ProjectAlmKeyAndProject", ProjectAlmKeyAndProject.class);
     confBuilder.loadAlias("PrAndBranchCountByProjectDto", PrBranchAnalyzedLanguageCountByProjectDto.class);
@@ -283,7 +296,8 @@ public class MyBatis {
       CeTaskMessageMapper.class,
       ComponentKeyUpdaterMapper.class,
       ComponentMapper.class,
-      LiveMeasureMapper.class,
+      CveMapper.class,
+      CveCweMapper.class,
       DefaultQProfileMapper.class,
       DuplicationMapper.class,
       EntityMapper.class,
@@ -291,7 +305,7 @@ public class MyBatis {
       EventMapper.class,
       EventComponentChangeMapper.class,
       GithubOrganizationGroupMapper.class,
-      GithubPermissionsMappingMapper.class,
+      DevOpsPermissionsMappingMapper.class,
       ExternalGroupMapper.class,
       FileSourceMapper.class,
       GroupMapper.class,
@@ -303,7 +317,9 @@ public class MyBatis {
       IssueChangeMapper.class,
       IssueMapper.class,
       IssueFixedMapper.class,
+      IssuesDependencyMapper.class,
       MeasureMapper.class,
+      ProjectMeasureMapper.class,
       MetricMapper.class,
       NewCodePeriodMapper.class,
       NotificationQueueMapper.class,
@@ -312,6 +328,7 @@ public class MyBatis {
       PluginMapper.class,
       PortfolioMapper.class,
       ProjectAlmSettingMapper.class,
+      ProjectDependenciesMapper.class,
       ProjectLinkMapper.class,
       ProjectMapper.class,
       ProjectBadgeTokenMapper.class,
@@ -343,6 +360,7 @@ public class MyBatis {
       ScimUserMapper.class,
       SessionTokenMapper.class,
       SnapshotMapper.class,
+      TelemetryMetricsSentMapper.class,
       UserDismissedMessagesMapper.class,
       UserGroupMapper.class,
       UserMapper.class,

@@ -17,8 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { NumberedListItem } from 'design-system';
+
 import * as React from 'react';
+import { NumberedListItem } from '~design-system';
 import { translate } from '../../../../helpers/l10n';
 import { Component } from '../../../../types/types';
 import { CompilationInfo } from '../../components/CompilationInfo';
@@ -46,7 +47,7 @@ const STEPS = (os?: OSs, arch?: Arch) => {
       - name: Install sonar-scanner and build-wrapper
         env:
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
-        uses: SonarSource/sonarqube-github-c-cpp@v1
+        uses: SonarSource/sonarqube-github-c-cpp@v2
       - name: Run build-wrapper
         run: |
           ${getBuildWrapperExecutableLinux(arch)} --out-dir \${{ env.BUILD_WRAPPER_OUT_DIR }} <insert_your_clean_build_command>
@@ -56,13 +57,13 @@ const STEPS = (os?: OSs, arch?: Arch) => {
           SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
         run: |
-          sonar-scanner --define sonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"`;
+          sonar-scanner -Dsonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"`;
   } else if (OSs.MacOS === os) {
     return `
       - name: Install sonar-scanner and build-wrapper
         env:
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
-        uses: SonarSource/sonarqube-github-c-cpp@v1
+        uses: SonarSource/sonarqube-github-c-cpp@v2
       - name: Run build-wrapper
         run: |
           build-wrapper-macosx-x86 --out-dir \${{ env.BUILD_WRAPPER_OUT_DIR }} <insert_your_clean_build_command>
@@ -72,13 +73,13 @@ const STEPS = (os?: OSs, arch?: Arch) => {
           SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
         run: |
-          sonar-scanner --define sonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"`;
+          sonar-scanner -Dsonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"`;
   } else if (OSs.Windows === os) {
     return `
       - name: Install sonar-scanner and build-wrapper
         env:
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
-        uses: SonarSource/sonarqube-github-c-cpp@v1
+        uses: SonarSource/sonarqube-github-c-cpp@v2
       - name: Run build-wrapper
         run: |
           build-wrapper-win-x86-64 --out-dir \${{ env.BUILD_WRAPPER_OUT_DIR }} <insert_your_clean_build_command>
@@ -88,7 +89,7 @@ const STEPS = (os?: OSs, arch?: Arch) => {
           SONAR_TOKEN: \${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: \${{secrets.SONAR_HOST_URL}}
         run: |
-          sonar-scanner --define sonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"`;
+          sonar-scanner -Dsonar.cfamily.compile-commands="\${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"`;
   }
 
   return '';
@@ -100,7 +101,7 @@ export default function CFamily(props: Readonly<CFamilyProps>) {
   const [arch, setArch] = React.useState<Arch>(Arch.X86_64);
 
   if (config.buildTool === BuildTools.Cpp && config.autoConfig === AutoConfig.Automatic) {
-    return <Others {...props} />;
+    return <Others buildSteps="" {...props} />;
   }
 
   const runsOn = {

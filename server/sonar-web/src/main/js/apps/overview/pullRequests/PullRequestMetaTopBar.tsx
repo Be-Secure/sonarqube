@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import React from 'react';
+
 import { useIntl } from 'react-intl';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricKey, MetricType } from '~sonar-aligned/types/metrics';
@@ -37,7 +37,7 @@ export default function PullRequestMetaTopBar({ pullRequest, measures }: Readonl
 
   const leftSection = (
     <div>
-      <strong className="sw-body-sm-highlight sw-mr-1">
+      <strong className="sw-typo-semibold sw-mr-1">
         {formatMeasure(
           getLeakValue(findMeasure(measures, MetricKey.new_lines)),
           MetricType.ShortInteger,
@@ -53,7 +53,7 @@ export default function PullRequestMetaTopBar({ pullRequest, measures }: Readonl
   );
 
   return (
-    <div className="sw-flex sw-justify-between sw-whitespace-nowrap sw-body-sm">
+    <div className="sw-flex sw-justify-between sw-whitespace-nowrap sw-typo-default">
       {leftSection}
       {rightSection}
     </div>

@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { startOfDay } from 'date-fns';
 import { isEqual, uniq } from 'lodash';
 import { MetricKey } from '~sonar-aligned/types/metrics';
@@ -35,6 +36,7 @@ import {
 } from '../../helpers/query';
 import { GraphType, ParsedAnalysis } from '../../types/project-activity';
 import { Dict } from '../../types/types';
+import { MQR_CONDITIONS_MAP, STANDARD_CONDITIONS_MAP } from '../quality-gates/utils';
 
 export interface Query {
   category: string;
@@ -111,9 +113,19 @@ export function getAnalysesByVersionByDay(
   }, []);
 }
 
-export function parseQuery(urlQuery: RawQuery): Query {
+export function parseQuery(urlQuery: RawQuery, isStandardMode = false): Query {
   const parsedMetrics = parseAsArray(urlQuery['custom_metrics'], parseAsString<MetricKey>);
-  const customMetrics = uniq(parsedMetrics.map((metric) => MEASURES_REDIRECTION[metric] ?? metric));
+  let customMetrics = uniq(parsedMetrics.map((metric) => MEASURES_REDIRECTION[metric] ?? metric));
+
+  customMetrics = uniq(
+    customMetrics.map((metric) =>
+      !isStandardMode ? (STANDARD_CONDITIONS_MAP[metric] ?? metric) : metric,
+    ),
+  )
+    .map((metric) =>
+      !isStandardMode && MQR_CONDITIONS_MAP[metric] ? [metric, MQR_CONDITIONS_MAP[metric]] : metric,
+    )
+    .flat();
 
   return {
     category: parseAsString(urlQuery['category']),
@@ -133,10 +145,14 @@ export function serializeQuery(query: Query): RawQuery {
   });
 }
 
-export function serializeUrlQuery(query: Query): RawQuery {
+export function serializeUrlQuery(query: Query, isStandardMode = false): RawQuery {
   return cleanQuery({
     category: serializeString(query.category),
-    custom_metrics: serializeStringArray(query.customMetrics),
+    custom_metrics: serializeStringArray(
+      query.customMetrics.filter(
+        (metric) => isStandardMode || !STANDARD_CONDITIONS_MAP[metric as MetricKey],
+      ),
+    ),
     from: serializeDate(query.from),
     graph: serializeGraph(query.graph),
     id: serializeString(query.project),

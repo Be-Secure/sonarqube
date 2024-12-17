@@ -17,16 +17,19 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import selectEvent from 'react-select-event';
 import { byPlaceholderText, byRole, byText } from '~sonar-aligned/helpers/testSelector';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import DopTranslationServiceMock from '../../../api/mocks/DopTranslationServiceMock';
 import GithubProvisioningServiceMock from '../../../api/mocks/GithubProvisioningServiceMock';
+import GitlabProvisioningServiceMock from '../../../api/mocks/GitlabProvisioningServiceMock';
 import PermissionsServiceMock from '../../../api/mocks/PermissionsServiceMock';
 import ProjectManagementServiceMock from '../../../api/mocks/ProjectsManagementServiceMock';
 import SettingsServiceMock from '../../../api/mocks/SettingsServiceMock';
+import { getComponentNavigation } from '../../../api/navigation';
+import { mockGitlabConfiguration } from '../../../helpers/mocks/alm-integrations';
 import { mockComponent } from '../../../helpers/mocks/component';
 import { mockGitHubConfiguration } from '../../../helpers/mocks/dop-translation';
 import { mockProject } from '../../../helpers/mocks/projects';
@@ -46,10 +49,13 @@ const permissionsHandler = new PermissionsServiceMock();
 const settingsHandler = new SettingsServiceMock();
 const dopTranslationHandler = new DopTranslationServiceMock();
 const githubHandler = new GithubProvisioningServiceMock(dopTranslationHandler);
+const gitlabHandler = new GitlabProvisioningServiceMock();
 const handler = new ProjectManagementServiceMock(settingsHandler);
 
-jest.mock('../../../api/navigation', () => ({
-  getComponentNavigation: jest.fn().mockImplementation(async ({ component }) => {
+jest.mock('../../../api/navigation', () => ({ getComponentNavigation: jest.fn() }));
+
+beforeAll(() => {
+  jest.mocked(getComponentNavigation).mockImplementation(async ({ component }) => {
     const canBrowseProjectResponse = await permissionsHandler.handleGetPermissionUsersForComponent({
       projectKey: component,
       q: login,
@@ -69,10 +75,11 @@ jest.mock('../../../api/navigation', () => ({
         },
       }),
     );
-  }),
-}));
+  });
+});
 
 const ui = {
+  pageDescription: byText('projects_management.page.description'),
   row: byRole('row'),
   firstProjectActions: byRole('button', {
     name: 'projects_management.show_actions_for_x.Project 1',
@@ -83,6 +90,7 @@ const ui = {
   showPermissions: byRole('menuitem', { name: 'show_permissions' }),
   applyPermissionTemplate: byRole('menuitem', { name: 'projects_role.apply_template' }),
   restoreAccess: byRole('menuitem', { name: 'global_permissions.restore_access' }),
+  noActionsAvailable: byRole('menuitem', { name: 'global_permissions.no_actions_available' }),
   editPermissionsPage: byText('/project_roles?id=project1'),
 
   apply: byRole('button', { name: 'apply' }),
@@ -181,6 +189,7 @@ afterEach(() => {
   settingsHandler.reset();
   dopTranslationHandler.reset();
   githubHandler.reset();
+  gitlabHandler.reset();
   handler.reset();
 });
 
@@ -188,28 +197,36 @@ it('should filter projects', async () => {
   const user = userEvent.setup();
   renderProjectManagementApp();
   await waitFor(() => expect(ui.row.getAll()).toHaveLength(5));
-  // Should return Promise: (and same for all similar cases below)
-  // await waitFor(() => selectEvent.select(ui.visibilityFilter.get(), ‘visibility.public’));
-  // Can be fixed by migrating ProjectManagementApp to functional component
-  await waitFor(() => {
-    selectEvent.select(ui.visibilityFilter.get(), 'visibility.public');
-  });
+
+  await user.click(ui.visibilityFilter.get());
+  await user.click(byRole('option', { name: 'visibility.public' }).get());
+
   await waitFor(() => expect(ui.row.getAll()).toHaveLength(4));
   await user.click(ui.analysisDateFilter.get());
   await user.click(await screen.findByRole('gridcell', { name: '5' }));
-  expect(ui.row.getAll()).toHaveLength(3);
-  await user.click(ui.provisionedFilter.get());
-  expect(ui.row.getAll()).toHaveLength(2);
-  expect(ui.row.getAll()[1]).toHaveTextContent('Project 4');
+
   await waitFor(() => {
-    selectEvent.select(ui.qualifierFilter.get(), 'qualifiers.VW');
+    expect(ui.row.getAll()).toHaveLength(3);
   });
+
+  await user.click(ui.provisionedFilter.get());
+
+  await waitFor(() => {
+    expect(ui.row.getAll()).toHaveLength(2);
+  });
+
+  expect(ui.row.getAll()[1]).toHaveTextContent('Project 4');
+
+  await user.click(ui.qualifierFilter.get());
+  await user.click(byRole('option', { name: 'qualifiers.VW' }).get());
+
   await waitFor(() => expect(ui.provisionedFilter.query()).not.toBeInTheDocument());
   expect(ui.row.getAll()).toHaveLength(2);
   await waitFor(() => expect(ui.row.getAll()[1]).toHaveTextContent('Portfolio 1'));
-  await waitFor(() => {
-    selectEvent.select(ui.qualifierFilter.get(), 'qualifiers.APP');
-  });
+
+  await user.click(ui.qualifierFilter.get());
+  await user.click(byRole('option', { name: 'qualifiers.APP' }).get());
+
   expect(ui.provisionedFilter.query()).not.toBeInTheDocument();
   expect(ui.row.getAll()).toHaveLength(2);
   await waitFor(() => expect(ui.row.getAll()[1]).toHaveTextContent('Application 1'));
@@ -221,29 +238,35 @@ it('should search by text', async () => {
   await waitFor(() => expect(ui.row.getAll()).toHaveLength(5));
   await user.type(ui.searchFilter.get(), 'provision');
   expect(ui.row.getAll()).toHaveLength(2);
-  await waitFor(() => {
-    selectEvent.select(ui.qualifierFilter.get(), 'qualifiers.VW');
-  });
+
+  await user.click(ui.qualifierFilter.get());
+  await user.click(byRole('option', { name: 'qualifiers.VW' }).get());
+
   await waitFor(() => expect(ui.row.getAll()).toHaveLength(4));
   expect(ui.searchFilter.get()).toHaveValue('');
   await user.type(ui.searchFilter.get(), 'Portfolio 2');
   expect(ui.row.getAll()).toHaveLength(2);
-  await waitFor(() => {
-    selectEvent.select(ui.qualifierFilter.get(), 'qualifiers.APP');
-  });
+
+  await user.click(ui.qualifierFilter.get());
+  await user.click(byRole('option', { name: 'qualifiers.APP' }).get());
+
   await waitFor(() => expect(ui.row.getAll()).toHaveLength(4));
   expect(ui.searchFilter.get()).toHaveValue('');
   await user.type(ui.searchFilter.get(), 'Application 3');
   expect(ui.row.getAll()).toHaveLength(2);
 });
 
-it('should hide quilifier filter', () => {
+it('should hide qualifier filter', async () => {
   renderProjectManagementApp({ qualifiers: [ComponentQualifier.Project] });
+  // pretext to wait for loading
+  expect(await ui.pageDescription.find()).toBeInTheDocument();
   expect(ui.qualifierFilter.query()).not.toBeInTheDocument();
 });
 
-it('should hide create Project button', () => {
+it('should hide create Project button', async () => {
   renderProjectManagementApp();
+  // pretext to wait for loading
+  expect(await ui.pageDescription.find()).toBeInTheDocument();
   expect(ui.createProject.query()).not.toBeInTheDocument();
 });
 
@@ -251,7 +274,11 @@ it('should delete projects, but not Portfolios or Applications', async () => {
   const user = userEvent.setup();
   renderProjectManagementApp();
   expect(await ui.deleteProjects.find()).toBeDisabled();
-  expect(ui.row.getAll()).toHaveLength(5);
+
+  await waitFor(() => {
+    expect(ui.row.getAll()).toHaveLength(5);
+  });
+
   await user.click(ui.checkbox('Project 1').get());
   await user.click(ui.checkbox('Project 2').get());
 
@@ -262,7 +289,9 @@ it('should delete projects, but not Portfolios or Applications', async () => {
     ui.deleteDialog.byText('projects_management.delete_selected_warning.2').get(),
   ).toBeInTheDocument();
   await user.click(ui.deleteDialog.by(ui.delete).get());
-  expect(ui.row.getAll()).toHaveLength(3);
+  await waitFor(() => {
+    expect(ui.row.getAll()).toHaveLength(3);
+  });
 });
 
 describe('Bulk permission templates', () => {
@@ -274,17 +303,21 @@ describe('Bulk permission templates', () => {
     renderProjectManagementApp();
 
     expect(await ui.bulkApplyButton.find()).toBeDisabled();
-    const projects = ui.row.getAll().slice(1);
-    expect(projects).toHaveLength(11);
+
+    await waitFor(() => {
+      const projects = ui.row.getAll().slice(1);
+      expect(projects).toHaveLength(11);
+    });
+
     await user.click(ui.checkAll.get());
     expect(ui.bulkApplyButton.get()).toBeEnabled();
 
     await user.click(ui.bulkApplyButton.get());
     expect(await ui.bulkApplyDialog.find()).toBeInTheDocument();
     expect(
-      ui.bulkApplyDialog
+      await ui.bulkApplyDialog
         .byText('permission_templates.bulk_apply_permission_template.apply_to_selected.11')
-        .get(),
+        .find(),
     ).toBeInTheDocument();
 
     await user.click(ui.bulkApplyDialog.by(ui.apply).get());
@@ -304,14 +337,14 @@ describe('Bulk permission templates', () => {
 
     expect(await ui.bulkApplyDialog.find()).toBeInTheDocument();
     expect(
-      ui.bulkApplyDialog
+      await ui.bulkApplyDialog
         .byText('permission_templates.bulk_apply_permission_template.apply_to_selected.2')
-        .get(),
+        .find(),
     ).toBeInTheDocument();
-    await selectEvent.select(
-      ui.bulkApplyDialog.by(ui.selectTemplate('required')).get(),
-      'Permission Template 2',
-    );
+
+    await user.click(ui.bulkApplyDialog.by(ui.selectTemplate('required')).get());
+    await user.click(byRole('option', { name: 'Permission Template 2' }).get());
+
     await user.click(ui.bulkApplyDialog.by(ui.apply).get());
 
     expect(
@@ -319,32 +352,72 @@ describe('Bulk permission templates', () => {
     ).toBeInTheDocument();
   });
 
-  it('should not be applied to managed projects', async () => {
+  it('should not be applied to managed GitHub projects', async () => {
     const user = userEvent.setup();
+    dopTranslationHandler.gitHubConfigurations.push(
+      mockGitHubConfiguration({ provisioningType: ProvisioningType.auto }),
+    );
     handler.setProjects(
       Array.from({ length: 11 }, (_, i) =>
         mockProject({ key: i.toString(), name: `Test ${i}`, managed: true }),
       ),
     );
-    renderProjectManagementApp();
+    renderProjectManagementApp({}, {}, { featureList: [Feature.GithubProvisioning] });
 
     expect(await ui.bulkApplyButton.find()).toBeDisabled();
-    const projects = ui.row.getAll().slice(1);
-    expect(projects).toHaveLength(11);
+
+    await waitFor(() => {
+      const projects = ui.row.getAll().slice(1);
+      expect(projects).toHaveLength(11);
+    });
+
     await user.click(ui.checkAll.get());
     expect(ui.bulkApplyButton.get()).toBeEnabled();
 
     await user.click(ui.bulkApplyButton.get());
     expect(await ui.bulkApplyDialog.find()).toBeInTheDocument();
     expect(
-      within(ui.bulkApplyDialog.get()).getByText(
-        'permission_templates.bulk_apply_permission_template.apply_to_only_github_projects',
+      await within(ui.bulkApplyDialog.get()).findByText(
+        'permission_templates.bulk_apply_permission_template.apply_to_only_managed_projects.alm.github',
       ),
     ).toBeInTheDocument();
     expect(ui.bulkApplyDialog.by(ui.apply).get()).toBeDisabled();
   });
 
-  it('should not be applied to managed projects but to local project', async () => {
+  it('should not be applied to managed GitLab projects', async () => {
+    const user = userEvent.setup();
+    handler.setProjects(
+      Array.from({ length: 11 }, (_, i) =>
+        mockProject({ key: i.toString(), name: `Test ${i}`, managed: true }),
+      ),
+    );
+
+    gitlabHandler.setGitlabConfigurations([
+      mockGitlabConfiguration({ id: '1', enabled: true, provisioningType: ProvisioningType.auto }),
+    ]);
+    renderProjectManagementApp({}, {}, { featureList: [Feature.GitlabProvisioning] });
+
+    expect(await ui.bulkApplyButton.find()).toBeDisabled();
+
+    await waitFor(() => {
+      const projects = ui.row.getAll().slice(1);
+      expect(projects).toHaveLength(11);
+    });
+
+    await user.click(ui.checkAll.get());
+    expect(ui.bulkApplyButton.get()).toBeEnabled();
+
+    await user.click(ui.bulkApplyButton.get());
+    expect(await ui.bulkApplyDialog.find()).toBeInTheDocument();
+    expect(
+      await within(ui.bulkApplyDialog.get()).findByText(
+        'permission_templates.bulk_apply_permission_template.apply_to_only_managed_projects.alm.gitlab',
+      ),
+    ).toBeInTheDocument();
+    expect(ui.bulkApplyDialog.by(ui.apply).get()).toBeDisabled();
+  });
+
+  it('should not be applied to managed GitLab projects but to local project', async () => {
     const user = userEvent.setup();
     const allProjects = [
       ...Array.from({ length: 6 }, (_, i) =>
@@ -356,28 +429,76 @@ describe('Bulk permission templates', () => {
     ];
 
     handler.setProjects(allProjects);
-    renderProjectManagementApp();
+    gitlabHandler.setGitlabConfigurations([
+      mockGitlabConfiguration({ id: '1', enabled: true, provisioningType: ProvisioningType.auto }),
+    ]);
+    renderProjectManagementApp({}, {}, { featureList: [Feature.GitlabProvisioning] });
 
     expect(await ui.bulkApplyButton.find()).toBeDisabled();
-    const projects = ui.row.getAll().slice(1);
-    expect(projects).toHaveLength(11);
+
+    await waitFor(() => {
+      const projects = ui.row.getAll().slice(1);
+      expect(projects).toHaveLength(11);
+    });
+
     await user.click(ui.checkAll.get());
     expect(ui.bulkApplyButton.get()).toBeEnabled();
 
     await user.click(ui.bulkApplyButton.get());
     expect(await ui.bulkApplyDialog.find()).toBeInTheDocument();
     expect(
-      within(ui.bulkApplyDialog.get()).getByText(
+      await within(ui.bulkApplyDialog.get()).findByText(
         /permission_templates.bulk_apply_permission_template.apply_to_selected.5/,
       ),
     ).toBeInTheDocument();
     expect(
       within(ui.bulkApplyDialog.get()).getByText(
-        /permission_templates.bulk_apply_permission_template.apply_to_github_projects.6/,
+        /permission_templates.bulk_apply_permission_template.apply_to_managed_projects.6.alm.gitlab/,
       ),
     ).toBeInTheDocument();
     expect(ui.bulkApplyDialog.by(ui.apply).get()).toBeEnabled();
   });
+});
+
+it('should not be applied to managed GitHub projects but to local project', async () => {
+  const user = userEvent.setup();
+  const allProjects = [
+    ...Array.from({ length: 6 }, (_, i) =>
+      mockProject({ key: `${i.toString()} managed`, name: `Test managed ${i}`, managed: true }),
+    ),
+    ...Array.from({ length: 5 }, (_, i) =>
+      mockProject({ key: `${i.toString()} local`, name: `Test local ${i}`, managed: false }),
+    ),
+  ];
+
+  handler.setProjects(allProjects);
+  dopTranslationHandler.gitHubConfigurations.push(
+    mockGitHubConfiguration({ provisioningType: ProvisioningType.auto }),
+  );
+  renderProjectManagementApp({}, {}, { featureList: [Feature.GithubProvisioning] });
+
+  expect(await ui.bulkApplyButton.find()).toBeDisabled();
+
+  await waitFor(() => {
+    const projects = ui.row.getAll().slice(1);
+    expect(projects).toHaveLength(11);
+  });
+  await user.click(ui.checkAll.get());
+  expect(ui.bulkApplyButton.get()).toBeEnabled();
+
+  await user.click(ui.bulkApplyButton.get());
+  expect(await ui.bulkApplyDialog.find()).toBeInTheDocument();
+  expect(
+    await within(ui.bulkApplyDialog.get()).findByText(
+      /permission_templates.bulk_apply_permission_template.apply_to_selected.5/,
+    ),
+  ).toBeInTheDocument();
+  expect(
+    within(ui.bulkApplyDialog.get()).getByText(
+      /permission_templates.bulk_apply_permission_template.apply_to_managed_projects.6.alm.github/,
+    ),
+  ).toBeInTheDocument();
+  expect(ui.bulkApplyDialog.by(ui.apply).get()).toBeEnabled();
 });
 
 it('should load more and change the filter without caching old pages', async () => {
@@ -409,22 +530,31 @@ it('should load more and change the filter without caching old pages', async () 
 
   await waitFor(() => expect(ui.row.getAll()).toHaveLength(51));
   await user.click(ui.showMore.get());
+
+  // WaitFor to wait for the rerender
+  await waitFor(() => {
+    expect(ui.row.getAll()).toHaveLength(61);
+  });
   const projectRows = ui.row.getAll();
-  expect(projectRows).toHaveLength(61);
+
   expect(projectRows[1]).toHaveTextContent('Project 0');
   expect(projectRows[60]).toHaveTextContent('Project 59');
 
-  await waitFor(() => {
-    selectEvent.select(ui.qualifierFilter.get(), 'qualifiers.VW');
-  });
+  await user.click(ui.qualifierFilter.get());
+  await user.click(byRole('option', { name: 'qualifiers.VW' }).get());
+
   await waitFor(() => expect(projectRows[1]).not.toBeInTheDocument());
   const portfolioRows = ui.row.getAll();
   expect(portfolioRows).toHaveLength(51);
   expect(portfolioRows[1]).toHaveTextContent('Portfolio 0');
 
   await user.click(ui.showMore.get());
+
+  // WaitFor to wait for the rerender
+  await waitFor(() => {
+    expect(ui.row.getAll()).toHaveLength(61);
+  });
   const allPortfolioRows = ui.row.getAll();
-  expect(allPortfolioRows).toHaveLength(61);
   expect(allPortfolioRows[1]).toHaveTextContent('Portfolio 0');
   expect(allPortfolioRows[60]).toHaveTextContent('Portfolio 59');
 });
@@ -444,8 +574,9 @@ it('should edit permissions of single project', async () => {
   const user = userEvent.setup();
   renderProjectManagementApp();
   await user.click(await ui.firstProjectActions.find());
-  expect(ui.restoreAccess.query()).not.toBeInTheDocument();
   expect(ui.editPermissions.get()).toBeInTheDocument();
+  expect(ui.restoreAccess.query()).not.toBeInTheDocument();
+  expect(ui.noActionsAvailable.query()).not.toBeInTheDocument();
   await user.click(ui.editPermissions.get());
 
   expect(await ui.editPermissionsPage.find()).toBeInTheDocument();
@@ -455,13 +586,14 @@ it('should apply template for single object', async () => {
   const user = userEvent.setup();
   renderProjectManagementApp();
   await user.click(await ui.firstProjectActions.find());
+  expect(ui.noActionsAvailable.query()).not.toBeInTheDocument();
   await user.click(ui.applyPermissionTemplate.get());
 
   expect(ui.applyTemplateDialog.get()).toBeInTheDocument();
-  await selectEvent.select(
-    ui.applyTemplateDialog.by(ui.selectTemplate('required')).get(),
-    'Permission Template 2',
-  );
+
+  await user.click(await ui.applyTemplateDialog.by(ui.selectTemplate('required')).find());
+  await user.click(byRole('option', { name: 'Permission Template 2' }).get());
+
   await user.click(ui.applyTemplateDialog.by(ui.apply).get());
 
   expect(
@@ -475,12 +607,14 @@ it('should restore access to admin', async () => {
   await user.click(await ui.firstProjectActions.find());
   expect(await ui.restoreAccess.find()).toBeInTheDocument();
   expect(ui.editPermissions.query()).not.toBeInTheDocument();
+  expect(ui.noActionsAvailable.query()).not.toBeInTheDocument();
   await user.click(ui.restoreAccess.get());
   expect(ui.restoreAccessDialog.get()).toBeInTheDocument();
   await user.click(ui.restoreAccessDialog.by(ui.restore).get());
   expect(ui.restoreAccessDialog.query()).not.toBeInTheDocument();
   await user.click(await ui.firstProjectActions.find());
   expect(ui.restoreAccess.query()).not.toBeInTheDocument();
+  expect(ui.noActionsAvailable.query()).not.toBeInTheDocument();
   expect(ui.editPermissions.get()).toBeInTheDocument();
 });
 
@@ -496,6 +630,7 @@ it('should restore access for github project', async () => {
   );
   await waitFor(() => expect(ui.row.getAll()).toHaveLength(5));
   await user.click(await ui.projectActions('Project 4').find());
+  expect(ui.noActionsAvailable.query()).not.toBeInTheDocument();
   expect(await ui.restoreAccess.find()).toBeInTheDocument();
   expect(ui.showPermissions.query()).not.toBeInTheDocument();
   await user.click(ui.restoreAccess.get());
@@ -503,6 +638,7 @@ it('should restore access for github project', async () => {
   await user.click(ui.restoreAccessDialog.by(ui.restore).get());
   expect(ui.restoreAccessDialog.query()).not.toBeInTheDocument();
   await user.click(await ui.projectActions('Project 4').find());
+  expect(ui.noActionsAvailable.query()).not.toBeInTheDocument();
   expect(ui.restoreAccess.query()).not.toBeInTheDocument();
   expect(ui.showPermissions.get()).toBeInTheDocument();
 });
@@ -519,9 +655,11 @@ it('should not allow to restore access on github project for GH user', async () 
   );
   await waitFor(() => expect(ui.row.getAll()).toHaveLength(5));
   await user.click(await ui.projectActions('Project 4').find());
+  expect(await ui.noActionsAvailable.find()).toBeInTheDocument();
   expect(ui.restoreAccess.query()).not.toBeInTheDocument();
   await user.click(await ui.projectActions('Project 1').find());
-  expect(ui.restoreAccess.get()).toBeInTheDocument();
+  expect(await ui.restoreAccess.find()).toBeInTheDocument();
+  expect(ui.noActionsAvailable.query()).not.toBeInTheDocument();
 });
 
 it('should show github warning on changing default visibility to admin', async () => {
@@ -547,24 +685,31 @@ it('should not apply permissions for github projects', async () => {
   await user.click(ui.projectActions('Project 4').get());
   expect(ui.applyPermissionTemplate.query()).not.toBeInTheDocument();
   expect(ui.editPermissions.query()).not.toBeInTheDocument();
+  expect(ui.noActionsAvailable.query()).not.toBeInTheDocument();
   expect(ui.showPermissions.get()).toBeInTheDocument();
   await user.click(ui.projectActions('Project 1').get());
+  expect(await ui.editPermissions.find()).toBeInTheDocument();
   expect(ui.applyPermissionTemplate.get()).toBeInTheDocument();
-  expect(ui.editPermissions.get()).toBeInTheDocument();
+  expect(ui.noActionsAvailable.query()).not.toBeInTheDocument();
   expect(ui.showPermissions.query()).not.toBeInTheDocument();
 });
 
 it('should not show local badge for applications and portfolios', async () => {
+  const user = userEvent.setup();
   dopTranslationHandler.gitHubConfigurations.push(
     mockGitHubConfiguration({ provisioningType: ProvisioningType.auto }),
   );
   renderProjectManagementApp({}, {}, { featureList: [Feature.GithubProvisioning] });
   await waitFor(() => expect(screen.getAllByText('local')).toHaveLength(3));
 
-  await selectEvent.select(ui.qualifierFilter.get(), 'qualifiers.VW');
+  await user.click(ui.qualifierFilter.get());
+  await user.click(byRole('option', { name: 'qualifiers.VW' }).get());
+
   await waitFor(() => expect(screen.queryByText('local')).not.toBeInTheDocument());
 
-  await selectEvent.select(ui.qualifierFilter.get(), 'qualifiers.APP');
+  await user.click(ui.qualifierFilter.get());
+  await user.click(byRole('option', { name: 'qualifiers.APP' }).get());
+
   expect(screen.queryByText('local')).not.toBeInTheDocument();
 });
 
@@ -572,6 +717,28 @@ it('should not show local badge if provisioning is not enabled', async () => {
   renderProjectManagementApp();
   await waitFor(() => expect(ui.row.getAll()).toHaveLength(5));
   expect(screen.queryByText('local')).not.toBeInTheDocument();
+});
+
+it('should display no action available for managed project if autoprovisioning is enabled for non admins', async () => {
+  const user = userEvent.setup();
+  dopTranslationHandler.gitHubConfigurations.push(
+    mockGitHubConfiguration({ provisioningType: ProvisioningType.auto }),
+  );
+  handler.setProjects([
+    mockProject({
+      key: `${ComponentQualifier.Project}${1}`,
+      name: 'Project 1',
+      qualifier: ComponentQualifier.Project,
+      managed: true,
+    }),
+  ]);
+  renderProjectManagementApp(
+    {},
+    { login: 'gooduser2', local: false },
+    { featureList: [Feature.GithubProvisioning] },
+  );
+  await user.click(await ui.firstProjectActions.find());
+  expect(ui.noActionsAvailable.get()).toBeInTheDocument();
 });
 
 function renderProjectManagementApp(

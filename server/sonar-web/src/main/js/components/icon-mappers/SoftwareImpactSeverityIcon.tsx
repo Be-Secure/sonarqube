@@ -17,15 +17,20 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+import * as React from 'react';
 import {
   IconProps,
+  SoftwareImpactSeverityBlockerIcon,
   SoftwareImpactSeverityHighIcon,
+  SoftwareImpactSeverityInfoIcon,
   SoftwareImpactSeverityLowIcon,
   SoftwareImpactSeverityMediumIcon,
-} from 'design-system';
-import * as React from 'react';
+} from '~design-system';
 import { translate } from '../../helpers/l10n';
+import { useStandardExperienceModeQuery } from '../../queries/mode';
 import { SoftwareImpactSeverity } from '../../types/clean-code-taxonomy';
+import { IssueSeverity } from '../../types/issues';
 import { Dict } from '../../types/types';
 
 interface Props extends IconProps {
@@ -33,17 +38,32 @@ interface Props extends IconProps {
   severity: string | null | undefined;
 }
 
+const defaultIconSize = 14;
+
 const severityIcons: Dict<(props: IconProps) => React.ReactElement> = {
+  [SoftwareImpactSeverity.Blocker]: SoftwareImpactSeverityBlockerIcon,
   [SoftwareImpactSeverity.High]: SoftwareImpactSeverityHighIcon,
+  [IssueSeverity.Critical]: SoftwareImpactSeverityHighIcon,
   [SoftwareImpactSeverity.Medium]: SoftwareImpactSeverityMediumIcon,
+  [IssueSeverity.Major]: SoftwareImpactSeverityMediumIcon,
   [SoftwareImpactSeverity.Low]: SoftwareImpactSeverityLowIcon,
+  [IssueSeverity.Minor]: SoftwareImpactSeverityLowIcon,
+  [SoftwareImpactSeverity.Info]: SoftwareImpactSeverityInfoIcon,
 };
 
 export default function SoftwareImpactSeverityIcon({ severity, ...iconProps }: Readonly<Props>) {
+  const { data: isStandardMode } = useStandardExperienceModeQuery();
   if (typeof severity !== 'string' || !severityIcons[severity]) {
     return null;
   }
 
   const DesiredIcon = severityIcons[severity];
-  return <DesiredIcon {...iconProps} aria-label={translate('severity', severity)} />;
+  return (
+    <DesiredIcon
+      {...iconProps}
+      width={iconProps?.width ?? defaultIconSize}
+      height={iconProps?.height ?? defaultIconSize}
+      aria-label={translate(isStandardMode ? 'severity' : 'severity_impact', severity)}
+    />
+  );
 }

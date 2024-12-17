@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import * as React from 'react';
+
 import { BuildTools, TutorialConfig } from '../../types';
 import ClangGCC from './ClangGCC';
 import DotNet from './DotNet';
@@ -53,6 +53,7 @@ export default function AnalysisCommand(props: AnalysisCommandProps) {
     case BuildTools.ObjectiveC:
       return <ClangGCC config={config} projectKey={projectKey} />;
 
+    case BuildTools.Dart:
     case BuildTools.Other:
       return <Other projectKey={projectKey} />;
 

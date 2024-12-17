@@ -31,10 +31,11 @@ import javax.annotation.Nullable;
 import org.apache.ibatis.cursor.Cursor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.sonar.api.resources.Qualifiers;
-import org.sonar.api.resources.Scopes;
+import org.sonar.db.component.ComponentQualifiers;
+import org.sonar.db.component.ComponentScopes;
 import org.sonar.api.rules.CleanCodeAttribute;
 import org.sonar.api.rules.RuleType;
+import org.sonar.api.server.rule.RulesDefinition.StigVersion;
 import org.sonar.db.DatabaseUtils;
 import org.sonar.db.DbClient;
 import org.sonar.db.DbSession;
@@ -131,6 +132,8 @@ class IssueIteratorForSingleChunk implements IssueIterator {
     SecurityStandards.SQCategory sqCategory = securityStandards.getSqCategory();
     doc.setOwaspTop10(securityStandards.getOwaspTop10());
     doc.setOwaspTop10For2021(securityStandards.getOwaspTop10For2021());
+    doc.setStigAsdV5R3(securityStandards.getStig(StigVersion.ASD_V5R3));
+    doc.setCasa(securityStandards.getCasa());
     doc.setPciDss32(securityStandards.getPciDss32());
     doc.setPciDss40(securityStandards.getPciDss40());
     doc.setOwaspAsvs40(securityStandards.getOwaspAsvs40());
@@ -139,7 +142,7 @@ class IssueIteratorForSingleChunk implements IssueIterator {
     doc.setSonarSourceSecurityCategory(sqCategory);
     doc.setVulnerabilityProbability(sqCategory.getVulnerability());
 
-    doc.setScope(Qualifiers.UNIT_TEST_FILE.equals(indexedIssueDto.getQualifier()) ? IssueScope.TEST : IssueScope.MAIN);
+    doc.setScope(ComponentQualifiers.UNIT_TEST_FILE.equals(indexedIssueDto.getQualifier()) ? IssueScope.TEST : IssueScope.MAIN);
     doc.setIsNewCodeReference(indexedIssueDto.isNewCodeReferenceIssue());
     String codeVariants = indexedIssueDto.getCodeVariants();
     doc.setCodeVariants(STRING_LIST_SPLITTER.splitToList(codeVariants == null ? "" : codeVariants));
@@ -151,7 +154,7 @@ class IssueIteratorForSingleChunk implements IssueIterator {
   @CheckForNull
   private static String extractDirPath(@Nullable String filePath, String scope) {
     if (filePath != null) {
-      if (Scopes.DIRECTORY.equals(scope)) {
+      if (ComponentScopes.DIRECTORY.equals(scope)) {
         return filePath;
       }
       int lastSlashIndex = CharMatcher.anyOf("/").lastIndexIn(filePath);
@@ -169,7 +172,7 @@ class IssueIteratorForSingleChunk implements IssueIterator {
     // path
     // of files and directories.
     // That's why the file path should be null on modules and projects.
-    if (filePath != null && !Scopes.PROJECT.equals(scope)) {
+    if (filePath != null && !ComponentScopes.PROJECT.equals(scope)) {
       return filePath;
     }
     return null;

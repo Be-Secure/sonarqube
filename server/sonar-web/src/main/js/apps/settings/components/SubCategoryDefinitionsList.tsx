@@ -17,17 +17,19 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { BasicSeparator, Note, SubTitle } from 'design-system';
+
+import { Heading } from '@sonarsource/echoes-react';
+import classNames from 'classnames';
 import { groupBy, sortBy } from 'lodash';
 import * as React from 'react';
+import { BasicSeparator, Note, SafeHTMLInjection, SanitizeLevel } from '~design-system';
 import { withRouter } from '~sonar-aligned/components/hoc/withRouter';
 import { Location } from '~sonar-aligned/types/router';
-import { sanitizeStringRestricted } from '../../../helpers/sanitize';
 import { SettingDefinitionAndValue } from '../../../types/settings';
 import { Component } from '../../../types/types';
+import { SUB_CATEGORY_EXCLUSIONS } from '../constants';
 import { getSubCategoryDescription, getSubCategoryName } from '../utils';
 import DefinitionsList from './DefinitionsList';
-import EmailForm from './EmailForm';
 
 export interface SubCategoryDefinitionsListProps {
   category: string;
@@ -42,7 +44,7 @@ export interface SubCategoryDefinitionsListProps {
 class SubCategoryDefinitionsList extends React.PureComponent<SubCategoryDefinitionsListProps> {
   componentDidUpdate(prevProps: SubCategoryDefinitionsListProps) {
     const { hash } = this.props.location;
-    if (hash && prevProps.location.hash !== hash) {
+    if (hash.length > 0 && prevProps.location.hash !== hash) {
       const query = `[data-scroll-key=${hash.substring(1).replace(/[.#/]/g, '\\$&')}]`;
       const element = document.querySelector<HTMLHeadingElement | HTMLLIElement>(query);
       this.scrollToSubCategoryOrDefinition(element);
@@ -52,22 +54,15 @@ class SubCategoryDefinitionsList extends React.PureComponent<SubCategoryDefiniti
   scrollToSubCategoryOrDefinition = (element: HTMLHeadingElement | HTMLLIElement | null) => {
     if (element) {
       const { hash } = this.props.location;
-      if (hash && hash.substring(1) === element.getAttribute('data-scroll-key')) {
+      if (hash.length > 0 && hash.substring(1) === element.getAttribute('data-scroll-key')) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
       }
     }
   };
 
-  renderEmailForm = (subCategoryKey: string) => {
-    const isEmailSettings = this.props.category === 'general' && subCategoryKey === 'email';
-    if (!isEmailSettings) {
-      return null;
-    }
-    return <EmailForm />;
-  };
-
   render() {
     const {
+      category,
       displaySubCategoryTitle = true,
       settings,
       subCategory,
@@ -85,37 +80,37 @@ class SubCategoryDefinitionsList extends React.PureComponent<SubCategoryDefiniti
     );
     const filteredSubCategories = subCategory
       ? sortedSubCategories.filter((c) => c.key === subCategory)
-      : sortedSubCategories;
+      : sortedSubCategories.filter((c) => !SUB_CATEGORY_EXCLUSIONS[category]?.includes(c.key));
+
     return (
-      <ul>
+      <ul className={classNames({ 'sw-mx-6': !noPadding })}>
         {filteredSubCategories.map((subCategory, index) => (
-          <li className={noPadding ? '' : 'sw-p-6'} key={subCategory.key}>
+          <li className={classNames({ 'sw-py-6': !noPadding })} key={subCategory.key}>
             {displaySubCategoryTitle && (
-              <SubTitle
+              <Heading
                 as="h3"
                 data-key={subCategory.key}
                 ref={this.scrollToSubCategoryOrDefinition}
               >
                 {subCategory.name}
-              </SubTitle>
+              </Heading>
             )}
+
             {subCategory.description != null && (
-              <Note
-                className="markdown"
-                // eslint-disable-next-line react/no-danger
-                dangerouslySetInnerHTML={{
-                  __html: sanitizeStringRestricted(subCategory.description),
-                }}
-              />
+              <SafeHTMLInjection
+                htmlAsString={subCategory.description}
+                sanitizeLevel={SanitizeLevel.RESTRICTED}
+              >
+                <Note className="markdown" />
+              </SafeHTMLInjection>
             )}
+
             <BasicSeparator className="sw-mt-6" />
             <DefinitionsList
               component={component}
               scrollToDefinition={this.scrollToSubCategoryOrDefinition}
               settings={bySubCategory[subCategory.key]}
             />
-            {this.renderEmailForm(subCategory.key)}
-
             {
               // Add a separator to all but the last element
               index !== filteredSubCategories.length - 1 && <BasicSeparator />

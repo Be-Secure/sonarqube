@@ -17,9 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonPrimary, ButtonSecondary, Checkbox, Modal, Note } from 'design-system';
+
+import { Button, ButtonGroup, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
+import { Checkbox, Modal, Note } from '~design-system';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
 import { save } from '../../../helpers/storage';
@@ -58,11 +60,11 @@ export default function StatusUpdateSuccessModal(props: StatusUpdateSuccessModal
       <p className="sw-hidden" id="modal_header_title">
         {modalTitle}
       </p>
-      <h2 className="sw-heading-md sw-text-center">
+      <h2 className="sw-heading-lg sw-text-center">
         {translateWithParameters('hotspots.successful_status_change_to_x', statusLabel)}
       </h2>
 
-      <div className="sw-text-center sw-mt-8 sw-body-sm">
+      <div className="sw-text-center sw-mt-8 sw-typo-default">
         <FormattedMessage
           id="hotspots.successfully_changed_to_x"
           defaultMessage={translate('hotspots.find_in_status_filter_x')}
@@ -92,19 +94,19 @@ export default function StatusUpdateSuccessModal(props: StatusUpdateSuccessModal
         <Note className="sw-ml-2">{translate('hotspots.success_dialog.do_not_show')}</Note>
       </Checkbox>
 
-      <div className="sw-flex sw-justify-between sw-mt-4">
-        <ButtonSecondary
+      <ButtonGroup className="sw-mt-4">
+        <Button
           onClick={() => {
             props.onSwitchFilterToStatusOfUpdatedHotspot();
             props.onClose();
           }}
         >
           {translateWithParameters('hotspots.see_x_hotspots', statusLabel)}
-        </ButtonSecondary>
-        <ButtonPrimary onClick={props.onClose}>
+        </Button>
+        <Button onClick={props.onClose} variety={ButtonVariety.Primary}>
           {translate('hotspots.continue_to_next_hotspot')}
-        </ButtonPrimary>
-      </div>
+        </Button>
+      </ButtonGroup>
     </Modal>
   );
 }

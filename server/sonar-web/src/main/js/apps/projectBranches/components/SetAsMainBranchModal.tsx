@@ -18,9 +18,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import { ButtonPrimary, FlagMessage, Modal } from 'design-system';
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { FormattedMessage } from 'react-intl';
+import { FlagMessage, Modal } from '~design-system';
 import DocumentationLink from '../../../components/common/DocumentationLink';
 import { DocLink } from '../../../helpers/doc-links';
 import { translate } from '../../../helpers/l10n';
@@ -85,9 +86,9 @@ export default function SetAsMainBranchModal(props: SetAsMainBranchModalProps) {
         </form>
       }
       primaryButton={
-        <ButtonPrimary disabled={isPending} type="submit" form={FORM_ID}>
+        <Button isDisabled={isPending} type="submit" form={FORM_ID} variety={ButtonVariety.Primary}>
           <FormattedMessage id="project_branch_pull_request.branch.set_main" />
-        </ButtonPrimary>
+        </Button>
       }
       secondaryButtonLabel={<FormattedMessage id="cancel" />}
     />

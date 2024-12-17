@@ -17,7 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import styled from '@emotion/styled';
+import React from 'react';
+import { useIntl } from 'react-intl';
 import {
   Card,
   CheckIcon,
@@ -28,9 +31,7 @@ import {
   StandoutLink,
   SubTitle,
   SubnavigationFlowSeparator,
-} from 'design-system';
-import React from 'react';
-import { useIntl } from 'react-intl';
+} from '~design-system';
 import { Status } from '~sonar-aligned/types/common';
 import { useCurrentUser } from '../../../app/components/current-user/CurrentUserContext';
 import useLocalStorage from '../../../hooks/useLocalStorage';
@@ -64,7 +65,7 @@ export default function SonarLintAd({ status }: Readonly<Props>) {
   return (
     <StyledSummaryCard className="it__overview__sonarlint-promotion sw-flex sw-flex-col sw-mt-4">
       <div className="sw-flex sw-justify-between">
-        <SubTitle as="h2" className="sw-body-md-highlight">
+        <SubTitle as="h2" className="sw-typo-lg-semibold">
           {intl.formatMessage({ id: 'overview.sonarlint_ad.header' })}
         </SubTitle>
         <DiscreetInteractiveIcon
@@ -80,14 +81,14 @@ export default function SonarLintAd({ status }: Readonly<Props>) {
         <TickLink message={intl.formatMessage({ id: 'overview.sonarlint_ad.details_3' })} />
         <TickLink message={intl.formatMessage({ id: 'overview.sonarlint_ad.details_4' })} />
         <TickLink
-          className="sw-body-sm-highlight"
+          className="sw-typo-semibold"
           message={intl.formatMessage({ id: 'overview.sonarlint_ad.details_5' })}
         />
       </ul>
       <SubnavigationFlowSeparator className="sw-mb-4" />
       <div>
         <StandoutLink
-          className="sw-text-left sw-body-sm-highlight"
+          className="sw-text-left sw-typo-semibold"
           to="https://www.sonarsource.com/products/sonarlint/features/connected-mode/?referrer=sonarqube"
         >
           {intl.formatMessage({ id: 'overview.sonarlint_ad.learn_more' })}
@@ -99,7 +100,7 @@ export default function SonarLintAd({ status }: Readonly<Props>) {
 
 function TickLink({ className, message }: Readonly<{ className?: string; message: string }>) {
   return (
-    <ListItem className={`sw-body-sm ${className}`}>
+    <ListItem className={`sw-typo-default ${className}`}>
       <CheckIcon fill="iconTrendPositive" />
       <LightLabel className="sw-pl-1">{message}</LightLabel>
     </ListItem>

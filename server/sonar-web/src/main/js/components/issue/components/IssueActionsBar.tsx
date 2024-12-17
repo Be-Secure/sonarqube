@@ -17,8 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { HighlightRing } from 'design-system';
-import * as React from 'react';
+
+import { HighlightRing } from '~design-system';
 import { IssueActions } from '../../../types/issues';
 import { Issue } from '../../../types/types';
 import IssueAssign from './IssueAssign';
@@ -54,7 +54,7 @@ export default function IssueActionsBar(props: Readonly<Props>) {
 
   return (
     <div className="sw-flex sw-gap-3 sw-min-w-0">
-      <ul className="it__issue-header-actions sw-flex sw-items-center sw-gap-3 sw-body-sm sw-min-w-0">
+      <ul className="it__issue-header-actions sw-flex sw-items-center sw-gap-3 sw-typo-default sw-min-w-0">
         <HighlightRing
           as="li"
           className="sw-relative"

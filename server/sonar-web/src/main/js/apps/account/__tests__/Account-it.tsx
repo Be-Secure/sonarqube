@@ -17,12 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { UserEvent } from '@testing-library/user-event/dist/types/setup/setup';
-import React from 'react';
 import { Outlet, Route } from 'react-router-dom';
-import selectEvent from 'react-select-event';
 import { byRole, byText } from '~sonar-aligned/helpers/testSelector';
 import { getMyProjects, getScannableProjects } from '../../../api/components';
 import NotificationsMock from '../../../api/mocks/NotificationsMock';
@@ -240,9 +239,7 @@ describe('profile page', () => {
     const user = userEvent.setup();
     renderAccountApp(mockLoggedInUser());
 
-    const toggle = screen.getByRole('switch', {
-      name: 'my_account.preferences.keyboard_shortcuts.enabled',
-    });
+    const toggle = screen.getByRole('switch');
     expect(toggle).toBeInTheDocument();
 
     await user.click(toggle);
@@ -296,24 +293,23 @@ describe('security page', () => {
 
       // eslint-disable-next-line jest/no-conditional-in-test
       if (tokenTypeOption === TokenType.Project) {
-        await selectEvent.select(screen.getByRole('combobox', { name: 'users.tokens.type' }), [
-          tokenTypeLabel,
-        ]);
+        await user.click(ui.tokenTypeSelect.get());
+        await user.click(byRole('option', { name: tokenTypeLabel }).get());
+
         // eslint-disable-next-line jest/no-conditional-expect
         expect(generateButton).toBeDisabled();
         // eslint-disable-next-line jest/no-conditional-expect
         expect(screen.getByRole('textbox', { name: 'users.tokens.name' })).toBeInTheDocument();
         // eslint-disable-next-line jest/no-conditional-expect
         expect(screen.getAllByRole('combobox')).toHaveLength(3);
-        await selectEvent.select(screen.getByRole('combobox', { name: 'users.tokens.project' }), [
-          'Project Name 1',
-        ]);
+
+        await user.click(ui.projectSelect.get());
+        await user.click(byRole('option', { name: 'Project Name 1' }).get());
         // eslint-disable-next-line jest/no-conditional-expect
         expect(generateButton).toBeEnabled();
       } else {
-        await selectEvent.select(screen.getByRole('combobox', { name: 'users.tokens.type' }), [
-          tokenTypeLabel,
-        ]);
+        await user.click(ui.tokenTypeSelect.get());
+        await user.click(byRole('option', { name: tokenTypeLabel }).get());
         // eslint-disable-next-line jest/no-conditional-expect
         expect(generateButton).toBeEnabled();
       }
@@ -393,6 +389,7 @@ describe('security page', () => {
   });
 
   it("should not suggest creating a Project token if the user doesn't have at least one scannable Projects", async () => {
+    const user = userEvent.setup();
     jest.mocked(getScannableProjects).mockResolvedValueOnce({
       projects: [],
     });
@@ -403,7 +400,7 @@ describe('security page', () => {
 
     expect(await screen.findByText('users.tokens.generate')).toBeInTheDocument();
 
-    await selectEvent.openMenu(screen.getByRole('combobox', { name: 'users.tokens.type' }));
+    await user.click(ui.tokenTypeSelect.get());
     expect(screen.queryByText(`users.tokens.${TokenType.Project}`)).not.toBeInTheDocument();
   });
 
@@ -418,6 +415,7 @@ describe('security page', () => {
   });
 
   it('should preselect the only project the user has access to if they select project token', async () => {
+    const user = userEvent.setup();
     jest.mocked(getScannableProjects).mockResolvedValueOnce({
       projects: [
         {
@@ -431,9 +429,9 @@ describe('security page', () => {
       securityPagePath,
     );
     expect(await screen.findByText('users.tokens.generate')).toBeInTheDocument();
-    await selectEvent.select(screen.getByRole('combobox', { name: 'users.tokens.type' }), [
-      `users.tokens.${TokenType.Project}`,
-    ]);
+
+    await user.click(ui.tokenTypeSelect.get());
+    await user.click(byRole('option', { name: `users.tokens.${TokenType.Project}` }).get());
 
     expect(screen.getByText('Project Name 1')).toBeInTheDocument();
   });
@@ -451,26 +449,18 @@ describe('security page', () => {
       exact: false,
     });
 
-    const newPasswordField = screen.getByLabelText('my_profile.password.new', {
-      selector: 'input',
-      exact: false,
-    });
-    const confirmPasswordField = screen.getByLabelText('my_profile.password.confirm', {
-      selector: 'input',
-      exact: false,
-    });
+    const newPasswordField = screen.getByLabelText(/^password/);
+    const confirmPasswordField = screen.getByLabelText(/confirm_password*/i);
 
     await fillTextField(user, oldPasswordField, '123456old');
-    await fillTextField(user, newPasswordField, 'newPassword');
-    await fillTextField(user, confirmPasswordField, 'newtypo');
+    await fillTextField(user, newPasswordField, 'P@ssword12345');
+    await fillTextField(user, confirmPasswordField, 'P@ssword12345typo');
 
-    await user.click(screen.getByRole('button', { name: 'update_verb' }));
-
-    expect(screen.getByText('user.password_doesnt_match_confirmation')).toBeInTheDocument();
+    expect(screen.getByText('user.password.do_not_match')).toBeInTheDocument();
 
     // Backspace to erase the previous content
     // [Backspace>7/] == hold, trigger 7 times and release
-    await fillTextField(user, confirmPasswordField, '[Backspace>7/]newPassword');
+    await fillTextField(user, confirmPasswordField, '[Backspace>4/]');
 
     await user.click(screen.getByRole('button', { name: 'update_verb' }));
 
@@ -525,6 +515,9 @@ describe('notifications page', () => {
     expect(globalUI.checkbox(NotificationGlobalType.CeReportTaskFailure).get()).not.toBeChecked();
     expect(globalUI.checkbox(NotificationGlobalType.NewAlerts).get()).not.toBeChecked();
     expect(globalUI.checkbox(NotificationGlobalType.MyNewIssues).get()).not.toBeChecked();
+    expect(
+      globalUI.checkbox(NotificationGlobalType.QualityGateConditionsMismatch).get(),
+    ).not.toBeChecked();
 
     /*
      * Update notifications
@@ -696,3 +689,8 @@ function renderAccountApp(currentUser: CurrentUser, navigateTo?: string) {
     { currentUser, navigateTo },
   );
 }
+
+const ui = {
+  tokenTypeSelect: byRole('combobox', { name: 'users.tokens.type' }),
+  projectSelect: byRole('combobox', { name: 'users.tokens.project' }),
+};

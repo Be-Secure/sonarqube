@@ -18,14 +18,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-import {
-  CardWithPrimaryBackground,
-  CheckIcon,
-  LightLabel,
-  SubHeadingHighlight,
-} from 'design-system';
-import React from 'react';
+import { IconCheck, Text } from '@sonarsource/echoes-react';
 import { FormattedMessage } from 'react-intl';
+import { CardWithPrimaryBackground, SubHeadingHighlight } from '~design-system';
 import DocumentationLink from '../../../components/common/DocumentationLink';
 import { DocLink } from '../../../helpers/doc-links';
 import { translate } from '../../../helpers/l10n';
@@ -34,7 +29,7 @@ import QGRecommendedIcon from './QGRecommendedIcon';
 
 export default function CaycCompliantBanner() {
   return (
-    <CardWithPrimaryBackground className="sw-mb-9 sw-p-8">
+    <CardWithPrimaryBackground className="sw-mt-9 sw-p-8">
       <div className="sw-flex sw-items-center sw-mb-2">
         <QGRecommendedIcon className="sw-mr-2" />
         <SubHeadingHighlight className="sw-m-0">
@@ -42,24 +37,23 @@ export default function CaycCompliantBanner() {
         </SubHeadingHighlight>
       </div>
 
-      <div>
+      <div className="sw-my-2">
         <FormattedMessage
-          id="quality_gates.cayc.banner.description1"
+          id="quality_gates.cayc.banner.description"
           values={{
-            cayc_link: (
-              <DocumentationLink to={DocLink.CaYC}>
-                {translate('quality_gates.cayc')}
+            link: (text) => (
+              <DocumentationLink shouldOpenInNewTab to={DocLink.CaYC}>
+                {text}
               </DocumentationLink>
             ),
           }}
         />
       </div>
-      <div className="sw-my-2">{translate('quality_gates.cayc.banner.description2')}</div>
-      <ul className="sw-body-sm sw-flex sw-flex-col sw-gap-2">
+      <ul className="sw-typo-default sw-flex sw-flex-col sw-gap-2">
         {Object.values(OPTIMIZED_CAYC_CONDITIONS).map((condition) => (
           <li key={condition.metric}>
-            <CheckIcon className="sw-mr-1 sw-pt-1/2" />
-            <LightLabel>{translate(`metric.${condition.metric}.description.positive`)}</LightLabel>
+            <IconCheck color="echoes-color-icon-success" className="sw-mr-1 sw-pt-1/2" />
+            <Text isSubdued>{translate(`metric.${condition.metric}.description.positive`)}</Text>
           </li>
         ))}
       </ul>

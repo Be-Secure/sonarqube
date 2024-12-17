@@ -17,16 +17,16 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
+import { IconLink } from '@sonarsource/echoes-react';
 import {
   ClipboardIconButton,
   IssueMessageHighlighting,
   LightLabel,
   LightPrimary,
   Link,
-  LinkIcon,
   StyledPageTitle,
-} from 'design-system';
-import React from 'react';
+} from '~design-system';
 import { getComponentSecurityHotspotsUrl } from '~sonar-aligned/helpers/urls';
 import { translate } from '../../../helpers/l10n';
 import { getPathUrlAsString, getRuleUrl } from '../../../helpers/urls';
@@ -49,7 +49,7 @@ export interface HotspotHeaderProps {
 export function HotspotHeader(props: HotspotHeaderProps) {
   const { branchLike, component, hotspot, standards } = props;
   const { message, messageFormattings, rule, key } = hotspot;
-  const refreshBranchStatus = useRefreshBranchStatus();
+  const refreshBranchStatus = useRefreshBranchStatus(component.key);
 
   const permalink = getPathUrlAsString(
     getComponentSecurityHotspotsUrl(component.key, branchLike, {
@@ -68,12 +68,12 @@ export function HotspotHeader(props: HotspotHeaderProps) {
     <div>
       <div className="sw-flex sw-justify-between sw-gap-8 hotspot-header">
         <div className="sw-flex-1">
-          <StyledPageTitle as="h2" className="sw-whitespace-normal sw-overflow-visible">
+          <StyledPageTitle as="h1" className="sw-whitespace-normal sw-overflow-visible">
             <LightPrimary>
               <IssueMessageHighlighting message={message} messageFormattings={messageFormattings} />
             </LightPrimary>
             <ClipboardIconButton
-              Icon={LinkIcon}
+              Icon={IconLink}
               copiedLabel={translate('copied_action')}
               copyLabel={translate('copy_to_clipboard')}
               className="sw-ml-2"
@@ -81,7 +81,7 @@ export function HotspotHeader(props: HotspotHeaderProps) {
               discreet
             />
           </StyledPageTitle>
-          <div className="sw-mt-2 sw-mb-4 sw-body-sm">
+          <div className="sw-mt-2 sw-mb-4 sw-typo-default">
             <LightLabel>{rule.name}</LightLabel>
             <Link className="sw-ml-1" to={getRuleUrl(rule.key)} target="_blank">
               {rule.key}

@@ -19,11 +19,11 @@
  */
 
 import styled from '@emotion/styled';
-import { Link, LinkStandalone, Spinner } from '@sonarsource/echoes-react';
-import { ButtonPrimary, Card, CenteredLayout, Note, Title } from 'design-system';
+import { Button, ButtonVariety, Link, LinkStandalone, Spinner } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { FormattedMessage } from 'react-intl';
+import { Card, CenteredLayout, Note, Title } from '~design-system';
 import { getMigrationsStatus, getSystemStatus, migrateDatabase } from '../../../api/system';
 import DocumentationLink from '../../../components/common/DocumentationLink';
 import InstanceMessage from '../../../components/common/InstanceMessage';
@@ -175,7 +175,7 @@ export default class App extends React.PureComponent<Props, State> {
         <Helmet defaultTitle={translate('maintenance.page')} defer={false} />
 
         <CenteredLayout className="sw-flex sw-justify-around sw-mt-32" id="bd">
-          <Card className="sw-body-sm sw-p-10 sw-w-abs-400" id="nonav">
+          <Card className="sw-typo-default sw-p-10 sw-w-abs-400" id="nonav">
             {systemStatus === 'OFFLINE' && (
               <>
                 <MaintenanceTitle className="text-danger">
@@ -298,9 +298,13 @@ export default class App extends React.PureComponent<Props, State> {
                 <MaintenanceText>{translate('maintenance.upgrade_database.3')}</MaintenanceText>
 
                 <MaintenanceSpinner>
-                  <ButtonPrimary id="start-migration" onClick={this.handleMigrateClick}>
+                  <Button
+                    id="start-migration"
+                    onClick={this.handleMigrateClick}
+                    variety={ButtonVariety.Primary}
+                  >
                     {translate('maintenance.upgrade')}
-                  </ButtonPrimary>
+                  </Button>
                 </MaintenanceSpinner>
               </>
             )}

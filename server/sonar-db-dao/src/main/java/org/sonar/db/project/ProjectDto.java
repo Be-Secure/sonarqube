@@ -32,6 +32,8 @@ public class ProjectDto extends EntityDto {
   private static final String TAGS_SEPARATOR = ",";
   private String tags;
   private CreationMethod creationMethod;
+  private boolean containsAiCode;
+  private boolean aiCodeFixEnabled = false;
   private long createdAt;
   private long updatedAt;
 
@@ -121,6 +123,24 @@ public class ProjectDto extends EntityDto {
 
   public ProjectDto setCreationMethod(CreationMethod creationMethod) {
     this.creationMethod = creationMethod;
+    return this;
+  }
+
+  public boolean getContainsAiCode() {
+    return containsAiCode;
+  }
+
+  public ProjectDto setContainsAiCode(boolean containsAiCode) {
+    this.containsAiCode = containsAiCode;
+    return this;
+  }
+
+  public boolean getAiCodeFixEnabled() {
+    return aiCodeFixEnabled;
+  }
+
+  public ProjectDto setAiCodeFixEnabled(boolean aiCodeFixEnabled) {
+    this.aiCodeFixEnabled = aiCodeFixEnabled;
     return this;
   }
 }

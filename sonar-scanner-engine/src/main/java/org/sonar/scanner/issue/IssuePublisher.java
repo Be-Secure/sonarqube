@@ -21,6 +21,7 @@ package org.sonar.scanner.issue;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -32,6 +33,7 @@ import org.sonar.api.batch.fs.internal.DefaultInputComponent;
 import org.sonar.api.batch.fs.internal.DefaultInputFile;
 import org.sonar.api.batch.rule.ActiveRule;
 import org.sonar.api.batch.rule.ActiveRules;
+import org.sonar.api.batch.rule.internal.DefaultActiveRule;
 import org.sonar.api.batch.sensor.issue.ExternalIssue;
 import org.sonar.api.batch.sensor.issue.Issue;
 import org.sonar.api.batch.sensor.issue.Issue.Flow;
@@ -76,7 +78,7 @@ public class IssuePublisher {
       return false;
     }
 
-    ScannerReport.Issue rawIssue = createReportIssue(issue, inputComponent.scannerId(), activeRule.severity());
+    ScannerReport.Issue rawIssue = createReportIssue(issue, inputComponent.scannerId(), activeRule.severity(), ((DefaultActiveRule) activeRule).impacts());
 
     if (filters.accept(inputComponent, rawIssue)) {
       write(inputComponent.scannerId(), rawIssue);
@@ -88,9 +90,9 @@ public class IssuePublisher {
   private static boolean noSonar(DefaultInputComponent inputComponent, Issue issue) {
     TextRange textRange = issue.primaryLocation().textRange();
     return inputComponent.isFile()
-           && textRange != null
-           && ((DefaultInputFile) inputComponent).hasNoSonarAt(textRange.start().line())
-           && !StringUtils.containsIgnoreCase(issue.ruleKey().rule(), "nosonar");
+      && textRange != null
+      && ((DefaultInputFile) inputComponent).hasNoSonarAt(textRange.start().line())
+      && !StringUtils.containsIgnoreCase(issue.ruleKey().rule(), "nosonar");
   }
 
   public void initAndAddExternalIssue(ExternalIssue issue) {
@@ -106,7 +108,8 @@ public class IssuePublisher {
     return str;
   }
 
-  private static ScannerReport.Issue createReportIssue(Issue issue, int componentRef, String activeRuleSeverity) {
+  private static ScannerReport.Issue createReportIssue(Issue issue, int componentRef, String activeRuleSeverity,
+    Map<SoftwareQuality, org.sonar.api.issue.impact.Severity> activeRuleImpacts) {
     String primaryMessage = nullToEmpty(issue.primaryLocation().message());
     org.sonar.api.batch.rule.Severity overriddenSeverity = issue.overriddenSeverity();
     Severity severity = overriddenSeverity != null ? Severity.valueOf(overriddenSeverity.name()) : Severity.valueOf(activeRuleSeverity);
@@ -120,7 +123,10 @@ public class IssuePublisher {
     builder.setRuleKey(issue.ruleKey().rule());
     builder.setMsg(primaryMessage);
     builder.addAllMsgFormatting(toProtobufMessageFormattings(issue.primaryLocation().messageFormattings()));
-    builder.addAllOverridenImpacts(toProtobufImpacts(issue.overridenImpacts()));
+    Map<SoftwareQuality, org.sonar.api.issue.impact.Severity> overriddenImpacts = new EnumMap<>(issue.overridenImpacts());
+    activeRuleImpacts.entrySet().forEach(e -> overriddenImpacts.putIfAbsent(e.getKey(), e.getValue()));
+    builder.addAllOverridenImpacts(toProtobufImpacts(overriddenImpacts));
+
     locationBuilder.setMsg(primaryMessage);
     locationBuilder.addAllMsgFormatting(toProtobufMessageFormattings(issue.primaryLocation().messageFormattings()));
 
@@ -176,7 +182,7 @@ public class IssuePublisher {
     locationBuilder.setComponentRef(componentRef);
     TextRange primaryTextRange = issue.primaryLocation().textRange();
 
-    //nullable fields
+    // nullable fields
     CleanCodeAttribute cleanCodeAttribute = issue.cleanCodeAttribute();
     if (cleanCodeAttribute != null) {
       builder.setCleanCodeAttribute(cleanCodeAttribute.name());

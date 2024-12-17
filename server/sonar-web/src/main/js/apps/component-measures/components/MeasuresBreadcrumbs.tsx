@@ -17,9 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import classNames from 'classnames';
-import { Breadcrumbs, ClipboardIconButton, HoverLink } from 'design-system';
 import * as React from 'react';
+import { Breadcrumbs, ClipboardIconButton, HoverLink } from '~design-system';
 import { getBranchLikeQuery } from '~sonar-aligned/helpers/branch-like';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
 import { getBreadcrumbs } from '../../../api/components';
@@ -29,7 +30,7 @@ import { translate } from '../../../helpers/l10n';
 import { collapsePath, limitComponentName } from '../../../helpers/path';
 import { BranchLike } from '../../../types/branch-like';
 import { isProject } from '../../../types/component';
-import { ComponentMeasure, ComponentMeasureIntern } from '../../../types/types';
+import { Component, ComponentMeasure, ComponentMeasureIntern } from '../../../types/types';
 
 interface Props {
   backToFirst: boolean;
@@ -37,7 +38,7 @@ interface Props {
   className?: string;
   component: ComponentMeasure;
   handleSelect: (component: ComponentMeasureIntern) => void;
-  rootComponent: ComponentMeasure;
+  rootComponent: Component;
 }
 
 interface State {

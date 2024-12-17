@@ -17,8 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonSecondary, LockIcon } from 'design-system';
+
+import { Button } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { LockIcon } from '~design-system';
 import { translate } from '../../../../helpers/l10n';
 import {
   DefaultInputProps,
@@ -33,10 +35,16 @@ interface State {
 }
 
 interface Props extends DefaultInputProps {
-  input: React.ComponentType<React.PropsWithChildren<DefaultSpecializedInputProps>>;
+  input: React.ComponentType<
+    React.PropsWithChildren<DefaultSpecializedInputProps> & React.RefAttributes<HTMLElement>
+  >;
 }
 
-export default class InputForSecured extends React.PureComponent<Props, State> {
+type InternalProps = Props & {
+  innerRef: React.ForwardedRef<HTMLElement>;
+};
+
+class InputForSecured extends React.PureComponent<InternalProps, State> {
   state: State = {
     changing: !this.props.setting.hasValue,
   };
@@ -65,7 +73,7 @@ export default class InputForSecured extends React.PureComponent<Props, State> {
   };
 
   renderInput() {
-    const { input: Input, setting, value } = this.props;
+    const { input: Input, innerRef, setting, value } = this.props;
     const name = getUniqueName(setting.definition);
     return (
       // The input hidden will prevent browser asking for saving login information
@@ -75,9 +83,11 @@ export default class InputForSecured extends React.PureComponent<Props, State> {
           aria-label={getPropertyName(setting.definition)}
           autoComplete="off"
           className="js-setting-input"
+          id={`input-${name}`}
           isDefault={isDefaultOrInherited(setting)}
           name={name}
           onChange={this.handleInputChange}
+          ref={innerRef}
           setting={setting}
           size="large"
           type="password"
@@ -95,10 +105,12 @@ export default class InputForSecured extends React.PureComponent<Props, State> {
     return (
       <div className="sw-flex sw-items-center">
         <LockIcon className="sw-mr-4" />
-        <ButtonSecondary onClick={this.handleChangeClick}>
-          {translate('change_verb')}
-        </ButtonSecondary>
+        <Button onClick={this.handleChangeClick}>{translate('change_verb')}</Button>
       </div>
     );
   }
 }
+
+export default React.forwardRef((props: Props, ref: React.ForwardedRef<HTMLElement>) => (
+  <InputForSecured innerRef={ref} {...props} />
+));

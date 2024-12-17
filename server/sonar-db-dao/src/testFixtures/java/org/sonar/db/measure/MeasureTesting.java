@@ -38,23 +38,23 @@ public class MeasureTesting {
     // static methods only
   }
 
-  public static MeasureDto newMeasureDto(MetricDto metricDto, ComponentDto component, SnapshotDto analysis) {
-    return newMeasureDto(metricDto, component.uuid(), analysis);
+  public static ProjectMeasureDto newProjectMeasureDto(MetricDto metricDto, ComponentDto component, SnapshotDto analysis) {
+    return newProjectMeasureDto(metricDto, component.uuid(), analysis);
   }
 
-  public static MeasureDto newMeasureDto(MetricDto metricDto, String branchUuid, SnapshotDto analysis) {
+  public static ProjectMeasureDto newProjectMeasureDto(MetricDto metricDto, String branchUuid, SnapshotDto analysis) {
     checkNotNull(metricDto.getUuid());
     checkNotNull(metricDto.getKey());
     checkNotNull(branchUuid);
     checkNotNull(analysis.getUuid());
-    return new MeasureDto()
+    return new ProjectMeasureDto()
       .setMetricUuid(metricDto.getUuid())
       .setComponentUuid(branchUuid)
       .setAnalysisUuid(analysis.getUuid());
   }
 
-  public static MeasureDto newMeasure() {
-    return new MeasureDto()
+  public static ProjectMeasureDto newProjectMeasure() {
+    return new ProjectMeasureDto()
       .setMetricUuid(String.valueOf(cursor++))
       .setComponentUuid(String.valueOf(cursor++))
       .setAnalysisUuid(String.valueOf(cursor++))
@@ -64,30 +64,28 @@ public class MeasureTesting {
       .setValue((double) cursor++);
   }
 
-  public static LiveMeasureDto newLiveMeasure() {
-    return new LiveMeasureDto()
-      .setMetricUuid(String.valueOf(cursor++))
-      .setComponentUuid(String.valueOf(cursor++))
-      .setProjectUuid(String.valueOf(cursor++))
-      .setData(String.valueOf(cursor++))
-      .setValue((double) cursor++);
+  public static MeasureDto newMeasure() {
+    return newMeasure(String.valueOf(cursor++), String.valueOf(cursor++), "metric" + cursor++, (double) cursor++);
   }
 
-  public static LiveMeasureDto newLiveMeasure(ComponentDto component, MetricDto metric) {
-    return new LiveMeasureDto()
-      .setMetricUuid(metric.getUuid())
+  public static MeasureDto newMeasure(ComponentDto component, MetricDto metric, Object value) {
+    return newMeasure(component.uuid(), component.branchUuid(), metric.getKey(), value);
+  }
+
+  public static MeasureDto newMeasure(BranchDto branch, MetricDto metric, Object value) {
+    return newMeasure(branch.getUuid(), branch.getUuid(), metric.getKey(), value);
+  }
+
+  private static MeasureDto newMeasure(String componentUuid, String branchUuid, String metricKey, Object value) {
+    return new MeasureDto()
+      .setComponentUuid(componentUuid)
+      .setBranchUuid(branchUuid)
+      .addValue(metricKey, value);
+  }
+
+  public static MeasureDto newMeasure(ComponentDto component) {
+    return new MeasureDto()
       .setComponentUuid(component.uuid())
-      .setProjectUuid(component.branchUuid())
-      .setData(String.valueOf(cursor++))
-      .setValue((double) cursor++);
-  }
-
-  public static LiveMeasureDto newLiveMeasure(BranchDto branchDto, MetricDto metric) {
-    return new LiveMeasureDto()
-      .setMetricUuid(metric.getUuid())
-      .setComponentUuid(branchDto.getUuid())
-      .setProjectUuid(branchDto.getProjectUuid())
-      .setData(String.valueOf(cursor++))
-      .setValue((double) cursor++);
+      .setBranchUuid(component.branchUuid());
   }
 }

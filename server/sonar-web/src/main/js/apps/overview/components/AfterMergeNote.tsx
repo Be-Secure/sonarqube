@@ -17,9 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { Note } from 'design-system';
-import React from 'react';
+
 import { FormattedMessage } from 'react-intl';
+import { Note } from '~design-system';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricKey, MetricType } from '~sonar-aligned/types/metrics';
 import { findMeasure } from '../../../helpers/measures';
@@ -34,7 +34,7 @@ export default function AfterMergeNote({ measures, overallMetric }: Readonly<Pro
   const afterMergeValue = findMeasure(measures, overallMetric)?.value;
 
   return afterMergeValue ? (
-    <Note className="sw-mt-2 sw-body-xs sw-inline-block">
+    <Note className="sw-mt-2 sw-typo-sm sw-inline-block">
       <strong className="sw-mr-1">{formatMeasure(afterMergeValue, MetricType.Percent)}</strong>
       <FormattedMessage id="component_measures.facet_category.overall_category.estimated" />
     </Note>

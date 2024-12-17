@@ -17,7 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import * as React from 'react';
+
 import withAvailableFeatures, {
   WithAvailableFeaturesProps,
 } from '../../../app/components/available-features/withAvailableFeatures';
@@ -80,10 +80,24 @@ export function AnalysisCommand(props: Readonly<AnalysisCommandProps>) {
           component={component}
         />
       );
+    case BuildTools.Dart:
+      return (
+        <Others
+          branchesEnabled={branchSupportEnabled}
+          buildSteps={`
+      # The analysis requires to retrieve dependencies and build successfully
+      - name: Build project
+        run: <commands to build your project>`}
+          mainBranchName={mainBranchName}
+          monorepo={monorepo}
+          component={component}
+        />
+      );
     case BuildTools.Other:
       return (
         <Others
           branchesEnabled={branchSupportEnabled}
+          buildSteps=""
           mainBranchName={mainBranchName}
           monorepo={monorepo}
           component={component}

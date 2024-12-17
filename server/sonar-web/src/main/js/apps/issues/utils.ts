@@ -17,6 +17,7 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { intersection, isArray, uniq } from 'lodash';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricType } from '~sonar-aligned/types/metrics';
@@ -61,6 +62,7 @@ export interface Query {
   assigned: boolean;
   assignees: string[];
   author: string[];
+  casa: string[];
   cleanCodeAttributeCategories: CleanCodeAttributeCategory[];
   codeVariants: string[];
   createdAfter: Date | undefined;
@@ -90,6 +92,7 @@ export interface Query {
   severities: string[];
   sonarsourceSecurity: string[];
   sort: string;
+  'stig-ASD_V5R3': string[];
   tags: string[];
   types: string[];
 }
@@ -121,6 +124,7 @@ export function parseQuery(query: RawQuery, needIssueSync = false): Query {
       query.impactSoftwareQualities,
       parseAsString,
     ),
+    'stig-ASD_V5R3': parseAsArray(query['stig-ASD_V5R3'], parseAsString),
     inNewCodePeriod: parseAsBoolean(query.inNewCodePeriod, false),
     issues: parseAsArray(query.issues, parseAsString),
     languages: parseAsArray(query.languages, parseAsString),
@@ -128,6 +132,7 @@ export function parseQuery(query: RawQuery, needIssueSync = false): Query {
     'owaspTop10-2021': parseAsArray(query['owaspTop10-2021'], parseAsString),
     'pciDss-3.2': parseAsArray(query['pciDss-3.2'], parseAsString),
     'pciDss-4.0': parseAsArray(query['pciDss-4.0'], parseAsString),
+    casa: parseAsArray(query['casa'], parseAsString),
     [OWASP_ASVS_4_0]: parseAsArray(query[OWASP_ASVS_4_0], parseAsString),
     owaspAsvsLevel: parseAsString(query['owaspAsvsLevel']),
     projects: parseAsArray(query.projects, parseAsString),
@@ -239,6 +244,8 @@ export function serializeQuery(query: Query): RawQuery {
     owaspTop10: serializeStringArray(query.owaspTop10),
     'owaspTop10-2021': serializeStringArray(query['owaspTop10-2021']),
     'pciDss-3.2': serializeStringArray(query['pciDss-3.2']),
+    casa: serializeStringArray(query['casa']),
+    'stig-ASD_V5R3': serializeStringArray(query['stig-ASD_V5R3']),
     'pciDss-4.0': serializeStringArray(query['pciDss-4.0']),
     [OWASP_ASVS_4_0]: serializeStringArray(query[OWASP_ASVS_4_0]),
     owaspAsvsLevel: serializeString(query['owaspAsvsLevel']),

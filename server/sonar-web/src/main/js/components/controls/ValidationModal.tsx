@@ -17,9 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonPrimary, ButtonSecondary, Modal } from 'design-system';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import { FormikValues } from 'formik';
 import * as React from 'react';
+import { Modal } from '~design-system';
 import { translate } from '../../helpers/l10n';
 import ValidationForm, { ChildrenProps } from './ValidationForm';
 
@@ -55,21 +57,22 @@ export default class ValidationModal<V extends FormikValues> extends React.PureC
               <Modal.Footer
                 loading={formState.isSubmitting}
                 primaryButton={
-                  <ButtonPrimary
+                  <Button
                     type="submit"
-                    disabled={formState.isSubmitting || !formState.isValid || !formState.dirty}
+                    isDisabled={formState.isSubmitting || !formState.isValid || !formState.dirty}
+                    variety={ButtonVariety.Primary}
                   >
                     {this.props.confirmButtonText}
-                  </ButtonPrimary>
+                  </Button>
                 }
                 secondaryButton={
-                  <ButtonSecondary
+                  <Button
                     className="sw-ml-2"
-                    disabled={formState.isSubmitting}
+                    isDisabled={formState.isSubmitting}
                     onClick={this.props.onClose}
                   >
                     {translate('cancel')}
-                  </ButtonSecondary>
+                  </Button>
                 }
               />
             </>

@@ -17,7 +17,11 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { scaleLinear, scaleOrdinal } from 'd3-scale';
+import { isEmpty } from 'lodash';
+import * as React from 'react';
+import { AutoSizer } from 'react-virtualized/dist/commonjs/AutoSizer';
 import {
   CSSColor,
   Note,
@@ -28,10 +32,7 @@ import {
   TreeMapItem,
   themeColor,
   withTheme,
-} from 'design-system';
-import { isEmpty } from 'lodash';
-import * as React from 'react';
-import { AutoSizer } from 'react-virtualized/dist/commonjs/AutoSizer';
+} from '~design-system';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricKey, MetricType } from '~sonar-aligned/types/metrics';
 import ColorBoxLegend from '../../../components/charts/ColorBoxLegend';
@@ -159,8 +160,11 @@ export class TreeMapView extends React.PureComponent<Props, State> {
     return color;
   };
 
-  getRatingColorScale = () =>
-    scaleLinear<string, string>().domain(RATING_SCALE_DOMAIN).range(this.getMappedThemeColors());
+  getRatingColorScale = () => {
+    return scaleLinear<string, string>()
+      .domain(RATING_SCALE_DOMAIN)
+      .range(this.getMappedThemeColors());
+  };
 
   getColorScale = (metric: Metric) => {
     if (metric.type === MetricType.Level) {

@@ -17,12 +17,14 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { CenteredLayout, Spinner } from 'design-system';
+
 import { differenceBy } from 'lodash';
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { Helmet } from 'react-helmet-async';
+import { useIntl } from 'react-intl';
 import { Outlet } from 'react-router-dom';
+import { CenteredLayout, Spinner } from '~design-system';
 import { useLocation, useRouter } from '~sonar-aligned/components/hoc/withRouter';
 import { isPortfolioLike } from '~sonar-aligned/helpers/component';
 import { ComponentQualifier } from '~sonar-aligned/types/component';
@@ -30,10 +32,10 @@ import { validateProjectAlmBinding } from '../../api/alm-settings';
 import { getTasksForComponent } from '../../api/ce';
 import { getComponentData } from '../../api/components';
 import { getComponentNavigation } from '../../api/navigation';
-import { translateWithParameters } from '../../helpers/l10n';
 import { HttpStatus } from '../../helpers/request';
 import { getPortfolioUrl, getProjectUrl, getPullRequestUrl } from '../../helpers/urls';
-import { useBranchesQuery } from '../../queries/branch';
+import { useCurrentBranchQuery } from '../../queries/branch';
+import { useStandardExperienceModeQuery } from '../../queries/mode';
 import { ProjectAlmBindingConfigurationErrors } from '../../types/alm-settings';
 import { Branch } from '../../types/branch-like';
 import { isFile } from '../../types/component';
@@ -61,6 +63,8 @@ function ComponentContainer({ hasFeature }: Readonly<WithAvailableFeaturesProps>
   } = useLocation();
   const router = useRouter();
 
+  const intl = useIntl();
+
   const [component, setComponent] = React.useState<Component>();
   const [currentTask, setCurrentTask] = React.useState<Task>();
   const [tasksInProgress, setTasksInProgress] = React.useState<Task[]>();
@@ -68,9 +72,12 @@ function ComponentContainer({ hasFeature }: Readonly<WithAvailableFeaturesProps>
     React.useState<ProjectAlmBindingConfigurationErrors>();
   const [loading, setLoading] = React.useState(true);
   const [isPending, setIsPending] = React.useState(false);
-  const { data: { branchLike } = {}, isFetching } = useBranchesQuery(
+  const { data: branchLike, isFetching } = useCurrentBranchQuery(
     fixedInPullRequest ? component : undefined,
   );
+
+  //prefetch isStandardExperienceMode
+  useStandardExperienceModeQuery();
 
   const isInTutorials = pathname.includes('tutorials');
 
@@ -280,9 +287,9 @@ function ComponentContainer({ hasFeature }: Readonly<WithAvailableFeaturesProps>
     <div>
       <Helmet
         defer={false}
-        titleTemplate={translateWithParameters(
-          'page_title.template.with_instance',
-          component?.name ?? '',
+        titleTemplate={intl.formatMessage(
+          { id: 'page_title.template.with_instance' },
+          { project: component?.name ?? '' },
         )}
       />
       {component &&

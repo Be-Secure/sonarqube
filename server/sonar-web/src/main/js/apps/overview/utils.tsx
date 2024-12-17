@@ -17,8 +17,8 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { memoize } from 'lodash';
-import React from 'react';
 import { IntlShape } from 'react-intl';
 import { formatMeasure } from '~sonar-aligned/helpers/measures';
 import { MetricKey, MetricType } from '~sonar-aligned/types/metrics';
@@ -26,7 +26,7 @@ import { RawQuery } from '~sonar-aligned/types/router';
 import { ISSUETYPE_METRIC_KEYS_MAP } from '../../helpers/issues';
 import { translate } from '../../helpers/l10n';
 import { parseAsString } from '../../helpers/query';
-import { SoftwareQuality } from '../../types/clean-code-taxonomy';
+import { SoftwareImpactSeverity, SoftwareQuality } from '../../types/clean-code-taxonomy';
 import { IssueType } from '../../types/issues';
 import { AnalysisMeasuresVariations, MeasureHistory } from '../../types/project-activity';
 import { QualityGateStatusConditionEnhanced } from '../../types/quality-gates';
@@ -42,21 +42,25 @@ export const BRANCH_OVERVIEW_METRICS: string[] = [
   MetricKey.accepted_issues,
   MetricKey.new_accepted_issues,
   MetricKey.high_impact_accepted_issues,
-  MetricKey.maintainability_issues,
-  MetricKey.reliability_issues,
-  MetricKey.security_issues,
+  MetricKey.software_quality_maintainability_issues,
+  MetricKey.software_quality_reliability_issues,
+  MetricKey.software_quality_security_issues,
 
   // bugs
   MetricKey.bugs,
   MetricKey.new_bugs,
   MetricKey.reliability_rating,
+  MetricKey.software_quality_reliability_rating,
   MetricKey.new_reliability_rating,
+  MetricKey.new_software_quality_reliability_rating,
 
   // vulnerabilities
   MetricKey.vulnerabilities,
   MetricKey.new_vulnerabilities,
   MetricKey.security_rating,
+  MetricKey.software_quality_security_rating,
   MetricKey.new_security_rating,
+  MetricKey.new_software_quality_security_rating,
 
   // hotspots
   MetricKey.security_hotspots,
@@ -70,7 +74,9 @@ export const BRANCH_OVERVIEW_METRICS: string[] = [
   MetricKey.code_smells,
   MetricKey.new_code_smells,
   MetricKey.sqale_rating,
+  MetricKey.software_quality_maintainability_rating,
   MetricKey.new_maintainability_rating,
+  MetricKey.new_software_quality_maintainability_rating,
   MetricKey.sqale_index,
   MetricKey.new_technical_debt,
 
@@ -92,6 +98,9 @@ export const BRANCH_OVERVIEW_METRICS: string[] = [
   MetricKey.projects,
   MetricKey.lines,
   MetricKey.new_lines,
+
+  // others
+  MetricKey.violations,
 ];
 
 export const PR_METRICS: string[] = [
@@ -125,11 +134,9 @@ export const HISTORY_METRICS_LIST: string[] = [
 ];
 
 const MEASURES_VARIATIONS_METRICS = [
-  MetricKey.bugs,
-  MetricKey.code_smells,
   MetricKey.coverage,
   MetricKey.duplicated_lines_density,
-  MetricKey.vulnerabilities,
+  MetricKey.violations,
 ];
 
 export enum MeasurementType {
@@ -160,6 +167,13 @@ export const RATING_TO_SEVERITIES_MAPPING = [
   'BLOCKER',
 ];
 
+export const MQR_RATING_TO_SEVERITIES_MAPPING = [
+  `${SoftwareImpactSeverity.Blocker},${SoftwareImpactSeverity.High},${SoftwareImpactSeverity.Medium},${SoftwareImpactSeverity.Low}`,
+  `${SoftwareImpactSeverity.Blocker},${SoftwareImpactSeverity.High},${SoftwareImpactSeverity.Medium}`,
+  `${SoftwareImpactSeverity.Blocker},${SoftwareImpactSeverity.High}`,
+  `${SoftwareImpactSeverity.Blocker}`,
+];
+
 export const RATING_METRICS_MAPPING: Dict<IssueType> = {
   [MetricKey.reliability_rating]: IssueType.Bug,
   [MetricKey.new_reliability_rating]: IssueType.Bug,
@@ -183,7 +197,7 @@ export const METRICS_REPORTED_IN_OVERVIEW_CARDS = [
 ];
 
 export function softwareQualityToMeasure(softwareQuality: SoftwareQuality): MetricKey {
-  return (softwareQuality.toLowerCase() + '_issues') as MetricKey;
+  return `software_quality_${softwareQuality.toLowerCase()}_issues` as MetricKey;
 }
 
 export function getIssueRatingName(type: IssueType) {
@@ -208,7 +222,7 @@ export function getMeasurementMetricKey(type: MeasurementType, useDiffMetric: bo
 
 export const parseQuery = memoize((urlQuery: RawQuery): { codeScope: string } => {
   return {
-    codeScope: parseAsString(urlQuery['code_scope']),
+    codeScope: parseAsString(urlQuery['codeScope']),
   };
 });
 

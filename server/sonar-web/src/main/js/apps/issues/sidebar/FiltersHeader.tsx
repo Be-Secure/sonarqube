@@ -17,8 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { BasicSeparator, DangerButtonSecondary, PageTitle } from 'design-system';
-import * as React from 'react';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
+import { BasicSeparator, PageTitle } from '~design-system';
+import ModeBanner from '../../../components/common/ModeBanner';
 import { translate } from '../../../helpers/l10n';
 
 interface Props {
@@ -30,15 +32,16 @@ export function FiltersHeader({ displayReset, onReset }: Props) {
   return (
     <div className="sw-mb-5">
       <div className="sw-flex sw-h-9 sw-items-center sw-justify-between">
-        <PageTitle className="sw-body-md-highlight" as="h2" text={translate('filters')} />
+        <PageTitle className="sw-typo-lg-semibold" as="h2" text={translate('filters')} />
 
         {displayReset && (
-          <DangerButtonSecondary onClick={onReset}>
+          <Button onClick={onReset} variety={ButtonVariety.DangerOutline}>
             {translate('clear_all_filters')}
-          </DangerButtonSecondary>
+          </Button>
         )}
       </div>
 
+      <ModeBanner as="facetBanner" />
       <BasicSeparator className="sw-mt-4" />
     </div>
   );

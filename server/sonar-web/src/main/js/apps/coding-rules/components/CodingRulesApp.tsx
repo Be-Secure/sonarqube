@@ -19,6 +19,9 @@
  */
 
 import styled from '@emotion/styled';
+import { keyBy } from 'lodash';
+import * as React from 'react';
+import { Helmet } from 'react-helmet-async';
 import {
   InputSearch,
   LAYOUT_FOOTER_HEIGHT,
@@ -27,10 +30,7 @@ import {
   PageContentFontWrapper,
   themeBorder,
   themeColor,
-} from 'design-system';
-import { keyBy } from 'lodash';
-import * as React from 'react';
-import { Helmet } from 'react-helmet-async';
+} from '~design-system';
 import A11ySkipTarget from '~sonar-aligned/components/a11y/A11ySkipTarget';
 import { withRouter } from '~sonar-aligned/components/hoc/withRouter';
 import { Location, RawQuery, Router } from '~sonar-aligned/types/router';
@@ -45,6 +45,7 @@ import { DocLink } from '../../../helpers/doc-links';
 import { isInput, isShortcut } from '../../../helpers/keyboardEventHelpers';
 import { KeyboardKeys } from '../../../helpers/keycodes';
 import { translate, translateWithParameters } from '../../../helpers/l10n';
+import { getIntl } from '../../../helpers/l10nBundle';
 import { SecurityStandard } from '../../../types/security';
 import { SettingsKey } from '../../../types/settings';
 import { Dict, Paging, Rule, RuleActivation } from '../../../types/types';
@@ -103,6 +104,7 @@ interface State {
 const RULE_LIST_HEADER_HEIGHT = 68;
 
 export class CodingRulesApp extends React.PureComponent<Props, State> {
+  intl = getIntl();
   mounted = false;
 
   constructor(props: Props) {
@@ -120,8 +122,10 @@ export class CodingRulesApp extends React.PureComponent<Props, State> {
         ),
         sonarsourceSecurity: shouldOpenSonarSourceSecurityFacet({}, query),
         standards: shouldOpenStandardsFacet({}, query),
-        cleanCodeAttributeCategories: true,
         impactSoftwareQualities: true,
+        severities: true,
+        impactSeverities: true,
+        types: true,
       },
       referencedProfiles: {},
       referencedRepositories: {},
@@ -572,9 +576,9 @@ export class CodingRulesApp extends React.PureComponent<Props, State> {
           <Helmet
             defer={false}
             title={translateWithParameters('coding_rule.page', openRule.langName, openRule.name)}
-            titleTemplate={translateWithParameters(
-              'page_title.template.with_category',
-              translate('coding_rules.page'),
+            titleTemplate={this.intl.formatMessage(
+              { id: 'page_title.template.with_category' },
+              { page: translate('coding_rules.page') },
             )}
           />
         ) : (
@@ -583,7 +587,7 @@ export class CodingRulesApp extends React.PureComponent<Props, State> {
           </Helmet>
         )}
         <LargeCenteredLayout id="coding-rules-page">
-          <PageContentFontWrapper className="sw-body-sm">
+          <PageContentFontWrapper className="sw-typo-default">
             <div className="sw-grid sw-gap-x-12 sw-gap-y-6 sw-grid-cols-12 sw-w-full">
               <StyledContentWrapper
                 as="nav"

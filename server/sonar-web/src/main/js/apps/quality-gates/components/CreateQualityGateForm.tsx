@@ -17,8 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonSecondary, FormField, InputField, Modal } from 'design-system';
+
+import { Button } from '@sonarsource/echoes-react';
 import * as React from 'react';
+import { FormField, InputField, Modal } from '~design-system';
 import { useRouter } from '~sonar-aligned/components/hoc/withRouter';
 import MandatoryFieldsExplanation from '../../../components/ui/MandatoryFieldsExplanation';
 import { translate } from '../../../helpers/l10n';
@@ -82,14 +84,14 @@ export default function CreateQualityGateForm({ onClose }: Readonly<Props>) {
       isScrollable
       body={body}
       primaryButton={
-        <ButtonSecondary
-          disabled={name === null || name === ''}
+        <Button
+          isDisabled={name === null || name === ''}
           form="create-application-form"
           type="submit"
           onClick={handleCreate}
         >
           {translate('quality_gate.create')}
-        </ButtonSecondary>
+        </Button>
       }
       secondaryButtonLabel={translate('cancel')}
     />

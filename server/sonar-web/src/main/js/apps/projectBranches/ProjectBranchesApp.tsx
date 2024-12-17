@@ -17,9 +17,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { LargeCenteredLayout, PageContentFontWrapper, Title } from 'design-system';
+
 import * as React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { LargeCenteredLayout, PageContentFontWrapper, Title } from '~design-system';
 import withComponentContext from '../../app/components/componentContext/withComponentContext';
 import { translate } from '../../helpers/l10n';
 import { withBranchLikes } from '../../queries/branch';
@@ -37,7 +38,7 @@ function ProjectBranchesApp(props: ProjectBranchesAppProps) {
 
   return (
     <LargeCenteredLayout id="project-branch-like">
-      <PageContentFontWrapper className="sw-my-8 sw-body-sm">
+      <PageContentFontWrapper className="sw-my-8 sw-typo-default">
         <header className="sw-mb-5">
           <Helmet defer={false} title={translate('project_branch_pull_request.page')} />
           <Title className="sw-mb-4">{translate('project_branch_pull_request.page')}</Title>

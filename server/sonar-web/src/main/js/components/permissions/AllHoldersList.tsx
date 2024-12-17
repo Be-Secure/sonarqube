@@ -17,8 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { BasicSeparator, Spinner } from 'design-system';
+
 import * as React from 'react';
+import { BasicSeparator, Spinner } from '~design-system';
 import {
   Paging,
   PermissionDefinition,
@@ -34,6 +35,7 @@ interface Props {
   filter: FilterOption;
   groups: PermissionGroup[];
   groupsPaging?: Paging;
+  isProjectManaged?: boolean;
   loading?: boolean;
   onFilter: (filter: string) => void;
   onGrantPermissionToGroup: (group: string, permission: string) => Promise<void>;
@@ -96,6 +98,7 @@ export default class AllHoldersList extends React.PureComponent<Props> {
       permissions,
       selectedPermission,
       loading = false,
+      isProjectManaged,
     } = this.props;
     const { count, total } = this.getPaging();
 
@@ -114,6 +117,7 @@ export default class AllHoldersList extends React.PureComponent<Props> {
           <BasicSeparator className="sw-mt-4" />
         </div>
         <HoldersList
+          isProjectManaged={!!isProjectManaged}
           loading={loading}
           filter={filter}
           groups={groups}

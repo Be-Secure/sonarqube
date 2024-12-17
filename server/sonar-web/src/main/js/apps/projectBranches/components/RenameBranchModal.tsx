@@ -17,10 +17,12 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import { ButtonPrimary, FormField, InputField, Modal } from 'design-system';
+
+import { Button, ButtonVariety } from '@sonarsource/echoes-react';
 import * as React from 'react';
 import { useState } from 'react';
 import { FormattedMessage } from 'react-intl';
+import { FormField, InputField, Modal } from '~design-system';
 import { translate } from '../../../helpers/l10n';
 import { useRenameMainBranchMutation } from '../../../queries/branch';
 import { MainBranch } from '../../../types/branch-like';
@@ -64,7 +66,11 @@ export default function RenameBranchModal(props: Props) {
       headerTitle={header}
       body={
         <form id={FORM_ID} onSubmit={handleSubmit}>
-          <FormField className="sw-mb-1" label={<FormattedMessage id="new_name" />}>
+          <FormField
+            className="sw-mb-1"
+            htmlFor="rename-branch-name"
+            label={<FormattedMessage id="new_name" />}
+          >
             <InputField
               autoFocus
               id="rename-branch-name"
@@ -81,9 +87,14 @@ export default function RenameBranchModal(props: Props) {
       }
       loading={isPending}
       primaryButton={
-        <ButtonPrimary disabled={submitDisabled} type="submit" form={FORM_ID}>
+        <Button
+          isDisabled={submitDisabled}
+          type="submit"
+          form={FORM_ID}
+          variety={ButtonVariety.Primary}
+        >
           <FormattedMessage id="rename" />
-        </ButtonPrimary>
+        </Button>
       }
       secondaryButtonLabel={<FormattedMessage id="cancel" />}
       onClose={props.onClose}

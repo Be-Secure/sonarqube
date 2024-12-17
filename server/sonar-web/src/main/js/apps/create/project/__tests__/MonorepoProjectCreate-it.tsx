@@ -17,10 +17,9 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+
 import { waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
-import selectEvent from 'react-select-event';
 import { byRole, byText } from '~sonar-aligned/helpers/testSelector';
 import AlmIntegrationsServiceMock from '../../../../api/mocks/AlmIntegrationsServiceMock';
 import AlmSettingsServiceMock from '../../../../api/mocks/AlmSettingsServiceMock';
@@ -78,10 +77,6 @@ const ui = {
 };
 
 beforeAll(() => {
-  Object.defineProperty(window, 'location', {
-    configurable: true,
-    value: { replace: jest.fn() },
-  });
   almIntegrationHandler = new AlmIntegrationsServiceMock();
   almSettingsHandler = new AlmSettingsServiceMock();
   componentsHandler = new ComponentsServiceMock();
@@ -124,6 +119,7 @@ describe('github monorepo project setup', () => {
   });
 
   it('should display that selected repository is not bound to any existing project', async () => {
+    const user = userEvent.setup();
     renderCreateProject({ code: '123', dopSetting: 'dop-setting-test-id', isMonorepo: true });
 
     expect(await ui.monorepoTitle.find()).toBeInTheDocument();
@@ -131,17 +127,19 @@ describe('github monorepo project setup', () => {
     expect(await ui.dopSettingSelector.find()).toBeInTheDocument();
     expect(ui.monorepoProjectTitle.query()).not.toBeInTheDocument();
 
-    await waitFor(async () => {
-      await selectEvent.select(await ui.organizationSelector.find(), 'org-1');
-    });
+    await user.click(await ui.organizationSelector.find());
+    await user.click(byRole('option', { name: 'org-1' }).get());
+
     expect(ui.monorepoProjectTitle.query()).not.toBeInTheDocument();
 
-    await selectEvent.select(await ui.repositorySelector.find(), 'Github repo 1');
+    await user.click(ui.repositorySelector.get());
+    await user.click(byRole('option', { name: 'Github repo 1' }).get());
 
     expect(await ui.notBoundRepositoryMessage.find()).toBeInTheDocument();
   });
 
   it('should display that selected repository is already bound to an existing project', async () => {
+    const user = userEvent.setup();
     projectManagementHandler.setProjects([
       mockProject({
         key: 'key123',
@@ -155,12 +153,13 @@ describe('github monorepo project setup', () => {
     expect(await ui.dopSettingSelector.find()).toBeInTheDocument();
     expect(ui.monorepoProjectTitle.query()).not.toBeInTheDocument();
 
-    await waitFor(async () => {
-      await selectEvent.select(await ui.organizationSelector.find(), 'org-1');
-    });
+    await user.click(await ui.organizationSelector.find());
+    await user.click(byRole('option', { name: 'org-1' }).get());
+
     expect(ui.monorepoProjectTitle.query()).not.toBeInTheDocument();
 
-    await selectEvent.select(await ui.repositorySelector.find(), 'Github repo 1');
+    await user.click(ui.repositorySelector.get());
+    await user.click(byRole('option', { name: 'Github repo 1' }).get());
 
     expect(await ui.alreadyBoundRepositoryMessage.find()).toBeInTheDocument();
     expect(byRole('link', { name: 'Project GitHub 1' }).get()).toBeInTheDocument();
@@ -175,12 +174,14 @@ describe('github monorepo project setup', () => {
     expect(await ui.dopSettingSelector.find()).toBeInTheDocument();
     expect(ui.monorepoProjectTitle.query()).not.toBeInTheDocument();
 
-    await waitFor(async () => {
-      await selectEvent.select(await ui.organizationSelector.find(), 'org-1');
-    });
+    await user.click(await ui.organizationSelector.find());
+    await user.click(byRole('option', { name: 'org-1' }).get());
+
     expect(ui.monorepoProjectTitle.query()).not.toBeInTheDocument();
 
-    await selectEvent.select(await ui.repositorySelector.find(), 'Github repo 1');
+    await user.click(ui.repositorySelector.get());
+    await user.click(byRole('option', { name: 'Github repo 1' }).get());
+
     expect(await ui.monorepoProjectTitle.find()).toBeInTheDocument();
     let projects = byRole('textbox', {
       name: /onboarding.create_project.project_key/,
@@ -201,7 +202,7 @@ describe('github monorepo project setup', () => {
     expect(ui.submitButton.get()).toBeEnabled();
 
     await user.type(projects[0], '-1');
-    expect(ui.submitButton.get()).toBeDisabled();
+    await waitFor(() => expect(ui.submitButton.get()).toBeDisabled());
     await user.clear(projects[1]);
     expect(ui.submitButton.get()).toBeDisabled();
 
